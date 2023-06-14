@@ -97,7 +97,7 @@ class AlphaZero():
 								env_vars={"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"}
 								)
 		
-		context = ray.init(runtime_env=runtime_env)
+		context = ray.init(runtime_env=runtime_env, log_to_driver=False)
 		print(context.dashboard_url)
 
 		print("\n\nTO DOs: \
@@ -587,14 +587,16 @@ class AlphaZero():
 			if self.config.late_heavy:
 				# The way I found to create a scalling array
 				num_positions = replay_size
-				total = 0
-				fraction = 1 / num_positions
-				
-				for i in range(num_positions):
+				variation = 0.6
+				offset = (1-variation)/2    
+				fraction = variation / num_positions
+
+				total = offset
+				for _ in range(num_positions):
 					total += fraction
 					probs.append(total)
 
-				probs /= np.sum(probs)
+					probs /= np.sum(probs)   
 
 
 			average_value_loss = 0

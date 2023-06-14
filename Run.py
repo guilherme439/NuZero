@@ -348,7 +348,11 @@ def main():
             predicted_policy, predicted_value = network.inference(state)
             print(state, predicted_policy, predicted_value)
     
-            
+    elif mode == 21:
+        probs = []
+        
+
+        print(probs)   
         
         
 
