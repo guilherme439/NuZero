@@ -163,7 +163,7 @@ class AlphaZero():
 		save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_0_model"
 		torch.save(self.latest_network.get_model().state_dict(), save_path)
 
-		self.shared_storage.save_network.remote(self.latest_network)
+		ray.get(self.shared_storage.save_network.remote(self.latest_network))
 
 		updates = 0
 		if self.config.early_fill > 0:
