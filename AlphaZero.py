@@ -92,7 +92,7 @@ class AlphaZero():
 
 		
 		runtime_env = RuntimeEnv(
-								working_dir=".",
+								working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
 								conda="tese"
 								)
 		
