@@ -28,7 +28,7 @@ class Gamer():
         
         torch.multiprocessing.set_sharing_strategy('file_system')
 
-        self.network = ray.get(self.shared_storage.get_latest_network.remote(), timeout=5)
+        self.network = ray.get(self.shared_storage.get_latest_network.remote(), timeout=50)
         state_table = {}
         game = self.game_class(*self.game_args)
         subtree_root = Node(0)

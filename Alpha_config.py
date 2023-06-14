@@ -188,7 +188,7 @@ class Alpha_Zero_config():
 		# Optimization
 		self.parallel_testing = True
 		self.with_cache = True
-		self.num_actors = 24
+		self.num_actors = 14
 
 
 		# Run Settings
