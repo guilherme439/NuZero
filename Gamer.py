@@ -11,7 +11,7 @@ from Node import Node
 from Replay_Buffer import Replay_Buffer
 
 
-@ray.remote
+@ray.remote(scheduling_strategy="SPREAD")
 class Gamer():  
 
     def __init__(self, buffer, shared_storage, config, game_class, game_args):

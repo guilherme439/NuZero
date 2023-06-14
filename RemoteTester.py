@@ -2,7 +2,7 @@ import ray
 
 from Tester import Tester
 
-@ray.remote
+@ray.remote(scheduling_strategy="SPREAD")
 class RemoteTester(Tester):
 
     def __init__(self, recurrent_iters=2, mcts_simulations=800, pb_c_base=19652, pb_c_init=1.25, use_terminal=False, slow=False):
