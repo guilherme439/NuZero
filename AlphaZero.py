@@ -92,8 +92,9 @@ class AlphaZero():
 
 		
 		runtime_env = RuntimeEnv(
+								conda="tese",
 								working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-								conda="tese"
+								env_vars={"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"}
 								)
 		
 		context = ray.init(runtime_env=runtime_env)
