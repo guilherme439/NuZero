@@ -188,19 +188,20 @@ class Alpha_Zero_config():
 		# Optimization
 		self.parallel_testing = True
 		self.with_cache = True
-		self.num_actors = 16
+		self.num_actors = 6
+		self.chunk_size = 25
 
 
 		# Run Settings
-		self.early_fill = 600
+		self.early_fill = 200
 		self.num_games_per_batch = 200
-		self.num_batches = 50
+		self.num_batches = 200
 
-		self.save_frequency = 3
-		self.test_frequency = 3
+		self.save_frequency = 1
+		self.test_frequency = 1
 		self.debug_frequency = 999
 		self.storage_frequency = 1
-		self.plot_frequency = 6
+		self.plot_frequency = 1
 		self.plot_reset = 200
 		self.plot = False
 
@@ -217,12 +218,12 @@ class Alpha_Zero_config():
 		self.num_testing_iters = 3
 		
 		# Learning
-		self.shared_storage_size = 5
+		self.shared_storage_size = 4
 
-		self.replay_window_size = int(1200)
+		self.replay_window_size = int(500)
 		self.batch_size = 32
 
-		self.learning_method = "epochs" 	# epochs | samples
+		self.learning_method = "samples" 	# epochs | samples
 
 		## Epochs learning method
 		self.learning_epochs = 4

@@ -21,21 +21,22 @@ class Gamer():
         self.shared_storage = shared_storage
         self.game_class = game_class
         self.game_args = game_args
+        self.network = None
         
 
 
     def play_game(self, show): 
         
+        future_network = self.shared_storage.get_latest_network.remote() # ask for latest network
+
         torch.multiprocessing.set_sharing_strategy('file_system')
 
-        self.network = ray.get(self.shared_storage.get_latest_network.remote(), timeout=50)
         state_table = {}
         game = self.game_class(*self.game_args)
         subtree_root = Node(0)
 
         
-        
-        #spinner = PieSpinner('\t\t\t\t\t\tIn Game ')
+        self.network = ray.get(future_network, timeout=30)
         while not game.is_terminal():
             state = game.generate_state_image()
             game.store_state(state)
@@ -49,34 +50,14 @@ class Gamer():
 
             game.step_function(action_coords)
 
-            if show:
-                print()
-                game.print_board()
-                #p, v = self.network.get_model()(state)
-                #print(p)
-                #print()
-                #print(v)
-                #print("Value: " + str(v))
-                #self.print_tree(subtree_root, game.get_action_space_shape())
-
             game.store_search_statistics(subtree_root)
 
             if self.config.keep_sub_tree:
                 subtree_root = chosen_child
+       
 
-            #spinner.next()
-        
-        #spinner.finish
-        #if show:
-            #print()
-            #game.print_board()
-
-        #print("\nwinner: " + str(game.check_winner()))
-
-        self.buffer.save_game.remote(game)
-        
-
-        return 
+        ray.get(self.buffer.save_game.remote(game)) # each actor waits for the game to be saved before returning
+        return
 
     def run_mcts(self, game, subtree_root, state_table):
 

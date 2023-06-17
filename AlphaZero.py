@@ -8,6 +8,7 @@ import sys
 import pickle
 import ray
 import random
+import resource
 
 from copy import deepcopy
 
@@ -94,7 +95,10 @@ class AlphaZero():
 		runtime_env = RuntimeEnv(
 								conda="tese",
 								working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-								env_vars={"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"}
+								env_vars={
+										"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
+										"RAY_DASHBOARD_AGENT_CHECK_PARENT_INTERVAL_S": "99999999999999999999999999999999"
+		  								 }
 								)
 		
 		context = ray.init(runtime_env=runtime_env, log_to_driver=False)
@@ -105,6 +109,8 @@ class AlphaZero():
 			\n- RENDERING / BOARD VISUALIZATION \
 			\n- CONTINUOUS TRAINING \
 			\n- MAYBE ASYNC SELF-PLAY AND TESTING\n\n")
+		
+		# NOTE: currently self-play uses the storage_network and testing uses the latest_network, they are only the same if storage_frequency=1
 
 
 		if self.config.test_frequency % self.config.save_frequency != 0:
@@ -124,23 +130,21 @@ class AlphaZero():
 		if not os.path.exists(plots_path):
 			os.mkdir(plots_path)
 		
-		file_name = model_folder_path + "/Network.pkl"
+		file_name = model_folder_path + "/network.pkl"
 		with open(file_name, 'wb') as file:
 			pickle.dump(self.latest_network, file)
 			print(f'Successfully saved network at "{file_name}".\n')
-
-
-		print("\n|Running for " + str(self.config.num_batches) + " batches of " + str(self.config.num_games_per_batch) + " games each." )
 			
 		if self.dict_cache:
 			print("\n-Using state dictonary as cache.")
 		
+		self.network_storage = Shared_network_storage.remote(self.config.shared_storage_size)
+		future_save = self.network_storage.save_network.remote(self.latest_network)
 
 		total_num_batches = self.config.replay_window_size / self.config.num_games_per_batch
 		test_buffer_window = int(total_num_batches * self.config.num_test_set_games)
 
 		self.replay_buffer = Replay_Buffer.remote(self.config.replay_window_size, self.config.batch_size)
-
 		if self.config.test_set:
 			self.test_buffer = Replay_Buffer.remote(test_buffer_window, self.config.batch_size)
 		else:
@@ -156,14 +160,14 @@ class AlphaZero():
 			print("Bad optimizer config.\nUsing Adam optimizer...")
 
 		scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=self.config.scheduler_boundaries, gamma=self.config.scheduler_gama)
-
-		self.shared_storage = Shared_network_storage.remote(self.config.shared_storage_size)
-
+		
 
 		save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_0_model"
 		torch.save(self.latest_network.get_model().state_dict(), save_path)
 
-		ray.get(self.shared_storage.save_network.remote(self.latest_network))
+		print("\n|Running for " + str(self.config.num_batches) + " batches of " + str(self.config.num_games_per_batch) + " games each." )
+
+		ray.get(future_save) # wait for the network to be in storage
 
 		updates = 0
 		if self.config.early_fill > 0:
@@ -172,9 +176,8 @@ class AlphaZero():
 
 		since_reset = 0
 		for b in range(self.config.num_batches):
-
-			self.average_value_loss = 0
 			updated = True
+
 			print("\n")
 			print("\nBatch: " + str(b+1))
 			print("\n")
@@ -197,7 +200,7 @@ class AlphaZero():
 			self.train_network(optimizer, scheduler)
 
 			if (((b+1) % self.config.storage_frequency) == 0):
-				ray.get(self.shared_storage.save_network.remote(self.latest_network)) # Should delay ray.get() calls
+				future_storage = self.network_storage.save_network.remote(self.latest_network)
 
 			since_reset += 1
 			updates +=1
@@ -297,7 +300,16 @@ class AlphaZero():
 				self.train_global_policy_loss.clear()
 				self.train_global_value_loss.clear()
 				since_reset = 0
-										
+			
+			print("\n\nMain process memory usage: ")
+			print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
+			print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB" )
+			# psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
+
+			
+			ray.get(future_storage) # wait for the network to be stored before next iteration	
+			
+					
 		
 		if self.config.plot:
 			if self.plot_wr:
@@ -313,7 +325,7 @@ class AlphaZero():
 		cfg_path = game_folder_name + "/models/" + self.network_name + "/" + str(self.network_name) + ".cfg"
 		self.config.save_config(cfg_path, self.network_name, self.config.num_batches, self.config.num_games_per_batch)
 
-
+		
 		return
 	
 	def test_set_loss(self, batch, batch_size):
@@ -445,7 +457,6 @@ class AlphaZero():
 	def train_network(self, optimizer, scheduler):
 		print()
 		
-		# TODO: PARALLEL TRAINING
 		batch_size = self.config.batch_size
 
 		replay_size = ray.get(self.replay_buffer.len.remote(), timeout=30)
@@ -459,7 +470,6 @@ class AlphaZero():
 		start = time.time()
 		
 		if self.config.learning_method == "epochs":
-			
 			
 			if  batch_size > replay_size:
 				print("Batch size too large.\n" + 
@@ -501,9 +511,13 @@ class AlphaZero():
 			bar = ChargingBar('Training ', max=epochs)
 			for e in range(epochs):
 
-				ray.get(self.replay_buffer.shuffle.remote(), timeout=30)
+				ray.get(self.replay_buffer.shuffle.remote(), timeout=30) # ray.get() beacuse we want the shuffle to be done before using buffer
 				if self.config.test_set:
-					ray.get(self.test_buffer.shuffle.remote(), timeout=30)
+					future_test_shuffle = self.test_buffer.shuffle.remote()
+
+				future_replay_buffer = self.replay_buffer.get_buffer.remote()
+				if self.config.test_set:
+					future_test_buffer = self.test_buffer.get_buffer.remote()
 
 				epoch_value_loss = 0.0
 				epoch_policy_loss = 0.0
@@ -515,12 +529,13 @@ class AlphaZero():
 					t_epoch_combined_loss = 0.0
 
 				spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
+				# We get entire buffer and slice locally to avoid a lot of remote calls (buffer.get_slice could also be used)
+				replay_buffer = ray.get(future_replay_buffer) 
 				for b in range(number_of_batches):		
 					start_index = b*batch_size
 					next_index = (b+1)*batch_size
 
-					# TODO: get entire buffer and slice locally
-					batch = ray.get(self.replay_buffer.get_slice.remote(start_index,next_index), timeout=55) # the slice does not take the last element
+					batch = replay_buffer[start_index:next_index] # the slice does not take the last element
 				
 					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size)
 
@@ -534,10 +549,13 @@ class AlphaZero():
 				epoch_combined_loss /= number_of_batches	
 				
 				if self.config.test_set:
+					ray.get(future_test_shuffle)
+					test_buffer = ray.get(future_test_buffer)
 					for t in range(number_of_test_batches):
 						start_index = t*batch_size
 						next_index = (t+1)*batch_size
-						batch = self.test_buffer.get_slice.remote(start_index,next_index)
+
+						batch = test_buffer[start_index:next_index]
 					
 						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(batch, batch_size)
 
@@ -582,12 +600,12 @@ class AlphaZero():
 				
 		else:
 			future_buffer = self.replay_buffer.get_buffer.remote()
-			batch=[]
-			probs=[]
+			batch = []
+			probs = []
 			if self.config.late_heavy:
 				# The way I found to create a scalling array
+				variation = 0.6 # number between 0 and 1
 				num_positions = replay_size
-				variation = 0.6
 				offset = (1-variation)/2    
 				fraction = variation / num_positions
 
@@ -596,22 +614,25 @@ class AlphaZero():
 					total += fraction
 					probs.append(total)
 
-					probs /= np.sum(probs)   
+				probs /= np.sum(probs)   
 
 
 			average_value_loss = 0
 			average_policy_loss = 0
 			average_combined_loss = 0
-			print("\nTotal number of updates: " + str(self.config.num_samples) + "\n")
 
-			buffer = ray.get(future_buffer, timeout=30)
-			for _ in range(self.config.num_samples):
+			number_updates = self.config.num_samples
+			print("\nTotal number of updates: " + str(number_updates) + "\n")
+
+			bar = ChargingBar('Training ', max=number_updates)
+			replay_buffer = ray.get(future_buffer, timeout=30)
+			for _ in range(number_updates):
 				if probs == []:
-					batch_indexes = np.random.choice(len(buffer), size=batch_size, replace=True)
+					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True)
 				else:
-					batch_indexes = np.random.choice(len(buffer), size=batch_size, replace=True, p=probs)
+					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True, p=probs)
 				
-				batch = [buffer[i] for i in batch_indexes]
+				batch = [replay_buffer[i] for i in batch_indexes]
 
 				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size)
 
@@ -619,10 +640,13 @@ class AlphaZero():
 				average_policy_loss += policy_loss
 				average_combined_loss += combined_loss
 
+				bar.next()
+
+			bar.finish
+
 			self.train_global_value_loss.append(average_value_loss/self.config.num_samples)
 			self.train_global_policy_loss.append(average_policy_loss/self.config.num_samples)
 			self.train_global_combined_loss.append(average_combined_loss/self.config.num_samples)
-
 
 
 		
@@ -632,6 +656,8 @@ class AlphaZero():
 		return
 			
 	def run_selfplay(self, num_games_per_batch, test_set, show, text="Self-Play"):
+		pid = os.getpid()
+		process = psutil.Process(pid)
 		start = time.time()
 		print("\n")
 
@@ -640,7 +666,7 @@ class AlphaZero():
 		else:
 			buffer_to_use = self.replay_buffer
 
-		chunk_size = 128
+		chunk_size = self.config.chunk_size
 		num_chunks = num_games_per_batch // chunk_size
 		rest = num_games_per_batch % chunk_size
 
@@ -650,16 +676,19 @@ class AlphaZero():
 			if c == num_chunks:
 				games_to_play = rest
 
-			actor_list = [Gamer.remote(buffer_to_use, self.shared_storage, self.config, self.game_class, self.game_args) for a in range(self.config.num_actors)]
+			actor_list = [Gamer.remote(buffer_to_use, self.network_storage, self.config, self.game_class, self.game_args) for a in range(self.config.num_actors)]
 			actor_pool = ray.util.ActorPool(actor_list)
 
 			for g in range(games_to_play):
 				#show = True if (g+1)% 1111 == 0 else False
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(args), show)
 
-		
 			for g in range(games_to_play):
 				actor_pool.get_next_unordered() # Set Timeout and Ignore_if_timeout when running continuous training
+				if ((g+1) % 10) == 0:
+					print("\n\nMain process memory usage: ")
+					print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
+					print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n" ) 
 				bar.next()
 	
 		bar.finish
@@ -678,7 +707,7 @@ class AlphaZero():
 		
 		wins = [0,0]
 
-		chunk_size = 128
+		chunk_size = self.config.chunk_size
 		num_chunks = num_games // chunk_size
 		rest = num_games % chunk_size
 
