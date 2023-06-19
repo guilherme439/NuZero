@@ -97,11 +97,10 @@ class AlphaZero():
 								working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
 								env_vars={
 										"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
-										"RAY_DASHBOARD_AGENT_CHECK_PARENT_INTERVAL_S": "99999999999999999999999999999999"
 		  								 }
 								)
 		
-		context = ray.init(runtime_env=runtime_env, log_to_driver=False)
+		context = ray.init(runtime_env=runtime_env, log_to_driver=True, resources={"memory": 14 * 1024 * 1024 * 1024, "object_store_memory": 6 * 1024 * 1024 * 1024})
 		print(context.dashboard_url)
 
 		print("\n\nTO DOs: \
@@ -685,10 +684,6 @@ class AlphaZero():
 
 			for g in range(games_to_play):
 				actor_pool.get_next_unordered() # Set Timeout and Ignore_if_timeout when running continuous training
-				if ((g+1) % 10) == 0:
-					print("\n\nMain process memory usage: ")
-					print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
-					print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n" ) 
 				bar.next()
 	
 		bar.finish

@@ -189,7 +189,7 @@ class Alpha_Zero_config():
 		self.parallel_testing = True
 		self.with_cache = True
 		self.num_actors = 6
-		self.chunk_size = 25
+		self.chunk_size = 30
 
 
 		# Run Settings
@@ -220,7 +220,7 @@ class Alpha_Zero_config():
 		# Learning
 		self.shared_storage_size = 4
 
-		self.replay_window_size = int(500)
+		self.replay_window_size = int(1000)
 		self.batch_size = 32
 
 		self.learning_method = "samples" 	# epochs | samples
