@@ -100,7 +100,7 @@ class AlphaZero():
 		  								 }
 								)
 		
-		context = ray.init(runtime_env=runtime_env, log_to_driver=True, resources={"memory": 14 * 1024 * 1024 * 1024, "object_store_memory": 6 * 1024 * 1024 * 1024})
+		context = ray.init(runtime_env=runtime_env, log_to_driver=True, address="auto")
 		print(context.dashboard_url)
 
 		print("\n\nTO DOs: \
