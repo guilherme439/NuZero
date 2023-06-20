@@ -31,7 +31,7 @@ class SCS_Game():
 
 
 
-    def __init__(self, r1=[1,1], r2=[1,1]):
+    def __init__(self, r1=[1,1], r2=[1,1], use_terrain=True):
 
 
         self.board = []
@@ -43,6 +43,8 @@ class SCS_Game():
         self.available_units = [[],[]]
         self.moved_units = [[],[]]
         self.atacked_units = [[],[]]
+
+        self.use_terrain = use_terrain
         
 
         self.victory_p1 = [ [-1,-1] for _ in range(self.N_VP) ]
@@ -174,26 +176,27 @@ class SCS_Game():
 
         map_choice = 1
 
-        if map_choice == 0:
+        if not self.use_terrain:
             for i in range(self.HEIGHT):
                 self.board.append([])
                 for j in range(self.WIDTH):
                     self.board[i].append(Tile())
 
-        elif map_choice == 1:
-            # Random map
-            mountain = Terrain(Atack_modifier=1/2, Defense_modifier=2, Mov_Add_cost=0, Mov_Mult_cost=2, Name="Mountain", image_path="SCS/Images/dirt.jpg")
-            plains = Terrain(Atack_modifier=1, Defense_modifier=1, Mov_Add_cost=0, Mov_Mult_cost=1, Name="Plains", image_path="SCS/Images/plains.jpg")
-            bush = Terrain(Atack_modifier=2, Defense_modifier=1, Mov_Add_cost=2, Mov_Mult_cost=1, Name="Bush_plains", image_path="SCS/Images/plains_with_bush.jpg")
+        else:
+            if map_choice == 1:
+                # Random map
+                mountain = Terrain(Atack_modifier=1/2, Defense_modifier=2, Mov_Add_cost=0, Mov_Mult_cost=2, Name="Mountain", image_path="SCS/Images/dirt.jpg")
+                plains = Terrain(Atack_modifier=1, Defense_modifier=1, Mov_Add_cost=0, Mov_Mult_cost=1, Name="Plains", image_path="SCS/Images/plains.jpg")
+                bush = Terrain(Atack_modifier=2, Defense_modifier=1, Mov_Add_cost=2, Mov_Mult_cost=1, Name="Bush_plains", image_path="SCS/Images/plains_with_bush.jpg")
 
 
-            self.terrain_types = [mountain, plains, bush]
-            probs = [0.05, 0.75, 0.2]
-            for i in range(self.HEIGHT):
-                self.board.append([])
-                for j in range(self.WIDTH): 
-                    terrain = np.random.choice(self.terrain_types, p=probs)
-                    self.board[i].append(Tile(terrain))
+                self.terrain_types = [mountain, plains, bush]
+                probs = [0.05, 0.75, 0.2]
+                for i in range(self.HEIGHT):
+                    self.board.append([])
+                    for j in range(self.WIDTH): 
+                        terrain = np.random.choice(self.terrain_types, p=probs)
+                        self.board[i].append(Tile(terrain))
 
 
         for point in self.victory_p1:
@@ -611,8 +614,8 @@ class SCS_Game():
             unit = self.board[start[0]][start[1]].unit
             self.available_units[self.current_player-1].remove(unit)
             if start != dest:
-                self.board[start[0]][start[1]].unit = None
                 unit.move_to(dest[0],dest[1])
+                self.board[start[0]][start[1]].unit = None
                 self.board[dest[0]][dest[1]].place_unit(unit)
 
             self.moved_units[self.current_player-1].append(unit)

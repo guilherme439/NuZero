@@ -133,7 +133,7 @@ def main():
 
     elif mode == 11:
         game_class = SCS_Game().__class__
-        game_args = [[3,1],[1,2]]
+        game_args = [[3,1],[1,2], True]
         game = game_class(*game_args)
 
         model = dt_net_2d(game, 128)

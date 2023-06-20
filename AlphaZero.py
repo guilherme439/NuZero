@@ -100,7 +100,7 @@ class AlphaZero():
 		  								 }
 								)
 		
-		context = ray.init(runtime_env=runtime_env, log_to_driver=True, address="auto")
+		context = ray.init(runtime_env=runtime_env, log_to_driver=False, address="auto")
 		print(context.dashboard_url)
 
 		print("\n\nTO DOs: \
