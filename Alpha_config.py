@@ -188,8 +188,8 @@ class Alpha_Zero_config():
 		# Optimization
 		self.parallel_testing = True
 		self.with_cache = True
-		self.num_actors = 6
-		self.chunk_size = 30
+		self.num_actors = 10
+		self.chunk_size = 64
 
 
 		# Run Settings
