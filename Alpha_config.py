@@ -197,11 +197,11 @@ class Alpha_Zero_config():
 		self.num_games_per_batch = 200
 		self.num_batches = 200
 
-		self.save_frequency = 1
-		self.test_frequency = 1
+		self.save_frequency = 2
+		self.test_frequency = 2
 		self.debug_frequency = 999
 		self.storage_frequency = 1
-		self.plot_frequency = 1
+		self.plot_frequency = 6
 		self.plot_reset = 200
 		self.plot = False
 
