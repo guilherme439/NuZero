@@ -4,32 +4,30 @@ import sys
 
 class Terrain():
 
-    Name = ""
+    name = ""
 
     # Combat modifiers
-    Atack_modifier = 1
-    Defense_modifier = 1
+    atack_modifier = 1      # Affects who atacks FROM the tile
+    defense_modifier = 1    # Affects who defends FROM the tile   
 
     # Movement costs
-    Mov_Add_cost = 0    # Terrain Features
-    Mov_Mult_cost = 1   # Terrain Type
+    cost = 0
 
     image_path = "Images/dirt.jpg"
     
-    def __init__(self, Atack_modifier, Defense_modifier, Mov_Add_cost, Mov_Mult_cost, Name="", image_path=""):
+    def __init__(self, atack_modifier, defense_modifier, cost, name="", image_path=""):
         
-        self.Name=Name
-        self.Atack_modifier=Atack_modifier
-        self.Defense_modifier=Defense_modifier
-        self.Mov_Add_cost=Mov_Add_cost
-        self.Mov_Mult_cost=Mov_Mult_cost
+        self.name=name
+        self.atack_modifier=atack_modifier
+        self.defense_modifier=defense_modifier
+        self.cost=cost
 
         if image_path != "":
             self.image_path = image_path
 
 
     def get_name(self):
-        return self.Name
+        return self.name
     
     def get_image_path(self):
         return self.image_path

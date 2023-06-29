@@ -60,7 +60,7 @@ class Tester():
         self.slow_duration = seconds
     
 # ------------------------------------------------ #
-# ------------------------------------------------ #
+# --------------------- MCTS --------------------- #
 # ------------------------------------------------ #
 
     def run_test_mcts(self, game, network):
@@ -71,7 +71,7 @@ class Tester():
         
         for i in range(num_searches):
             node = search_start
-            scratch_game = game.shallow_clone()
+            scratch_game = game.clone()
             search_path = [node]
             
             while node.expanded():
@@ -123,7 +123,7 @@ class Tester():
         node.to_play = game.get_current_player()
         
         if self.use_terminal and game.is_terminal():
-            node.terminal_value = game.terminal_value
+            node.terminal_value = game.get_terminal_value()
             value = node.terminal_value
             return value
         
@@ -148,7 +148,7 @@ class Tester():
                     node.children[i] = Node(probs[i]/total)
 
         else:
-            node.terminal_value = game.terminal_value
+            node.terminal_value = game.get_terminal_value()
     
 
         return value
@@ -158,10 +158,9 @@ class Tester():
             node.visit_count += 1
             node.value_sum += value	
 
-    
 
 # ------------------------------------------------ #
-# ------------------------------------------------ #
+# ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
     def Test_AI_with_mcts(self, AI_player, game, nn):
@@ -172,6 +171,7 @@ class Tester():
         if self.render:
             ray.get(self.remote_storage.set_item.remote(game))
             self.renderer.render.remote()
+            time.sleep(5)
 
         while True:
             
@@ -181,7 +181,8 @@ class Tester():
             n_valids = np.sum(valid_actions_mask)
 
             if (n_valids == 0):
-                    print("Zero valid actions!")
+                print("Zero valid actions!")
+                exit()
             
             if player == AI_player:
                 action_i = self.run_test_mcts(game, nn)
@@ -201,7 +202,7 @@ class Tester():
             if self.slow:
                 time.sleep(self.slow_duration)
 
-            _, done = game.step_function(action_coords)
+            done = game.step_function(action_coords)
 
             if self.render:
                 ray.get(self.remote_storage.set_item.remote(game))
@@ -223,6 +224,7 @@ class Tester():
         if self.render:
             ray.get(self.remote_storage.set_item.remote(game))
             self.renderer.render.remote()
+            time.sleep(5)
 
         while True:
             
@@ -232,7 +234,8 @@ class Tester():
             n_valids = np.sum(valid_actions_mask)
 
             if (n_valids == 0):
-                    print("Zero valid actions!")
+                print("Zero valid actions!")
+                exit()
             
             if player == AI_player:
 
@@ -273,7 +276,6 @@ class Tester():
                 probs = valid_actions_mask/n_valids
                 action_i = np.random.choice(game.num_actions, p=probs)
 
-
                 
             action_coords = np.unravel_index(action_i, game.action_space_shape)
             
@@ -283,7 +285,7 @@ class Tester():
             if self.slow:
                 time.sleep(self.slow_duration)
 
-            _, done = game.step_function(action_coords)
+            done = game.step_function(action_coords)
 
             if self.render:
                 ray.get(self.remote_storage.set_item.remote(game))
@@ -302,6 +304,7 @@ class Tester():
             if self.render:
                 ray.get(self.remote_storage.set_item.remote(game))
                 self.renderer.render.remote()
+                time.sleep(5)
             
             while True:
                                 
@@ -387,7 +390,7 @@ class Tester():
                 if self.slow:
                     time.sleep(self.slow_duration)
 
-                _, done = game.step_function(action_coords)
+                done = game.step_function(action_coords)
 
                 if self.render:
                     ray.get(self.remote_storage.set_item.remote(game))
@@ -461,7 +464,7 @@ class Tester():
                 action_coords = (0, coords[0], coords[1])
 
             print(game.string_representation())
-            _, done = game.step_function(action_coords)
+            done = game.step_function(action_coords)
             
 
             if (done):
@@ -591,7 +594,7 @@ class Tester():
             print(game.string_representation())
             time.sleep(self.slow_duration)
 
-            _, done = game.step_function(action_coords)
+            done = game.step_function(action_coords)
 
 
             if (done):
@@ -682,7 +685,7 @@ class Tester():
 
             print(game.string_representation())
 
-            _, done = game.step_function(action_coords)
+            done = game.step_function(action_coords)
 
             if (done):
                 print(game.string_representation())
@@ -692,46 +695,56 @@ class Tester():
             
         return winner
 
-    def control_random_vs_random(self, num_games, game_class, game_args):
-        # Plays games at random sequentialy and returns stats
+    def random_vs_random(self, game):
+        
+        if self.print:
+            print("\n")
 
-        num_games
+        if self.render:
+            ray.get(self.remote_storage.set_item.remote(game))
+            self.renderer.render.remote()
+            time.sleep(5)
 
-        winner = -1
-        wins = [0,0]       
-
-        print()
-        if self.show_bar:
-            bar = ChargingBar('Playing', max=num_games)
-        for g in range(num_games):
-            game = game_class(*game_args)
+        while True:
             
-            while True:
+            valid_actions_mask = game.possible_actions()
+            valid_actions_mask = valid_actions_mask.flatten()
+            n_valids = np.sum(valid_actions_mask)
+            if (n_valids == 0):
+                print("Zero valid actions!")
+                exit()
                 
-                valid_actions_mask = game.possible_actions()
-                valid_actions_mask = valid_actions_mask.flatten()
-                n_valids = np.sum(valid_actions_mask)
-                probs = valid_actions_mask/n_valids
-                action_i = np.random.choice(game.num_actions, p=probs)
-                action_coords = np.unravel_index(action_i, game.action_space_shape)
-                    
-                _, done = game.step_function(action_coords)
+            '''
+            print("\n||||||||||||||||||||||||||||||||||||||||")
+            for i in range(len(valid_actions_mask)):
+                if valid_actions_mask[i] == 1:
+                    coords = np.unravel_index(i, game.action_space_shape)
+                    print()
+                    print(game.string_action(coords))
 
-                if (done):
-                    winner = game.check_winner()
-                    if winner !=0:
-                        wins[winner-1] +=1
-                    break
-            if self.show_bar:
-                bar.next()
-        if self.show_bar:
-            bar.finish()
-    
-        p1_wins = wins[0]
-        p2_wins = wins[1]
-        draws = num_games-(wins[0]+wins[1])
+            print("\n||||||||||||||||||||||||||||||||||||||||\n\n")     
+            '''
 
-        return p1_wins, p2_wins , draws
+            probs = valid_actions_mask/n_valids
+            action_i = np.random.choice(game.num_actions, p=probs)
+
+            if self.print:
+                print(game.string_representation())
+
+            if self.slow:
+                time.sleep(self.slow_duration)
+
+            action_coords = np.unravel_index(action_i, game.action_space_shape)
+            done = game.step_function(action_coords)
+
+            if self.render:
+                ray.get(self.remote_storage.set_item.remote(game))
+
+            if (done):
+                winner = game.check_winner()
+                break
+
+        return winner
 
     def test_game(self, game_class, game_args): #TODO: Incomplete
         
@@ -742,7 +755,7 @@ class Tester():
 
         for g in range(self.num_games):
 
-            
+            terminal_states_count = 0
             game = game_class(*game_args)
 
             print("Starting board position:\n")
@@ -758,13 +771,13 @@ class Tester():
 
                 action_coords = np.unravel_index(action_i, game.action_space_shape)
     
-                _, done = game.step_function(action_coords)
+                done = game.step_function(action_coords)
 
                 print(game.string_representation())
 
-                print("Found 0 terminal states:")
+                print("Found " + str(terminal_states_count) + " terminal states.")
 
         
     
-        print("function incomplete")
+        print("\nFunction incomplete!\n")
         return

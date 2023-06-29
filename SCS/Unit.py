@@ -9,6 +9,7 @@ class Unit(object):
     tile_x = -1
     tile_y = -1
 
+    mov_allowance = 0
     mov_points = 0
     atack = 0
     defense = 0
@@ -29,10 +30,17 @@ class Unit(object):
     def get_image_path(self):
         return self.image_path
     
-    def move_to(self, x, y):
+    def reset_mov(self):
+        self.mov_points = self.mov_allowance
+        
+    def move_to(self, x, y, cost):
+        self.mov_points -= cost
         self.tile_x=x
         self.tile_y=y
     
     # Deal damage function
     def edit_defense(self, new_defense):
         self.defense = new_defense
+    
+
+    

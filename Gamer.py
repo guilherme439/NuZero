@@ -24,7 +24,6 @@ class Gamer():
         self.network = None
         
 
-
     def play_game(self, show): 
         
         future_network = self.shared_storage.get_latest_network.remote() # ask for latest network
@@ -35,8 +34,7 @@ class Gamer():
         game = self.game_class(*self.game_args)
         subtree_root = Node(0)
 
-        
-        self.network = ray.get(future_network, timeout=30)
+        self.network = ray.get(future_network, timeout=60)
         while not game.is_terminal():
             state = game.generate_state_image()
             game.store_state(state)
@@ -51,7 +49,6 @@ class Gamer():
             game.step_function(action_coords)
 
             game.store_search_statistics(subtree_root)
-
             if self.config.keep_sub_tree:
                 subtree_root = chosen_child
        
@@ -62,14 +59,12 @@ class Gamer():
     def run_mcts(self, game, subtree_root, state_table):
 
         search_start = subtree_root
-
         self.add_exploration_noise(search_start)
         
         num_searches = self.config.mcts_simulations
-        
         for i in range(num_searches):
             node = search_start
-            scratch_game = game.shallow_clone()
+            scratch_game = game.clone()
             search_path = [node]
             
             while node.expanded():
@@ -140,7 +135,7 @@ class Gamer():
         node.to_play = game.get_current_player()
         
         if self.config.use_terminal and game.is_terminal():
-            node.terminal_value = game.terminal_value
+            node.terminal_value = game.get_terminal_value()
             value = node.terminal_value
             return value
         
@@ -180,7 +175,7 @@ class Gamer():
                     node.children[i] = Node(probs[i]/total)
 
         else:
-            node.terminal_value = game.terminal_value
+            node.terminal_value = game.get_terminal_value()
             
 
         return value 

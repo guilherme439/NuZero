@@ -3,9 +3,9 @@ from .Unit import Unit
 
 
 class Tank(Unit):
-    mov_points=4
+    mov_allowance=4
     atack=2
-    defense=2
+    defense=4
 
     image_path = "SCS/Images/tank.png"
 
@@ -15,6 +15,8 @@ class Tank(Unit):
         self.image_path = "SCS/Images/p" + str(player) + "_tank.png"
         if image_path != "":
             self.image_path = image_path
+        
+        self.mov_points = self.mov_allowance
     
         
     def unit_type(self):
@@ -23,3 +25,11 @@ class Tank(Unit):
     def unit_name(self):
         return "tank"    
     
+    '''
+    def __eq__(self, other): 
+        if not isinstance(other, Tank):
+            return False
+
+        print("\n\nTank eq not implemented!!\n\n")
+        return False
+    '''

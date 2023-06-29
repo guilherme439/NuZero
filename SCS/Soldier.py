@@ -2,9 +2,9 @@ import sys
 from .Unit import Unit
 
 class Soldier(Unit):
-    mov_points=2
+    mov_allowance=2
     atack=1
-    defense=1
+    defense=2
 
     image_path = "SCS/Images/soldier.png"
 
@@ -15,10 +15,19 @@ class Soldier(Unit):
         if image_path != "":
             self.image_path = image_path
     
-    
+        self.mov_points = self.mov_allowance
+
     def unit_type(self):
         return 1
 
     def unit_name(self):
         return "soldier"
     
+    '''
+    def __eq__(self, other): 
+        if not isinstance(other, Soldier):
+            return False
+
+        print("\n\nSoldier eq not implemented!!\n\n")
+        return False
+    '''

@@ -6,13 +6,13 @@ from .Terrain import Terrain
 
 class Tile(object):
     
-    victory=0
-    terrain=None
-    unit=None
 
-    def __init__(self, terrain=None):
-        self.vicotry = 0
+    def __init__(self, x, y, terrain=None):
+        self.victory = 0
         self.terrain = terrain
+        self.unit = None
+        self.x = x
+        self.y = y
 
     def get_terrain(self):
         return self.terrain
@@ -20,10 +20,13 @@ class Tile(object):
     def place_unit(self,unit):
         self.unit=unit
 
+    def reset(self):
+        self.unit = None
     
     def __eq__(self, other): 
         if not isinstance(other, Tile):
             return False
 
-        print("\n\nNot implemented!!\n\n")
-        return self.terrain == other.terrain and self.victory == other.vicotry and self.unit == other.unit
+        print("\n\nTile eq not implemented!!\n\n")
+        return (self.terrain == other.terrain and self.victory == other.vicotry and
+                self.unit == other.unit and self.x == other.x and self.y == other.y)

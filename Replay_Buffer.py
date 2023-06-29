@@ -6,7 +6,7 @@ import numpy as np
 from Progress_bar import Progress_bar
 
 
-@ray.remote
+@ray.remote(scheduling_strategy="SPREAD")
 class Replay_Buffer():
 
     def __init__(self, window_size, batch_size):

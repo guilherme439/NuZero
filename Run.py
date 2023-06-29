@@ -38,12 +38,8 @@ from AlphaZero import AlphaZero
 from Tester import Tester
 from RemoteTester import RemoteTester
 
+from SCS.SCS_Renderer import SCS_Renderer
 
-
-def user_game():
-    game = SCS_Game([2,1])
-    game.play_user_vs_user()
-    return
 
 
 def main():
@@ -58,301 +54,272 @@ def main():
     else:
         mode = int(sys.argv[1])
 
-    
-    if mode == 0:
-        user_game()
+    match mode:
 
-    elif mode == 1:
-        game_class = SCS_Game().__class__
-        game_args = [[3,0],[0,1]]
-        model_class = Simple_Conv_Network(game_class(*game_args)).__class__
+        case 0:
+            print("0")
 
-        p = input("Choose the AI player: ")
+        case 1:
+            game_class = SCS_Game().__class__
+            game_args = [[3,0],[0,1]]
+            model_class = Simple_Conv_Network(game_class(*game_args)).__class__
+
+            p = input("Choose the AI player: ")
+            
+            debug_tester = Tester(100, slow=True, debug=True)
+
+            path = "SCS/models/Un_even/Un_even_30_model"
+            debug_tester.Test_AI_with_policy(int(p), game_class=game_class, game_args=game_args, model_class=model_class, model_path=path)
+
+        case 2:
+            print("\ncaca")
+            return
+
+        case 4:
+            game = tic_tac_toe()
+            game.play_user_vs_user()
+            
+        case 7:
+            game = tic_tac_toe()
+            p = input("Choose the AI player: ")
+
+            model_class = MLP_Network(game).__class__
+
+            tester = Tester(5, debug=True)
+
+            tester.ttt_vs_AI_with_policy(int(p), "Tic_Tac_Toe/models/no_square/no_square_200_model", model_class)
+
+        case 8:
+            game_class = tic_tac_toe().__class__
+            game_args = []
+            model_class = TTT_Simple_Network(game_class(*game_args)).__class__
+
+            tester = Tester(2000, show_bar=True, show_results=True)
+
+            path = "Tic_Tac_Toe/models/perfection/perfection_100_model"
+            tester.Test_AI_with_policy(1, game_class=game_class, game_args=game_args, model_class=model_class, model_path=path)
+
+        case 9:
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2]]
+
+            model = Simple_Conv_Network(game_class(*game_args), num_filters=128)
+
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_SCS_config()
+
+            net_name = input("\nSave the network as: ")
+
+            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
+            Alpha_Zero.run()
+            
+        case 10:
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2]]
+
+            model = ResNet(game_class(*game_args), num_blocks=2, num_filters=128)
+
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_SCS_config()
+
+            net_name = input("\nSave the network as: ")
+
+            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
+            Alpha_Zero.run()
+
+        case 11:
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
+
+            model = dt_net_2d(game, 128)
+
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_SCS_config()
+
+            net_name = input("\nSave the network as: ")
+
+            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
+            Alpha_Zero.run()
         
-        debug_tester = Tester(100, slow=True, debug=True)
+        case 12:
+            game_class = tic_tac_toe().__class__
+            game_args = []
+            
+            model = MLP_Network(game_class(*game_args))
 
-        path = "SCS/models/Un_even/Un_even_30_model"
-        debug_tester.Test_AI_with_policy(int(p), game_class=game_class, game_args=game_args, model_class=model_class, model_path=path)
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_tic_tac_toe_config()
 
-    elif mode == 2:
-        print("\ncaca")
-        return
+            net_name = input("\nSave the network as: ")
 
-    
-    elif mode == 4:
-        game = tic_tac_toe()
-        game.play_user_vs_user()
+            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
+
+            Alpha_Zero.run()
         
-    elif mode == 7:
-        game = tic_tac_toe()
-        p = input("Choose the AI player: ")
+        case 13:
+            game_class = tic_tac_toe().__class__
+            game_args = []
+            
+            model = Simple_Conv_Network(game_class(*game_args), kernel_size=(2,2), num_filters=64)
 
-        model_class = MLP_Network(game).__class__
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_tic_tac_toe_config()
 
-        tester = Tester(5, debug=True)
+            net_name = input("\nSave the network as: ")
 
-        tester.ttt_vs_AI_with_policy(int(p), "Tic_Tac_Toe/models/no_square/no_square_200_model", model_class)
-
-    elif mode == 8:
-        game_class = tic_tac_toe().__class__
-        game_args = []
-        model_class = TTT_Simple_Network(game_class(*game_args)).__class__
-
-        tester = Tester(2000, show_bar=True, show_results=True)
-
-        path = "Tic_Tac_Toe/models/perfection/perfection_100_model"
-        tester.Test_AI_with_policy(1, game_class=game_class, game_args=game_args, model_class=model_class, model_path=path)
-
-    elif mode == 9:
-        game_class = SCS_Game().__class__
-        game_args = [[3,1],[1,2]]
-
-        model = Simple_Conv_Network(game_class(*game_args), num_filters=128)
-
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_SCS_config()
-
-        net_name = input("\nSave the network as: ")
-
-        Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-        Alpha_Zero.run()
+            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
         
-    elif mode == 10:
-        game_class = SCS_Game().__class__
-        game_args = [[3,1],[1,2]]
+            Alpha_Zero.run()
 
-        model = ResNet(game_class(*game_args), num_blocks=2, num_filters=128)
+        case 14:
+            game_class = tic_tac_toe().__class__
+            game_args = []
+            
+            num_blocks = 2
+            kernel_size = (3,3)
+            num_filters = 64
 
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_SCS_config()
+            model = ResNet(game_class(*game_args), num_blocks=num_blocks, kernel_size=kernel_size, num_filters=num_filters)
 
-        net_name = input("\nSave the network as: ")
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_tic_tac_toe_config()
 
-        Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-        Alpha_Zero.run()
+            net_name = input("\nSave the network as: ")
 
-    elif mode == 11:
-        game_class = SCS_Game().__class__
-        game_args = [[3,1],[1,2], True]
-        game = game_class(*game_args)
-
-        model = dt_net_2d(game, 128)
-
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_SCS_config()
-
-        net_name = input("\nSave the network as: ")
-
-        Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
-        Alpha_Zero.run()
-    
-    elif mode == 12:
-        game_class = tic_tac_toe().__class__
-        game_args = []
+            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
         
-        model = MLP_Network(game_class(*game_args))
+            Alpha_Zero.run()
 
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_tic_tac_toe_config()
+        case 15:
 
-        net_name = input("\nSave the network as: ")
+            game_class = tic_tac_toe().__class__
+            game_args = []
+            game = game_class(*game_args)
 
-        Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
+            model = dt_net_2d(game, 64)
 
-        Alpha_Zero.run()
-    
-    elif mode == 13:
-        game_class = tic_tac_toe().__class__
-        game_args = []
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_tic_tac_toe_config()
+
+            net_name = input("\nSave the network as: ")
+
+            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
         
-        model = Simple_Conv_Network(game_class(*game_args), kernel_size=(2,2), num_filters=64)
+            Alpha_Zero.run()
+            return
 
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_tic_tac_toe_config()
+        case 16:
+            game_class = tic_tac_toe().__class__
+            game_args = []
+            
+            pickle_path = "Tic_Tac_Toe/models/fast_conv/Network.pkl"
+            model = pickle.load(pickle_path)
 
-        net_name = input("\nSave the network as: ")
+            trained_model_path = "Tic_Tac_Toe/models/fast_conv/fast_conv_300_model"
+            model.load_state_dict(torch.load(trained_model_path))
 
-        Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-    
-        Alpha_Zero.run()
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_tic_tac_toe_config()
 
-    elif mode == 14:
-        game_class = tic_tac_toe().__class__
-        game_args = []
+            net_name = input("\nSave the network as: ")
+
+            Alpha_Zero = AlphaZero(model, game_class, game_args, alpha_config, network_name=net_name)
         
-        num_blocks = 2
-        kernel_size = (3,3)
-        num_filters = 64
+            Alpha_Zero.run()
 
-        model = ResNet(game_class(*game_args), num_blocks=num_blocks, kernel_size=kernel_size, num_filters=num_filters)
+        case 17:
+            pass
 
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_tic_tac_toe_config()
+        case 18:
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
 
-        net_name = input("\nSave the network as: ")
+            model = dt_net_2d(game, 128)
 
-        Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-    
-        Alpha_Zero.run()
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_SCS_config()
 
-    elif mode == 15:
+            net_name = "Tests"
 
-        game_class = tic_tac_toe().__class__
-        game_args = []
-        game = game_class(*game_args)
+            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
+            Alpha_Zero.run()
 
-        model = dt_net_2d(game, 64)
+        case 19:
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
 
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_tic_tac_toe_config()
+            model = MLP_Network(game)
+            nn = Torch_NN(model, recurrent=False)
 
-        net_name = input("\nSave the network as: ")
+            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
+            tester.set_slow_duration(1.3)
+            
+            #tester.Test_AI_with_mcts(1, game, nn)
+            tester.random_vs_random(game)
 
-        Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
-    
-        Alpha_Zero.run()
-        return
+            print("\n\nLength: " + str(game.length))
 
-    elif mode == 16:
-        game_class = tic_tac_toe().__class__
-        game_args = []
-        
-        pickle_path = "Tic_Tac_Toe/models/fast_conv/Network.pkl"
-        model = pickle.load(pickle_path)
+            renderer = SCS_Renderer.remote()
+            end = renderer.analyse.remote(game)
 
-        trained_model_path = "Tic_Tac_Toe/models/fast_conv/fast_conv_300_model"
-        model.load_state_dict(torch.load(trained_model_path))
+            ray.get(end) # wait for the rendering to end
 
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_tic_tac_toe_config()
+        case 20:
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
 
-        net_name = input("\nSave the network as: ")
+            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
 
-        Alpha_Zero = AlphaZero(model, game_class, game_args, alpha_config, network_name=net_name)
-    
-        Alpha_Zero.run()
+            wins = [0,0]
+            total_length = 0
+            num_games = 5000
 
-    elif mode == 17:
-        samples = np.random.gamma(1, 0.2, 10)
-        random_v = np.random.random(30)
-
-        test_matrix = [[0,1],[0,0],[3,2],[7,1],[4,6]]
-        test_list = [0,2,5,1,7,0,-1,1,3]
-        test_list_2 = [1,2,5,1,7,0,4,1,3]
-        numpy_tensor = np.asarray(test_matrix)
-        np_list = np.asarray(test_list)
-        list_form = numpy_tensor.flatten()
-        test_dict = {}
-        test_dict[tuple(list_form)] = "dab"
-
-
-        np_log_list = np.log(np.asarray(test_list_2))
-
-        print(np_log_list)
-        torch_log_list = torch.FloatTensor(np_log_list.astype(np.float64))
-
-        torch_list = torch.FloatTensor(np_list.astype(np.float64))
-        print(torch.sum(torch_list * torch_list))
-
-        lib_list = softmax(test_list)
-        exp_list = np.exp(test_list)
-        my_list = exp_list/np.sum(exp_list)
-
-    elif mode == 18:
-        game_class = SCS_Game().__class__
-        game_args = [[3,1],[1,2]]
-        game = game_class(*game_args)
-
-        model = dt_net_2d(game, 128)
-
-        alpha_config = Alpha_Zero_config()
-        alpha_config.set_SCS_config()
-
-        net_name = "Tests"
-
-        Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
-        Alpha_Zero.run()
-
-    elif mode == 19:
-        game_class = SCS_Game().__class__
-        game_args = [[3,1],[1,2]]
-        #game = game_class(*game_args)
-        game = tic_tac_toe()
-
-        model = MLP_Network(game)
-        nn = Torch_NN(model, recurrent=False)
-
-        tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=True, print=True, render=False)
-        tester.Test_AI_vs_AI_with_policy(game, nn, nn)
-
-
-    elif mode == 20:
-        model = MLP_Network(xor_game())
-
-        network = Torch_NN(model)
-
-        optimizer = torch.optim.Adam(network.get_model().parameters(), lr=0.005)
-        
-        states = [[[0.0,0.0]],[[0.0,1.0]],[[1.0,0.0]],[[1.0,1.0]]]
-        policy = [[[0.5,0.5]], [[1.0,0.0]], [[0.0,1.0]], [[0.5,0.5]]]
-        value = [0.0, 1.0, 1.0, 0.0]
-
-        trainining_data = []
-        for i in range(len(states)):
-            target = (policy[i], value[i])
-            pair = (states[i], target)
-            trainining_data.append(pair)
-
-        network.get_model().train()
-
-        policy_loss = 0.0
-        value_loss = 0.0
-        combined_loss = 0
-
-        avarege_loss = 0.0
-
-
-        epochs = 2000
-        for e in range(epochs):
-            random.shuffle(trainining_data)
-
-            for (state, (target_policy, target_value)) in trainining_data:
-                optimizer.zero_grad()
-                state = torch.tensor(state)
-
-                predicted_policy, predicted_value = network.get_model()(state.to(network.device))
-
-                target_policy = torch.tensor(target_policy).to(network.device)
-                target_value = torch.tensor(target_value).to(network.device)
-
+            print()
+            bar = ChargingBar("Playing", max=num_games)
+            for g in range(num_games):
+                game = game_class(*game_args)
+                winner = tester.random_vs_random(game)
+                if winner != 0:
+                    wins[winner-1] +=1
+                total_length += game.length
+                bar.next()
 			
-			    #policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
-                policy_loss = ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
-			    #Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+            bar.finish
 
-			    #value_loss += ((target_value - predicted_value) ** 2)
-                value_loss = torch.abs(target_value - predicted_value)
+            # STATISTICS
+            cmp_winrate_1 = 0.0
+            cmp_winrate_2 = 0.0
+            draws = num_games - wins[0] - wins[1]
+            p1_winrate = wins[0]/num_games
+            p2_winrate = wins[1]/num_games
+            draw_percentage = draws/num_games
+            cmp_2_string = "inf"
+            cmp_1_string = "inf"
 
-                combined_loss = policy_loss + value_loss
+            if wins[0] > 0:
+                cmp_winrate_2 = wins[1]/wins[0]
+                cmp_2_string = format(cmp_winrate_2, '.4')
+            if wins[1] > 0:  
+                cmp_winrate_1 = wins[0]/wins[1]
+                cmp_1_string = format(cmp_winrate_1, '.4')
 
-                combined_loss.backward()
-                optimizer.step()
+            average_length = total_length / num_games
 
-                avarege_loss += combined_loss
+            print("\n\nLength: " + format(average_length, '.4'))   
+            print("P1 Win ratio: " + format(p1_winrate, '.4'))
+            print("P2 Win ratio: " + format(p2_winrate, '.4'))
+            print("Draw percentage: " + format(draw_percentage, '.4'))
+            print("Comparative Win ratio(p1/p2): " + cmp_1_string)
+            print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+            
+        case 21:
+            pass
 
-            print(avarege_loss/((e+1)*4))
-
-        print("\n\n")
-        for (state, (target_policy, target_value)) in trainining_data:
-            state = torch.tensor(state)
-            predicted_policy, predicted_value = network.inference(state)
-            print(state, predicted_policy, predicted_value)
-    
-    elif mode == 21:
-        probs = []
-        
-
-        print(probs)   
+        case _:
+            print("default")
         
         
 
@@ -361,6 +328,119 @@ def main():
 # -----------
 # -- STUFF --
 # -----------
+
+def play_loop():
+
+    game_class = SCS_Game().__class__
+    game_args = [[3,1],[1,2], True]
+
+    tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
+
+    wins = [0,0]
+    total_length = 0
+    num_games = 5000
+
+    print()
+    bar = ChargingBar("Playing", max=num_games)
+    for g in range(num_games):
+        game = game_class(*game_args)
+        winner = tester.random_vs_random(game)
+        if winner != 0:
+            wins[winner-1] +=1
+        total_length += game.length
+        bar.next()
+    
+    bar.finish
+
+    # STATISTICS
+    cmp_winrate_1 = 0.0
+    cmp_winrate_2 = 0.0
+    draws = num_games - wins[0] - wins[1]
+    p1_winrate = wins[0]/num_games
+    p2_winrate = wins[1]/num_games
+    draw_percentage = draws/num_games
+    cmp_2_string = "inf"
+    cmp_1_string = "inf"
+
+    if wins[0] > 0:
+        cmp_winrate_2 = wins[1]/wins[0]
+        cmp_2_string = format(cmp_winrate_2, '.4')
+    if wins[1] > 0:  
+        cmp_winrate_1 = wins[0]/wins[1]
+        cmp_1_string = format(cmp_winrate_1, '.4')
+
+    average_length = total_length / num_games
+
+    print("\n\nLength: " + format(average_length, '.4'))   
+    print("P1 Win ratio: " + format(p1_winrate, '.4'))
+    print("P2 Win ratio: " + format(p2_winrate, '.4'))
+    print("Draw percentage: " + format(draw_percentage, '.4'))
+    print("Comparative Win ratio(p1/p2): " + cmp_1_string)
+    print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+
+def sanity_test():
+    #SANITY TEST
+
+    model = MLP_Network(xor_game())
+
+    network = Torch_NN(model)
+
+    optimizer = torch.optim.Adam(network.get_model().parameters(), lr=0.005)
+    
+    states = [[[0.0,0.0]],[[0.0,1.0]],[[1.0,0.0]],[[1.0,1.0]]]
+    policy = [[[0.5,0.5]], [[1.0,0.0]], [[0.0,1.0]], [[0.5,0.5]]]
+    value = [0.0, 1.0, 1.0, 0.0]
+
+    trainining_data = []
+    for i in range(len(states)):
+        target = (policy[i], value[i])
+        pair = (states[i], target)
+        trainining_data.append(pair)
+
+    network.get_model().train()
+
+    policy_loss = 0.0
+    value_loss = 0.0
+    combined_loss = 0
+
+    avarege_loss = 0.0
+
+
+    epochs = 2000
+    for e in range(epochs):
+        random.shuffle(trainining_data)
+
+        for (state, (target_policy, target_value)) in trainining_data:
+            optimizer.zero_grad()
+            state = torch.tensor(state)
+
+            predicted_policy, predicted_value = network.get_model()(state.to(network.device))
+
+            target_policy = torch.tensor(target_policy).to(network.device)
+            target_value = torch.tensor(target_value).to(network.device)
+
+        
+            #policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
+            policy_loss = ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
+            #Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+
+            #value_loss += ((target_value - predicted_value) ** 2)
+            value_loss = torch.abs(target_value - predicted_value)
+
+            combined_loss = policy_loss + value_loss
+
+            combined_loss.backward()
+            optimizer.step()
+
+            avarege_loss += combined_loss
+
+        print(avarege_loss/((e+1)*4))
+
+    print("\n\n")
+    for (state, (target_policy, target_value)) in trainining_data:
+        state = torch.tensor(state)
+        predicted_policy, predicted_value = network.inference(state)
+        print(state, predicted_policy, predicted_value)
 
 class xor_game():
     def __init__(self):
@@ -372,7 +452,6 @@ class xor_game():
     
     def state_shape(self):
         return self.game_state_shape
-
 
 def abv(flag):
     time.sleep(1/20)

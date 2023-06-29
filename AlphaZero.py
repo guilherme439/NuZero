@@ -100,12 +100,11 @@ class AlphaZero():
 		  								 }
 								)
 		
-		context = ray.init(runtime_env=runtime_env, log_to_driver=False, address="auto")
+		context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=False, num_gpus=0)
 		print(context.dashboard_url)
 
 		print("\n\nTO DOs: \
 			\n- PARALELIZE TRAINING \
-			\n- RENDERING / BOARD VISUALIZATION \
 			\n- CONTINUOUS TRAINING \
 			\n- MAYBE ASYNC SELF-PLAY AND TESTING\n\n")
 		
@@ -771,8 +770,8 @@ class AlphaZero():
 			print("P1 Win ratio: " + format(p1_winrate, '.4'))
 			print("P2 Win ratio: " + format(p2_winrate, '.4'))
 			print("Draw percentage: " + format(draw_percentage, '.4'))
-			print("Comparative Win ratio(p2/p1): " + cmp_2_string)
-			print("Comparative Win ratio(p1/p2): " + cmp_1_string + "\n", flush=True)
+			print("Comparative Win ratio(p1/p2): " + cmp_1_string)
+			print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
 
 
 		end = time.time()

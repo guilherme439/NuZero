@@ -167,10 +167,10 @@ class tic_tac_toe():
         self.play_action(action_coords)
         self.action_history.append(action_coords)
         self.length += 1
-        rewards, done = self.check_victory()
+        _, done = self.check_victory()
         self.current_player = (self.length%2) + 1
 
-        return rewards, done
+        return done
 
     def check_victory(self):
         size = self.HEIGHT
@@ -257,7 +257,7 @@ class tic_tac_toe():
         target = (value_target, policy_target)
         return target
 
-    def shallow_clone(self):
+    def clone(self):
         game_clone = tic_tac_toe()
         game_clone.board = copy.copy(self.board)
         game_clone.current_player = copy.copy(self.current_player)

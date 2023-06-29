@@ -188,7 +188,7 @@ class Alpha_Zero_config():
 		# Optimization
 		self.parallel_testing = True
 		self.with_cache = True
-		self.num_actors = 10
+		self.num_actors = 8
 		self.chunk_size = 64
 
 
@@ -199,7 +199,7 @@ class Alpha_Zero_config():
 
 		self.save_frequency = 2
 		self.test_frequency = 2
-		self.debug_frequency = 999
+		self.debug_frequency = 2
 		self.storage_frequency = 1
 		self.plot_frequency = 6
 		self.plot_reset = 200
@@ -207,7 +207,7 @@ class Alpha_Zero_config():
 
 		# Loss Test-set
 		self.test_set = False
-		self.num_test_set_games = 50
+		self.num_test_set_games = -1
 
 		# Play Testing
 		self.num_wr_testing_games = 40
@@ -220,8 +220,8 @@ class Alpha_Zero_config():
 		# Learning
 		self.shared_storage_size = 4
 
-		self.replay_window_size = int(1000)
-		self.batch_size = 32
+		self.replay_window_size = int(5000)
+		self.batch_size = 64
 
 		self.learning_method = "samples" 	# epochs | samples
 
@@ -229,7 +229,7 @@ class Alpha_Zero_config():
 		self.learning_epochs = 4
 
 		## Samples learning method
-		self.num_samples = 1024
+		self.num_samples = 512
 		self.late_heavy = True
 
 		# Optimizer
@@ -244,15 +244,15 @@ class Alpha_Zero_config():
 		self.momentum = 0.9
 
 		# Search
-		self.mcts_simulations = 250
+		self.mcts_simulations = 100
 		self.keep_sub_tree = True
 		self.use_terminal = True
 		
 		self.pb_c_base = 12000
-		self.pb_c_init = 0.95
+		self.pb_c_init = 0.80
 
 		## Exploration
-		self.number_of_softmax_moves = 40
+		self.number_of_softmax_moves = 60
 		self.epsilon_random_exploration = 0.0
 
 
