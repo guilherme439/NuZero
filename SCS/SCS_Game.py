@@ -197,9 +197,6 @@ class SCS_Game():
     def getBoardHeight(self):
         return self.HEIGHT    
 
-    def getActionRepresentation3D_info(self):
-        return self.n_placement_planes, self.n_movement_planes, self.n_fight_planes, self.n_extra_planes, self.total_action_planes, self.action_space_shape
-
     def get_action_space_shape(self):
         return self.action_space_shape
 
