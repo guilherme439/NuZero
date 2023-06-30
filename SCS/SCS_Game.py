@@ -6,6 +6,7 @@ import enum
 import sys
 import gc
 import time
+import hexagdly
 
 from enum import Enum
 from collections import Counter
@@ -26,7 +27,7 @@ class SCS_Game():
 
     N_PLAYERS = 2
 
-    N_VP = 1            # Number of vicotry points
+    N_VP = 1            # Number of victory points
     N_UNIT_TYPES = 2
     N_UNIT_STATUSES = 3
 

@@ -254,13 +254,13 @@ def main():
             model = MLP_Network(game)
             nn = Torch_NN(model, recurrent=False)
 
-            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
+            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=True)
             tester.set_slow_duration(1.3)
             
             #tester.Test_AI_with_mcts(1, game, nn)
             tester.random_vs_random(game)
 
-            print("\n\nLength: " + str(game.length))
+            print("\n\nLength: " + str(game.length) + "\n")
 
             renderer = SCS_Renderer.remote()
             end = renderer.analyse.remote(game)
