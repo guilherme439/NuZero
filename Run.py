@@ -40,13 +40,15 @@ from RemoteTester import RemoteTester
 
 from SCS.SCS_Renderer import SCS_Renderer
 
+from SCS.SCS_Game_hex import SCS_Game_hex
+
 
 
 def main():
     pid = os.getpid()
     process = psutil.Process(pid)
 
-    multiprocessing.set_start_method("spawn")
+    #multiprocessing.set_start_method("spawn")
 
     if (len(sys.argv)!=2):
         print("Run with single mode argument.")
@@ -54,10 +56,24 @@ def main():
     else:
         mode = int(sys.argv[1])
 
+
     match mode:
 
         case 0:
-            print("0")
+
+            game_class = SCS_Game_hex().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
+
+            model = dt_net_2d(game, 128)
+
+            alpha_config = Alpha_Zero_config()
+            alpha_config.set_SCS_config()
+
+            net_name = input("\nSave the network as: ")
+
+            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
+            Alpha_Zero.run()
 
         case 1:
             game_class = SCS_Game().__class__
@@ -254,7 +270,7 @@ def main():
             model = MLP_Network(game)
             nn = Torch_NN(model, recurrent=False)
 
-            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=True)
+            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
             tester.set_slow_duration(1.3)
             
             #tester.Test_AI_with_mcts(1, game, nn)

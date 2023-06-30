@@ -188,7 +188,7 @@ class Alpha_Zero_config():
 		# Optimization
 		self.parallel_testing = True
 		self.with_cache = True
-		self.num_actors = 6
+		self.num_actors = 5
 		self.chunk_size = 128
 
 
@@ -249,7 +249,7 @@ class Alpha_Zero_config():
 		self.use_terminal = False
 		
 		self.pb_c_base = 12000
-		self.pb_c_init = 0.80
+		self.pb_c_init = 0.85
 
 		## Exploration
 		self.number_of_softmax_moves = 60

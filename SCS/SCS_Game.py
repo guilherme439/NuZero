@@ -103,15 +103,33 @@ class SCS_Game():
 
 
         ## VICTORY POINTS
-        x_coords_p1 = np.random.choice(range(self.HEIGHT),size = self.N_VP, replace = False)
-        y_coords_p1 = np.random.choice(range(math.floor(self.WIDTH/2)),size = self.N_VP, replace = False)
+
+        # p1 victory points will be on the left side and p2 victory points on the right side
+        if self.WIDTH % 2 != 0:
+            middle_index = math.floor(self.WIDTH/2)
+            self.p1_last_index = middle_index-1
+            self.p2_first_index = middle_index+1
+        else:
+            # if number of rows is even there are two middle collumns one on the right and one on the left
+            mid = int(self.WIDTH/2)
+            left_side_collumn = mid
+            right_side_collumn = mid + 1
+            left_index = left_side_collumn - 1
+            right_index = right_side_collumn - 1
+            
+            # so that victory points are not adjacent, we separate them by one more collumn
+            self.p1_last_index = max(0, left_index-1)
+            self.p2_first_index = min(self.WIDTH-1, right_index+1)
+
+        x_coords_p1 = np.random.choice(range(self.HEIGHT), size=self.N_VP, replace=False)
+        y_coords_p1 = np.random.choice(range(self.p1_last_index+1), size=self.N_VP, replace=False)
 
         for i in range(len(self.victory_p1)):
             self.victory_p1[i][0]=x_coords_p1[i]
             self.victory_p1[i][1]=y_coords_p1[i]
                 
-        x_coords_p2 = np.random.choice(range(self.HEIGHT),size = self.N_VP, replace = False)
-        y_coords_p2 = np.random.choice(range(math.ceil(self.WIDTH/2), self.WIDTH),size = self.N_VP, replace = False)        
+        x_coords_p2 = np.random.choice(range(self.HEIGHT), size=self.N_VP, replace=False)
+        y_coords_p2 = np.random.choice(range(self.p2_first_index, self.WIDTH), size=self.N_VP, replace=False)        
 
         for i in range(len(self.victory_p2)):
             self.victory_p2[i][0]=x_coords_p2[i]
@@ -142,12 +160,12 @@ class SCS_Game():
         self.no_move_planes = 1
         self.no_fight_planes = 1
 
-        self.total_action_planes = (
-        self.placement_planes +
-        self.movement_planes +
-        self.fight_planes +
-        self.no_move_planes +
-        self.no_fight_planes )
+        self.total_action_planes = \
+        self.placement_planes + \
+        self.movement_planes + \
+        self.fight_planes + \
+        self.no_move_planes + \
+        self.no_fight_planes
 
         self.action_space_shape = (self.total_action_planes , self.HEIGHT , self.WIDTH)
         self.num_actions     =     self.total_action_planes * self.HEIGHT * self.WIDTH
@@ -286,12 +304,10 @@ class SCS_Game():
             available_types = set(self.reinforcements[player-1])
             for t in range(self.N_UNIT_TYPES):
                 if t+1 in available_types:
-                    half_collumns = math.floor(self.WIDTH/2)
-                    my_half = np.ones((self.HEIGHT, half_collumns), dtype=np.int32)
-                    if (half_collumns*2) == self.WIDTH:
-                        enemy_half = np.zeros((self.HEIGHT, half_collumns), dtype=np.int32)
-                    else:
-                        enemy_half = np.zeros((self.HEIGHT, half_collumns+1), dtype=np.int32)
+                    available_collumns = self.p1_last_index + 1 # number of columns on my side of the board
+                    my_half = np.ones((self.HEIGHT, available_collumns), dtype=np.int32)
+                    rest_of_columns = self.WIDTH - available_collumns
+                    enemy_half = np.zeros((self.HEIGHT, rest_of_columns), dtype=np.int32)
                         
                     if player == 1:
                         u_plane = np.concatenate((my_half, enemy_half), axis=1)
@@ -715,9 +731,11 @@ class SCS_Game():
                 defender_unit.edit_defense(remaining_defender_defense)
                 self.moved_units[atacking_player-1].remove(atacker_unit)
                 atacker_tile.unit = None
+
             else:                               # Both lived
                 atacker_unit.edit_defense(remaining_atacker_defense)
                 defender_unit.edit_defense(remaining_defender_defense)
+                self.end_fighting(atacker_unit)
         
         return
             

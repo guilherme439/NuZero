@@ -1,6 +1,7 @@
 import pygame
 import time
 import ray
+import math
 
 from enum import Enum
 
@@ -68,13 +69,13 @@ class SCS_Renderer():
 
 
             text_font = pygame.font.SysFont("meera", 50)
-            text_block = text_font.render(text, False, Color.RED.rgb())
+            text_block = text_font.render(text, True, Color.RED.rgb())
             text_rect = text_block.get_rect(center=(self.WINDOW_WIDTH/2, 50))
             screen.blit(text_block, text_rect)
 
             turn_text = "Turn: " + str(game.current_turn)
             turn_font = pygame.font.SysFont("meera", 30)
-            turn_block = turn_font.render(turn_text, False, Color.BLACK.rgb())
+            turn_block = turn_font.render(turn_text, True, Color.BLACK.rgb())
             screen.blit(turn_block, (30, 30))
 
             # Update de full display
@@ -178,18 +179,21 @@ class SCS_Renderer():
         return
     
     def render_board(self, screen, game):
+        # For now it only renders square boards
 
         GAME_HEIGHT = game.getBoardHeight()
         GAME_WIDTH = game.getBoardWidth()
 
         # Draw the board
-        board_top_offset = 0.15*self.WINDOW_HEIGHT
-        board_bottom_offset = 0.05*self.WINDOW_HEIGHT
+        board_top_offset = math.floor(0.15*self.WINDOW_HEIGHT)
+        board_bottom_offset = math.floor(0.05*self.WINDOW_HEIGHT)
 
         board_height = (self.WINDOW_HEIGHT - board_top_offset - board_bottom_offset)
+        board_height = board_height - (board_height%GAME_HEIGHT) # make sure the board height is divisible by the number of tiles
+
         board_width = board_height
 
-        tile_height = board_height/GAME_HEIGHT
+        tile_height = board_height//GAME_HEIGHT
         tile_width = tile_height
         
         # values in pixels
@@ -215,7 +219,7 @@ class SCS_Renderer():
             
             # BOARD NUMBERS
             number_font = pygame.font.SysFont("uroob", 30)
-            number_block = number_font.render(str(i+1), False, Color.BLACK.rgb())
+            number_block = number_font.render(str(i+1), True, Color.BLACK.rgb())
             number_rect = number_block.get_rect(center=(board_position[0] - numbers_gap, board_position[1] + tile_height/2 + (tile_height)*i))
             screen.blit(number_block, number_rect)
 
@@ -229,7 +233,7 @@ class SCS_Renderer():
                 # BOARD NUMBERS
                 if i==0:
                     number_font = pygame.font.SysFont("uroob", 30)
-                    number_block = number_font.render(str(j+1), False, Color.BLACK.rgb())
+                    number_block = number_font.render(str(j+1), True, Color.BLACK.rgb())
                     number_rect = number_block.get_rect(center=(board_position[0] + tile_width/2 + (tile_width)*j, board_position[1] - numbers_gap))
                     screen.blit(number_block, number_rect)
 
