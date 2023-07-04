@@ -6,17 +6,12 @@ import random
 import pickle
 import ray
 
-from multiprocessing import Pool, Lock, get_context
-import multiprocessing
-
-from progress.bar import ChargingBar
-
-from scipy.special import softmax
-
 import numpy as np
 
 import torch
 from torch import nn
+
+from progress.bar import ChargingBar
 
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network
@@ -32,7 +27,8 @@ from SCS.Terrain import Terrain
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from Alpha_config import Alpha_Zero_config
+from Configs.AlphaZero_config import AlphaZero_config
+from Configs.Search_config import Search_config
 
 from AlphaZero import AlphaZero
 from Tester import Tester
@@ -43,7 +39,7 @@ from SCS.SCS_Renderer import SCS_Renderer
 from SCS.SCS_Game_hex import SCS_Game_hex
 
 
-
+ 
 def main():
     pid = os.getpid()
     process = psutil.Process(pid)
@@ -56,7 +52,6 @@ def main():
     else:
         mode = int(sys.argv[1])
 
-
     match mode:
 
         case 0:
@@ -67,8 +62,7 @@ def main():
 
             model = dt_net_2d(game, 128)
 
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_SCS_config()
+            alpha_config = AlphaZero_config()
 
             net_name = input("\nSave the network as: ")
 
@@ -76,20 +70,20 @@ def main():
             Alpha_Zero.run()
 
         case 1:
-            game_class = SCS_Game().__class__
-            game_args = [[3,0],[0,1]]
-            model_class = Simple_Conv_Network(game_class(*game_args)).__class__
+            search_config = Search_config()
 
-            p = input("Choose the AI player: ")
-            
-            debug_tester = Tester(100, slow=True, debug=True)
-
-            path = "SCS/models/Un_even/Un_even_30_model"
-            debug_tester.Test_AI_with_policy(int(p), game_class=game_class, game_args=game_args, model_class=model_class, model_path=path)
+            filepath = "Configs/Config_files/default_search_config.ini"
+            search_config.save(filepath)
 
         case 2:
-            print("\ncaca")
-            return
+            alpha_config = AlphaZero_config()
+
+            filepath = "Configs/Config_files/default_alphazero_config.ini"
+            alpha_config.save(filepath)
+
+        case 3:
+            pass
+
 
         case 4:
             game = tic_tac_toe()
@@ -148,14 +142,14 @@ def main():
             game_args = [[3,1],[1,2], True]
             game = game_class(*game_args)
 
-            model = dt_net_2d(game, 128)
+            search = "SCS_search_config.ini"
+            alpha = "SCS_alpha_config.ini"
 
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_SCS_config()
+            model = dt_net_2d(game, 128)
 
             net_name = input("\nSave the network as: ")
 
-            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
+            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config_file=alpha, search_config_file=search, network_name=net_name)
             Alpha_Zero.run()
         
         case 12:

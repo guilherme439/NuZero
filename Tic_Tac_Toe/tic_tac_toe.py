@@ -44,6 +44,12 @@ class tic_tac_toe():
         
         return
 
+##########################################################################
+# -------------------------                    ------------------------- #
+# -----------------------  GET AND SET METHODS  ------------------------ #
+# -------------------------                    ------------------------- #
+##########################################################################
+
     def getBoardWidth(self):
         return self.WIDTH
 
@@ -74,6 +80,26 @@ class tic_tac_toe():
     def is_terminal(self):
         return self.terminal
 
+    def store_state(self, state):
+        self.state_history.append(state)
+        return
+
+    def store_player(self, player):
+        self.player_history.append(player)
+        return
+
+    def store_action(self, action_coords):
+        self.action_history.append(action_coords)
+
+    def get_name(self):
+        return "Tic_Tac_Toe"
+
+##########################################################################
+# ----------------------------              ---------------------------- #
+# --------------------------  CORE FUNCTIONS  -------------------------- #
+# ----------------------------              ---------------------------- #
+##########################################################################
+
     def reset_env(self):
         self.board = np.zeros((3,3))
         self.current_player = 1  # Two players: 1 and 2
@@ -102,33 +128,6 @@ class tic_tac_toe():
         self.board[action_coords[1]][action_coords[2]] = self.current_player
         return
 
-    def string_representation(self):
-        string = ""
-        for i in range(self.HEIGHT):
-            for j in range(self.WIDTH):
-                if self.board[i][j] == 1:
-                    mark=colored(" O ", "blue")
-                elif self.board[i][j] == 2:
-                    mark=colored(" X ", "red")
-                else:
-                    mark = "   "
-
-                if j != self.WIDTH-1:
-                    string += mark  + '|'
-                else:
-                    string += mark
-            
-            string += "\n"
-            if(i<self.HEIGHT-1):
-                for k in range(self.WIDTH-1):
-                    string += "---|"
-                string += "---\n"
-            
-        return string
-    
-    def get_name(self):
-        return "Tic_Tac_Toe"
-
     def generate_state_image(self):
         p1_pieces = np.zeros((3,3))
         p2_pieces = np.zeros((3,3))
@@ -155,17 +154,10 @@ class tic_tac_toe():
         state_image = torch.unsqueeze(new_state, 0) # add batch size to the dimensions
         return state_image
 
-    def store_state(self, state):
-        self.state_history.append(state)
-        return
-
-    def store_player(self, player):
-        self.player_history.append(player)
-        return
-
     def step_function(self, action_coords):
+        self.store_player(self.current_player)
+        self.store_action(action_coords)
         self.play_action(action_coords)
-        self.action_history.append(action_coords)
         self.length += 1
         _, done = self.check_victory()
         self.current_player = (self.length%2) + 1
@@ -242,6 +234,10 @@ class tic_tac_toe():
         #funny and overcomplicated way of calculating the winner of the game
         return ((1 - self.terminal_value) + (self.terminal_value * (self.terminal_value > 0))) * self.terminal_value * self.terminal_value
 
+    def get_rewards_and_game_env(self):
+        # not needed in this game (check victory does everything) maybe change it later
+        return
+
     def store_search_statistics(self, node):
         sum_visits = sum(child.visit_count for child in node.children.values())
         self.child_policy.append([
@@ -257,6 +253,12 @@ class tic_tac_toe():
         target = (value_target, policy_target)
         return target
 
+##########################################################################
+# -------------------------                   -------------------------- #
+# ------------------------  UTILITY FUNCTIONS  ------------------------- #
+# -------------------------                   -------------------------- #
+##########################################################################
+
     def clone(self):
         game_clone = tic_tac_toe()
         game_clone.board = copy.copy(self.board)
@@ -265,9 +267,35 @@ class tic_tac_toe():
 
         return game_clone
 
-    def get_rewards_and_game_env(self):
-        # not needed in this game (check victory does everything) maybe change it later
-        return
+    def string_representation(self):
+        string = ""
+        for i in range(self.HEIGHT):
+            for j in range(self.WIDTH):
+                if self.board[i][j] == 1:
+                    mark=colored(" O ", "blue")
+                elif self.board[i][j] == 2:
+                    mark=colored(" X ", "red")
+                else:
+                    mark = "   "
+
+                if j != self.WIDTH-1:
+                    string += mark  + '|'
+                else:
+                    string += mark
+            
+            string += "\n"
+            if(i<self.HEIGHT-1):
+                for k in range(self.WIDTH-1):
+                    string += "---|"
+                string += "---\n"
+            
+        return string
+
+##########################################################################
+# ------------------------                     ------------------------- #
+# -----------------------  USER PLAY FUNCTIONS  ------------------------ #
+# ------------------------                     ------------------------- #
+##########################################################################
 
     def play_user_vs_user(self):
 

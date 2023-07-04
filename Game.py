@@ -1,5 +1,5 @@
 class Game():
-    #TODO: Incomplete and not and not an actual abstract class yet
+    #TODO: Incomplete and not an actual abstract class yet
 
     # Abstract class so that you know what methods to implement in your game
     def __init__(self):
@@ -64,7 +64,6 @@ class Game():
         # watch out for mem leaks
         print("shallow_clone not implemented")
         pass
-
 
     def generate_state_image(self):
         # generate the current game state image to be passed to the neural net

@@ -30,6 +30,9 @@ from Node import Node
 
 from Neural_Networks.Torch_NN import Torch_NN
 
+from Configs.AlphaZero_config import AlphaZero_config
+from Configs.Search_config import Search_config
+
 from Tester import Tester
 from RemoteTester import RemoteTester
 
@@ -38,18 +41,22 @@ from ray.runtime_env import RuntimeEnv
 class AlphaZero():
 
 	
-	def __init__(self, model, recurrent, game_class, game_args, config, network_name="ABC"):
+	def __init__(self, model, recurrent, game_class, game_args, alpha_config_file="default_alphazero_config.ini", search_config_file="default_search_config.ini", network_name="ABC"):
 		self.network_name = network_name
 		self.latest_network = Torch_NN(model, recurrent)
 		self.model_class = model.__class__
 
 		self.game_args = game_args  # Args for the game's __init__()
 		self.game_class = game_class
-		self.config = config
+
+		self.alpha_config = AlphaZero_config()
+		self.alpha_config.load("Configs/Config_files/" + alpha_config_file)
+
+		self.search_config = Search_config()
+		self.search_config.load("Configs/Config_files/" + search_config_file) 
 
 
 		self.n_updates = 0
-
 		self.decisive_count = 0
 
 		#Plots
@@ -79,47 +86,63 @@ class AlphaZero():
 		self.wr1_stats = [0.0]
 		self.wr2_stats = [0.0]
 
-		# Performance
-		self.dict_cache = False
-		
-		self.num_games_per_batch = 0
-
-		self.state_values = {}
-
 
 	def run(self):
 		pid = os.getpid()
 		process = psutil.Process(pid)
 
-		
-		runtime_env = RuntimeEnv(
-								conda="tese",
-								working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-								env_vars={
-										"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
-		  								 }
-								)
+		# ------------------------------------------------------ #
+        # ----------------- RAY INITIALIZATION ----------------- #
+        # ------------------------------------------------------ #
+
+		print("\n\n--------------------------------\n")
+		runtime_env=RuntimeEnv \
+					(
+					conda="tese",
+					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					env_vars=
+							{
+							"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
+							}
+					)
 		
 		context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=False)
-		print(context.dashboard_url)
 
-		print("\n\nTO DOs: \
-			\n- PARALELIZE TRAINING \
-			\n- CONTINUOUS TRAINING \
-			\n- MAYBE ASYNC SELF-PLAY AND TESTING\n\n")
-		
-		# NOTE: currently self-play uses the storage_network and testing uses the latest_network, they are only the same if storage_frequency=1
+		# ------------------------------------------------------ #
+        # ------------------ RUNTIME CONFIGS ------------------- #
+        # ------------------------------------------------------ #
 
+		#NOTE: currently self-play uses the storage_network and testing uses the latest_network, they are only the same if storage_frequency=1
 
-		if self.config.test_frequency % self.config.save_frequency != 0:
-			print("Invalid values for save and/or test frequency.\nThe \"test_frequency\" value must be divisible by the \"save_frequency\" value.")
+		state_cache = self.alpha_config.optimization["state_cache"]
+
+		num_games_per_batch = self.alpha_config.running["num_games_per_batch"]
+		num_batches = self.alpha_config.running["num_batches"]
+		early_fill = self.alpha_config.running["early_fill"]
+		num_wr_testing_games = self.alpha_config.running["num_wr_testing_games"]
+
+		# Test set requires playing extra games
+		test_set = self.alpha_config.running["test_set"]
+		num_test_set_games = self.alpha_config.running["num_test_set_games"]
+
+		save_frequency = self.alpha_config.frequency["save_frequency"]
+		test_frequency = self.alpha_config.frequency["test_frequency"]
+		debug_frequency = self.alpha_config.frequency["debug_frequency"]
+		storage_frequency = self.alpha_config.frequency["storage_frequency"]
+		plot_frequency = self.alpha_config.frequency["plot_frequency"]
+		plot_reset = self.alpha_config.frequency["plot_reset"]
+
+		if test_frequency % save_frequency != 0:
+			print("\nInvalid values for save and/or test frequency.\nThe \"test_frequency\" value must be divisible by the \"save_frequency\" value.")
 			return
 		
-		self.num_games_per_batch = self.config.num_games_per_batch
-		self.game = self.game_class(*self.game_args)
-		self.dict_cache = self.config.with_cache
-		game_folder_name = self.game.get_name()
+		# ------------------------------------------------------ #
+        # ------------------- FOLDERS SETUP -------------------- #
+        # ------------------------------------------------------ #
 
+		print("\n--------------------------------\n\n")
+		self.game = self.game_class(*self.game_args)
+		game_folder_name = self.game.get_name()
 
 		model_folder_path = game_folder_name + "/models/" + self.network_name
 		plots_path = model_folder_path + "/plots"
@@ -128,102 +151,138 @@ class AlphaZero():
 		if not os.path.exists(plots_path):
 			os.mkdir(plots_path)
 		
+		# pickle the network class
 		file_name = model_folder_path + "/network.pkl"
 		with open(file_name, 'wb') as file:
 			pickle.dump(self.latest_network, file)
-			print(f'Successfully saved network at "{file_name}".\n')
-			
-		if self.dict_cache:
-			print("\n-Using state dictonary as cache.")
-		
-		self.network_storage = Shared_network_storage.remote(self.config.shared_storage_size)
+			print(f'Successfully pickled network class at "{file_name}".\n')
+
+		# create copies of the config files
+		print("\nCreating config file copies:")
+		search_config_copy_path = model_folder_path + "/search_config_copy.ini"
+		alpha_config_copy_path = model_folder_path + "/alpha_config_copy.ini"
+		self.alpha_config.save(alpha_config_copy_path)
+		self.search_config.save(search_config_copy_path)
+		print("\n\n--------------------------------\n")
+
+		# ------------------------------------------------------ #
+        # ------------- STORAGE AND BUFFERS SETUP -------------- #
+        # ------------------------------------------------------ #
+
+		shared_storage_size = self.alpha_config.learning["shared_storage_size"]
+		replay_window_size = self.alpha_config.learning["replay_window_size"]
+		learning_method = self.alpha_config.learning["learning_method"]
+
+		self.network_storage = Shared_network_storage.remote(shared_storage_size)
 		future_save = self.network_storage.save_network.remote(self.latest_network)
 
-		total_num_batches = self.config.replay_window_size / self.config.num_games_per_batch
-		test_buffer_window = int(total_num_batches * self.config.num_test_set_games)
+		if learning_method == "epochs":
+			batch_size = self.alpha_config.epochs["batch_size"]
+			learning_epochs = self.alpha_config.epochs["learning_epochs"]
+		elif learning_method == "samples":
+			batch_size = self.alpha_config.samples["batch_size"]
 
-		self.replay_buffer = Replay_Buffer.remote(self.config.replay_window_size, self.config.batch_size)
-		if self.config.test_set:
-			self.test_buffer = Replay_Buffer.remote(test_buffer_window, self.config.batch_size)
+		self.replay_buffer = Replay_Buffer.remote(replay_window_size, batch_size)
+
+		if test_set:
+			batches_in_replay_buffer = replay_window_size / num_games_per_batch
+			test_buffer_window = int(batches_in_replay_buffer * num_test_set_games)
+			self.test_buffer = Replay_Buffer.remote(test_buffer_window, batch_size)
+			# test_buffer_window is such that there is the same number of batches in both the replay and test buffer.
 		else:
 			self.test_buffer = None
 
+		# ------------------------------------------------------ #
+        # ------------------ OPTIMIZER SETUP ------------------- #
+        # ------------------------------------------------------ #
+
+		optimizer_name = self.alpha_config.optimizer["optimizer"]
+		learning_rate = self.alpha_config.optimizer["learning_rate"]
+
+		weight_decay = self.alpha_config.optimizer["weight_decay"]
+		momentum = self.alpha_config.optimizer["momentum"]
+
+		scheduler_boundaries = self.alpha_config.optimizer["scheduler_boundaries"]
+		scheduler_gamma = self.alpha_config.optimizer["scheduler_gamma"]
 		
-		if self.config.optimizer == "Adam":
-			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=self.config.learning_rate)
-		elif self.config.optimizer == "SGD":
-			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=self.config.learning_rate, momentum=self.config.momentum, weight_decay = self.config.weight_decay)
+		if optimizer_name == "Adam":
+			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
+		elif optimizer_name == "SGD":
+			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay = weight_decay)
 		else:
-			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=self.config.learning_rate)
+			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
 			print("Bad optimizer config.\nUsing Adam optimizer...")
 
-		scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=self.config.scheduler_boundaries, gamma=self.config.scheduler_gama)
-		
+		scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
-		save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_0_model"
-		torch.save(self.latest_network.get_model().state_dict(), save_path)
+		# ------------------------------------------------------ #
+        # --------------------- ALPHAZERO ---------------------- #
+        # ------------------------------------------------------ #
 
-		print("\n|Running for " + str(self.config.num_batches) + " batches of " + str(self.config.num_games_per_batch) + " games each." )
+		print("\nRunning for " + str(num_batches) + " batches of " + str(num_games_per_batch) + " games each.")
+		if state_cache != "disabled":
+			print("\n-Using state dictonary as cache.")			  
 
 		ray.get(future_save) # wait for the network to be in storage
 
-		updates = 0
-		if self.config.early_fill > 0:
-			self.run_selfplay(self.config.early_fill, False, False, text="Filling initial games")
+		# Initial save (untrained network)
+		save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_0_model"
+		torch.save(self.latest_network.get_model().state_dict(), save_path)
 
+		
+		updates = 0
+		if early_fill > 0:
+			print("\n\n\n\nEarly Buffer Fill")
+			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 
 		since_reset = 0
-		for b in range(self.config.num_batches):
+		for b in range(num_batches):
 			updated = True
 
-			print("\n")
-			print("\nBatch: " + str(b+1))
-			print("\n")
+			print("\n\n\n\nBatch: " + str(b+1))
 			
 			self.decisive_count = 0
-			self.run_selfplay(self.config.num_games_per_batch, False, False, text="Self-Play Games")
+			self.run_selfplay(num_games_per_batch, False, state_cache, text="Self-Play Games")
 
 			print("\nreplay buffer:")	
 			print(ray.get(self.replay_buffer.played_games.remote()))
 
-			if self.config.test_set:
+			if test_set:
 				self.decisive_count = 0
-				self.run_selfplay(self.config.num_test_set_games, True, False, text="Test-set Games")
+				self.run_selfplay(num_test_set_games, True, text="Test-set Games")
 				print("\ntest buffer:")
 				print(ray.get(self.test_buffer.played_games.remote()))
 			
 			
 
 			print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
-			self.train_network(optimizer, scheduler)
+			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set)
 
-			if (((b+1) % self.config.storage_frequency) == 0):
+			if (((b+1) % storage_frequency) == 0):
 				future_storage = self.network_storage.save_network.remote(self.latest_network)
 
 			since_reset += 1
 			updates +=1
 			
 
-			if (((b+1) % self.config.save_frequency) == 0):
+			if (((b+1) % save_frequency) == 0):
 				save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_" + str(b+1) + "_model"
 				torch.save(self.latest_network.get_model().state_dict(), save_path)
 			
-			if (((b+1) % self.config.test_frequency) == 0) and updated:
-				wr1, _, _ = self.run_tests(1, self.config.num_wr_testing_games)
-				_, wr2, _ = self.run_tests(2, self.config.num_wr_testing_games)
+			if (((b+1) % test_frequency) == 0) and updated:
+				wr1, _, _ = self.run_tests("1", num_wr_testing_games)
+				_, wr2, _ = self.run_tests("2", num_wr_testing_games)
 
 				# save wr as p1 and p2 for plotting
 				self.wr1_stats.append(wr1) 
 				self.wr2_stats.append(wr2)
 
-			if (((b+1) % self.config.debug_frequency) == 0):				
-				pass
-				#debug_tester = Tester.remote(recurrent_iters=self.config.num_testing_iters, debug=True)
-				#_, _, _, state_history = ray.get(debug_tester.Test_AI_vs_AI_with_policy.remote(self.game_class, self.game_args, self.latest_network, self.latest_network), timeout=30)				
+			if (((b+1) % debug_frequency) == 0):				
+				pass			
 
-			if (((b+1) % self.config.plot_frequency) == 0):
+			if (((b+1) % plot_frequency) == 0):
 				if self.plot_wr:
-					number_of_tests = range(1, math.floor(updates/self.config.test_frequency) + 1+1)
+					number_of_tests = range(1, math.floor(updates/test_frequency) + 1+1)
 					plt.plot(number_of_tests, self.wr1_stats, label = "Wr as P1")
 					plt.plot(number_of_tests, self.wr2_stats, label = "Wr as P2")
 
@@ -233,41 +292,41 @@ class AlphaZero():
 
 				if self.plot_loss:
 					
-					if (self.config.learning_method == "epochs") and (self.config.learning_epochs > 1):
-						plt.plot(range(self.config.learning_epochs), self.epochs_value_loss, label = "Training")
-						if self.config.test_set:
-							plt.plot(range(self.config.learning_epochs), self.tests_value_loss, label = "Testing")
+					if (learning_method == "epochs") and (learning_epochs > 1):
+						plt.plot(range(learning_epochs), self.epochs_value_loss, label = "Training")
+						if test_set:
+							plt.plot(range(learning_epochs), self.tests_value_loss, label = "Testing")
 
 						plt.legend()
 						plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_value_loss_' + str((b+1)) + '.png')
 						plt.clf()
 
 						
-						plt.plot(range(self.config.learning_epochs), self.epochs_policy_loss, label = "Training")
-						if self.config.test_set:
-							plt.plot(range(self.config.learning_epochs), self.tests_policy_loss, label = "Testing")
+						plt.plot(range(learning_epochs), self.epochs_policy_loss, label = "Training")
+						if test_set:
+							plt.plot(range(learning_epochs), self.tests_policy_loss, label = "Testing")
 
 						plt.legend()
 						plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_policy_loss_' + str((b+1)) + '.png')
 						plt.clf()
 
 						
-						plt.plot(range(self.config.learning_epochs), self.epochs_combined_loss, label = "Training")
-						if self.config.test_set:
-							plt.plot(range(self.config.learning_epochs), self.tests_combined_loss, label = "Testing")
+						plt.plot(range(learning_epochs), self.epochs_combined_loss, label = "Training")
+						if test_set:
+							plt.plot(range(learning_epochs), self.tests_combined_loss, label = "Testing")
 
 						plt.legend()
 						plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_total_loss_' + str((b+1)) + '.png')
 						plt.clf()
 
-					if self.config.learning_method == "epochs":
-						number_of_data_points = self.config.learning_epochs*(since_reset)
+					if learning_method == "epochs":
+						number_of_data_points = learning_epochs*(since_reset)
 					else:
 						number_of_data_points = since_reset
 
 					x = range(number_of_data_points)
 					plt.plot(x, self.train_global_value_loss, label = "Training")
-					if self.config.test_set:
+					if test_set:
 						plt.plot(x, self.test_global_value_loss, label = "Testing")
 
 					plt.legend()
@@ -275,7 +334,7 @@ class AlphaZero():
 					plt.clf()
 
 					plt.plot(x, self.train_global_policy_loss, label = "Training")
-					if self.config.test_set:
+					if test_set:
 						plt.plot(x, self.test_global_policy_loss, label = "Testing")
 
 					plt.legend()
@@ -283,14 +342,14 @@ class AlphaZero():
 					plt.clf()
 
 					plt.plot(x, self.train_global_combined_loss, label = "Training")
-					if self.config.test_set:
+					if test_set:
 						plt.plot(x, self.test_global_combined_loss, label = "Testing")
 
 					plt.legend()
 					plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/_" + self.network_name + '_global_total_loss.png')
 					plt.clf()
 				
-			if (((b+1) % self.config.plot_reset) == 0):
+			if (((b+1) % plot_reset) == 0):
 				self.policy_loss.clear()
 				self.value_loss.clear()
 				self.total_loss.clear()
@@ -307,33 +366,17 @@ class AlphaZero():
 			
 			ray.get(future_storage) # wait for the network to be stored before next iteration	
 			
-					
-		
-		if self.config.plot:
-			if self.plot_wr:
-				number_of_tests = range(1, math.floor(updates/self.config.test_frequency) + 1+1)
-				plt.plot(number_of_tests, self.wr1_stats, label = "Wr as P1")
-				plt.plot(number_of_tests, self.wr2_stats, label = "Wr as P2")
-				plt.legend()
-				plt.show()
-			if self.plot_loss:
-				plt.plot(self.total_loss)
-				plt.show()
-
-		cfg_path = game_folder_name + "/models/" + self.network_name + "/" + str(self.network_name) + ".cfg"
-		self.config.save_config(cfg_path, self.network_name, self.config.num_batches, self.config.num_games_per_batch)
-
 		
 		return
 	
-	def test_set_loss(self, batch, batch_size):
+	def test_set_loss(self, batch, batch_size, iterations):
 
 		combined_loss = 0.0
 		policy_loss = 0.0
 		value_loss = 0.0
 		for (state, (target_value, target_policy)) in batch:
 			
-			predicted_policy, predicted_value = self.latest_network.inference(state, False, self.config.num_training_iters)
+			predicted_policy, predicted_value = self.latest_network.inference(state, False, iterations)
 
 			target_policy = torch.tensor(target_policy).to(self.latest_network.device)
 			target_value = torch.tensor(target_value).to(self.latest_network.device)
@@ -353,53 +396,7 @@ class AlphaZero():
 
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
-	def update_weights(self, optimizer, scheduler, batch, batch_size):
-
-		self.latest_network.get_model().train()
-		optimizer.zero_grad()
-
-		loss = 0.0
-		policy_loss = 0.0
-		value_loss = 0.0
-
-		for (state, (target_value, target_policy)) in batch:
-			
-			predicted_policy, predicted_value = self.latest_network.inference(state, True, self.config.num_training_iters)
-
-			target_policy = torch.tensor(target_policy).to(self.latest_network.device)
-			target_value = torch.tensor(target_value).to(self.latest_network.device)
-
-			
-			policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
-			#policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
-			#Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-
-			value_loss += ((target_value - predicted_value) ** 2)
-			#value_loss += torch.abs(target_value - predicted_value)
-			
-		value_loss /= batch_size
-		policy_loss /= batch_size
-
-		loss = policy_loss + value_loss
-		#loss = value_loss
-
-		'''
-		if self.plot_loss:
-			self.policy_loss.append(policy_loss.item())
-			self.value_loss.append(value_loss.item())
-			self.total_loss.append(loss.item())
-		'''
-
-		#print(loss)
-		# In PyThorch SGD optimizer already applies L2 weight regularization
-		
-		loss.backward()
-		optimizer.step()
-		scheduler.step()
-
-		return value_loss.item(), policy_loss.item(), loss.item()
-	
-	def batch_update_weights(self, optimizer, scheduler, batch, batch_size):
+	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations):
 
 		self.latest_network.get_model().train()
 		optimizer.zero_grad()
@@ -413,7 +410,7 @@ class AlphaZero():
 
 		batch_input = torch.cat(states, 0)
 
-		predicted_policies, predicted_values = self.latest_network.inference(batch_input, True, self.config.num_training_iters)
+		predicted_policies, predicted_values = self.latest_network.inference(batch_input, True, train_iterations)
 
 		for i in range(batch_size):
 			
@@ -452,22 +449,22 @@ class AlphaZero():
 
 		return value_loss.item(), policy_loss.item(), loss.item()
 
-	def train_network(self, optimizer, scheduler):
+	def train_network(self, optimizer, scheduler, batch_size, learning_method, test_set):
 		print()
-		
-		batch_size = self.config.batch_size
+		start = time.time()
+
+		train_iterations = self.alpha_config.recurrent_networks["num_train_iterations"]
 
 		replay_size = ray.get(self.replay_buffer.len.remote(), timeout=30)
 		n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=30)
-		if self.config.test_set:
+		if test_set:
 			test_size = ray.get(self.test_buffer.len.remote(), timeout=30)
 
 		print("\nAfter Self-Play there are a total of " + str(replay_size) + " positions in the replay buffer.")
 		print("Total number of games: " + str(n_games))
-
-		start = time.time()
 		
-		if self.config.learning_method == "epochs":
+		if learning_method == "epochs":
+			learning_epochs = self.alpha_config.epochs["learning_epochs"]
 			
 			if  batch_size > replay_size:
 				print("Batch size too large.\n" + 
@@ -478,7 +475,7 @@ class AlphaZero():
 				number_of_batches = replay_size // batch_size
 				print("Batches in replay buffer: " + str(number_of_batches))
 
-				if self.config.test_set:
+				if test_set:
 					number_of_test_batches = test_size // batch_size
 					print("Batches in test buffer: " + str(number_of_test_batches))
 
@@ -489,7 +486,6 @@ class AlphaZero():
 			policy_loss = 0.0
 			combined_loss = 0.0
 
-			
 			self.epochs_value_loss.clear()
 			self.epochs_policy_loss.clear()
 			self.epochs_combined_loss.clear()
@@ -499,29 +495,25 @@ class AlphaZero():
 			self.tests_combined_loss.clear()
 
 			
-			values = [2e-1, 2e-2, 2e-3, 2e-4]
-			momentum = 0.9
-
-			epochs = self.config.learning_epochs
-			total_updates = epochs*number_of_batches
+			total_updates = learning_epochs*number_of_batches
 			print("\nTotal number of updates: " + str(total_updates) + "\n")
 			
-			bar = ChargingBar('Training ', max=epochs)
-			for e in range(epochs):
+			bar = ChargingBar('Training ', max=learning_epochs)
+			for e in range(learning_epochs):
 
 				ray.get(self.replay_buffer.shuffle.remote(), timeout=30) # ray.get() beacuse we want the shuffle to be done before using buffer
-				if self.config.test_set:
+				if test_set:
 					future_test_shuffle = self.test_buffer.shuffle.remote()
 
 				future_replay_buffer = self.replay_buffer.get_buffer.remote()
-				if self.config.test_set:
+				if test_set:
 					future_test_buffer = self.test_buffer.get_buffer.remote()
 
 				epoch_value_loss = 0.0
 				epoch_policy_loss = 0.0
 				epoch_combined_loss = 0.0
 
-				if self.config.test_set:
+				if test_set:
 					t_epoch_value_loss = 0.0
 					t_epoch_policy_loss = 0.0
 					t_epoch_combined_loss = 0.0
@@ -535,7 +527,7 @@ class AlphaZero():
 
 					batch = replay_buffer[start_index:next_index] # the slice does not take the last element
 				
-					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size)
+					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
 
 					epoch_value_loss += value_loss
 					epoch_policy_loss += policy_loss
@@ -546,7 +538,7 @@ class AlphaZero():
 				epoch_policy_loss /= number_of_batches
 				epoch_combined_loss /= number_of_batches	
 				
-				if self.config.test_set:
+				if test_set:
 					ray.get(future_test_shuffle)
 					test_buffer = ray.get(future_test_buffer)
 					for t in range(number_of_test_batches):
@@ -555,7 +547,7 @@ class AlphaZero():
 
 						batch = test_buffer[start_index:next_index]
 					
-						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(batch, batch_size)
+						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(batch, batch_size, train_iterations)
 
 						t_epoch_value_loss += test_value_loss
 						t_epoch_policy_loss += test_policy_loss
@@ -571,36 +563,33 @@ class AlphaZero():
 					self.epochs_policy_loss.append(epoch_policy_loss)
 					self.epochs_combined_loss.append(epoch_combined_loss)
 
-					if self.config.test_set:
+					if test_set:
 						self.tests_value_loss.append(test_value_loss)
 						self.tests_policy_loss.append(test_policy_loss)
 						self.tests_combined_loss.append(test_combined_loss)
 
-				if ((e+1) % 100 == 0):
-					# sanity check, just to make sure policy isn't nan (np.random.choice crashes if any of the values is nan)
-					predicted_policy, _ = self.latest_network.inference(self.game.generate_state_image(), False, self.config.num_pred_iters)
-					probs = predicted_policy.cpu()[0].numpy().flatten()
-					chance_action = np.random.choice(self.game.num_actions, p=probs)
-
 				spinner.finish
 				bar.next()
 				
-			bar.finish
+			bar.finish()
 
 			self.train_global_value_loss.extend(self.epochs_value_loss)
 			self.train_global_policy_loss.extend(self.epochs_policy_loss)
 			self.train_global_combined_loss.extend(self.epochs_combined_loss)
 
-			if self.config.test_set:
+			if test_set:
 				self.test_global_value_loss.extend(self.tests_value_loss)
 				self.test_global_policy_loss.extend(self.tests_policy_loss)
 				self.test_global_combined_loss.extend(self.tests_combined_loss)
 				
-		else:
+		elif learning_method == "samples":
+			num_samples = self.alpha_config.samples["num_samples"]
+			late_heavy = self.alpha_config.samples["late_heavy"]
+
 			future_buffer = self.replay_buffer.get_buffer.remote()
 			batch = []
 			probs = []
-			if self.config.late_heavy:
+			if late_heavy:
 				# The way I found to create a scalling array
 				variation = 0.6 # number between 0 and 1
 				num_positions = replay_size
@@ -619,12 +608,10 @@ class AlphaZero():
 			average_policy_loss = 0
 			average_combined_loss = 0
 
-			number_updates = self.config.num_samples
-			print("\nTotal number of updates: " + str(number_updates) + "\n")
-
-			bar = ChargingBar('Training ', max=number_updates)
+			print("\nTotal number of updates: " + str(num_samples) + "\n")
+			bar = ChargingBar('Training ', max=num_samples)
 			replay_buffer = ray.get(future_buffer, timeout=30)
-			for _ in range(number_updates):
+			for _ in range(num_samples):
 				if probs == []:
 					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True)
 				else:
@@ -632,7 +619,7 @@ class AlphaZero():
 				
 				batch = [replay_buffer[i] for i in batch_indexes]
 
-				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size)
+				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
 
 				average_value_loss += value_loss
 				average_policy_loss += policy_loss
@@ -642,10 +629,13 @@ class AlphaZero():
 
 			bar.finish
 
-			self.train_global_value_loss.append(average_value_loss/self.config.num_samples)
-			self.train_global_policy_loss.append(average_policy_loss/self.config.num_samples)
-			self.train_global_combined_loss.append(average_combined_loss/self.config.num_samples)
+			self.train_global_value_loss.append(average_value_loss/num_samples)
+			self.train_global_policy_loss.append(average_policy_loss/num_samples)
+			self.train_global_combined_loss.append(average_combined_loss/num_samples)
 
+		else:
+			print("Bad learning_method config.\nExiting")
+			exit()
 
 		
 		end = time.time()
@@ -653,78 +643,87 @@ class AlphaZero():
 		print("\n\nTraining time(s): " + format(total_time, '.4') + "\n")
 		return
 			
-	def run_selfplay(self, num_games_per_batch, test_set, show, text="Self-Play"):
+	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
 		pid = os.getpid()
 		process = psutil.Process(pid)
 		start = time.time()
 		print("\n")
+
+		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
+
+		num_actors = self.alpha_config.actors["num_actors"]
+		chunk_size = self.alpha_config.actors["chunk_size"]
 
 		if test_set:
 			buffer_to_use = self.test_buffer
 		else:
 			buffer_to_use = self.replay_buffer
 
-		chunk_size = self.config.chunk_size
 		num_chunks = num_games_per_batch // chunk_size
 		rest = num_games_per_batch % chunk_size
 
+		args_list = []
 		bar = ChargingBar(text, max=num_games_per_batch)
+		bar.next(0)
 		for c in range(num_chunks+1):
 			games_to_play = chunk_size
 			if c == num_chunks:
 				games_to_play = rest
-
-			actor_list = [Gamer.remote(buffer_to_use, self.network_storage, self.config, self.game_class, self.game_args) for a in range(self.config.num_actors)]
+			actor_list= [Gamer.remote
+		 				(
+						buffer_to_use,
+						self.network_storage,
+						self.game_class,
+						self.game_args,
+						self.search_config,
+						pred_iterations,
+						state_cache
+						)
+		 				for a in range(num_actors)]
+			
 			actor_pool = ray.util.ActorPool(actor_list)
 
 			for g in range(games_to_play):
-				#show = True if (g+1)% 1111 == 0 else False
-				actor_pool.submit(lambda actor, args: actor.play_game.remote(args), show)
+				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
 
 			for g in range(games_to_play):
-				actor_pool.get_next_unordered() # Set Timeout and Ignore_if_timeout when running continuous training
+				actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				bar.next()
 	
-		bar.finish
+		bar.finish()
 		
 
 		end = time.time()
 		total_time = end-start
-		print("\n\nTotal time(s): " + format(total_time, '.6'))
+		print("\n\nTotal time(m): " + format(total_time/60, '.4'))
 		print("Average time per game(s): " + format(total_time/num_games_per_batch, '.4'))
 
 		return
 	
-	def run_tests(self, AI_player, num_games, show_results=True, text="Testing"):	
+	def run_tests(self, player_choice, num_games, show_results=True, text="Testing"):	
 		start = time.time()
 		print("\n")
-		
-		wins = [0,0]
 
-		chunk_size = self.config.chunk_size
+		test_iterations = self.alpha_config.recurrent_networks["num_test_iterations"]
+
+		num_actors = self.alpha_config.actors["num_actors"]
+		chunk_size = self.alpha_config.actors["chunk_size"]
+
+		wins = [0,0]
 		num_chunks = num_games // chunk_size
 		rest = num_games % chunk_size
 
-		args_list = [AI_player, None, self.latest_network]
+	
+		args_list = [player_choice, None, self.search_config, self.latest_network, test_iterations]
 
-		
 		bar = ChargingBar(text, max=num_games)
+		bar.next(0)
 		for c in range(num_chunks+1):
 			games_to_play = chunk_size
 			if c == num_chunks:
 				games_to_play = rest
 
-			actor_list = [RemoteTester.remote
-		 		(
-				self.config.num_testing_iters, 
-				self.config.mcts_simulations, 
-				self.config.pb_c_base, 
-				self.config.pb_c_init, 
-				False
-				) 
-				for a in range(self.config.num_actors)]
-			
-
+			actor_list = [RemoteTester.remote() for a in range(num_actors)]
 			actor_pool = ray.util.ActorPool(actor_list)
 
 			for g in range(games_to_play):
@@ -734,13 +733,13 @@ class AlphaZero():
 
 		
 			for g in range(games_to_play):
-				winner = actor_pool.get_next_unordered() # Set Timeout and Ignore_if_timeout when running continuous training
+				winner = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				if winner != 0:
 					wins[winner-1] +=1
 				bar.next()
 			
 	
-		bar.finish
+		bar.finish()
 
 		# STATISTICS
 		cmp_winrate_1 = 0.0
@@ -765,7 +764,7 @@ class AlphaZero():
 		#invalids_per_game = invalid / NUMBER_OF_GAMES
 
 		if show_results:
-			print("\n\nAI playing as p" + str(AI_player) + "\n")
+			print("\n\nAI playing as p" + player_choice + "\n")
 
 			print("P1 Win ratio: " + format(p1_winrate, '.4'))
 			print("P2 Win ratio: " + format(p2_winrate, '.4'))
@@ -776,7 +775,7 @@ class AlphaZero():
 
 		end = time.time()
 		total_time = end-start
-		print("\n\nTotal testing time(s): " + format(total_time, '.6'))
+		print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
 		print("Average time per game(s): " + format(total_time/num_games, '.4'))
 
 		return p1_winrate, p2_winrate, draw_percentage

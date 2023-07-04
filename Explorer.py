@@ -1,0 +1,253 @@
+import math
+import numpy as np
+
+from Node import Node
+
+'''
+
+    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣴⣶⣶⣿⣿⣿⣿⣿⣷⣶⣶⣦⣤⡀⠀⠀
+    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⢀⣤⠶⠶⠟⠛⠛⠛⠛⠻⠿⠷⣶⣦⣄⡀⠀⠀⠀⠀⠀         ⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀
+ ⠀⠀⠀⠀⠀⣠⠞⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⢿⣷⣄⠀⠀         ⠀⠀⠀⠀⠀⠀⠰⠛⠋⠉⠉⠉⠀⠀⠀⠀⠀⠀⠉⠉⠉⠙⠛⠄⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⢠⡾⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣷⡀              ⠀⠀⢀⣀⣀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣄⣀⣀⡀⠀ 
+ ⠀⠀⢠⡟⠀⠀⠀⠀⠀⢀⣠⣤⣴⠶⠶⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⣄        ⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦ 
+ ⠀⢀⣿⠁⠀⠀⠀⢀⣴⠟⠛⢿⣟⠛⢶⡀⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⡄⠀      ⠹⣷⡉⠛⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⡿⠛⠋⣡⣾⠃   
+ ⠀⢸⡏⠀⠀⠀⠀⣾⡇⠀⠀⠀⣿⠃⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠇⠀      ⠀⠈⠻⣶⣀⣸⣿⡇⠀⢀⣭⣭⣭⠉⠉⠉⠉⣭⣭⣤⣤⡄⢸⣿⣇⣀⣶⠟⠁⠀   
+ ⠀⢸⡇⠀⠀⠀⠀⢹⣇⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⡀⠀⠀⠀⠀⢰⣶⣦⠀      ⠀⠀⠀⠈⣿⡏⠀⠀⠐⠉⢥⣤⠀⠀⠀⠀⠀⠀⣴⡤⠀⠀⠀⠀⢹⣿⠁⠀
+ ⠀⠸⣧⠀⠀⠀⠀⠀⠻⣦⣀⠀⠀⠀⣀⣤⡾⠛⠉⠉⠉⠛⣷⡄⠀⠀⢈⡉⠋⠀      ⠀⠀⠀⠀⢹⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀
+ ⠀⠀⢻⡆⠀⠀⠀⠀⠀⠈⠙⠛⠛⠛⠉⠁⠀⠀⠀⠀⠀⠀⢸⣷⠀⠀⣿⡿⠀⠀      ⠀⠀⠀⠀⠀⠉⣿⡇⠀⠶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠶⠀⢸⡿⠉⠀⠀⠀⠀⠀
+ ⠀⠀⠈⢻⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⠇⠀⣸⣿⠃⠀⠀      ⠀⠀⠀⠀⠀⠀⠸⣷⡆⠀⠀⠶⢀⣀⣀⣀⣀⡀⠶⠀⠀⢰⣾⠇⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠻⣧⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⡾⠋⠀⣴⣿⠃⠀⠀⠀      ⠀⠀⠀⠀⠀⠀⠀⠘⢷⣟⠀⠀⠈⠉⠉⠉⠉⠁⠀⠀⣻⡾⠃⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠈⠛⢷⣤⣀⠀⠀⠀⠀⠀⠀⠀⢀⣠⡾⠋⠀⣠⣾⣿⠏⠀⠀⠀⠀      ⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣷⣟⠀⡀⠘⠃⢀⠀⣻⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠓⠶⠶⠶⠖⠛⠋⠁⠀⠀⣴⣿⣿⠃⠀⠀⠀⠀⠀      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠿⣷⣤⣤⣾⠿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+'''
+
+# The explorer runs searches. (explorer sounds better than searcher)
+class Explorer():  
+
+    def __init__(self, search_config, training, recurrent_iterations=1):
+        
+        self.config = search_config
+        self.training = training
+        self.recurrent_iterations = recurrent_iterations # could also be set at function level istead of class level
+
+    def run_mcts(self, network, game, subtree_root, state_cache=None, action_selection_function=None):
+
+        self.network = network
+        search_start = subtree_root
+
+        if self.training:
+            self.add_exploration_noise(search_start)
+        
+        num_searches = self.config.simulation["mcts_simulations"]
+        for i in range(num_searches):
+            node = search_start
+            scratch_game = game.clone()
+            search_path = [node]
+            
+            while node.expanded():
+                action_i, node = self.select_child(node)
+                action_coords = np.unravel_index(action_i, scratch_game.get_action_space_shape())
+                scratch_game.step_function(action_coords)
+                search_path.append(node)
+            
+            if node.is_terminal():
+                value = node.value()
+            else:
+                value = self.evaluate(node, scratch_game, state_cache)
+            
+            self.backpropagate(search_path, value)
+
+        if action_selection_function:
+            action = action_selection_function(game, search_start)
+        else:
+            action = self.select_action(game, search_start)
+
+        return action, search_start.children[action]
+    
+    def random_selection(self, game, node):
+        valid_actions_mask = game.possible_actions().flatten()
+        n_valids = np.sum(valid_actions_mask)
+        probs = valid_actions_mask/n_valids
+        action_i = np.random.choice(game.get_num_actions(), p=probs)
+        return action_i
+
+    def select_action(self, game, node):
+        visit_counts = [(child.visit_count, action) for action, child in node.children.items()]
+
+        if self.training:
+            epsilon = np.random.random()
+            if epsilon < self.config.exploration["epsilon_random_exploration"]:
+                valid_actions_mask = game.possible_actions().flatten()
+                n_valids = np.sum(valid_actions_mask)
+                probs = valid_actions_mask/n_valids
+                action_i = np.random.choice(game.get_num_actions(), p=probs)
+
+            elif game.get_length() < self.config.exploration["number_of_softmax_moves"]:
+                action_i = self.softmax_action(visit_counts)
+
+            else:
+                action_i = self.max_action(visit_counts)
+        else:
+            action_i = self.max_action(visit_counts)
+
+
+        return action_i
+    
+    def select_child(self, node):
+        _, action, child = max((self.ucb_score(node, child), action, child) for action, child in node.children.items())
+        return action, child
+    
+    def ucb_score(self, parent, child):
+        pb_c_base = self.config.uct["pb_c_base"]
+        pb_c_init = self.config.uct["pb_c_init"]
+
+        bias = math.log((parent.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
+        pb_c = (math.sqrt(parent.visit_count) / (child.visit_count + 1)) * bias
+
+        prior_score = pb_c * child.prior
+
+        value_score = child.value()
+        if parent.to_play == 2:
+            value_score = (-value_score)
+        # for player 2 negative values are good
+
+        return prior_score + value_score
+
+    def backpropagate(self, search_path, value):
+        for node in search_path:
+            node.visit_count += 1
+            node.value_sum += value	
+
+    def evaluate(self, node, game, state_cache=None):
+        
+        node.to_play = game.get_current_player()
+        
+        if self.config.simulation["use_terminal"] and game.is_terminal():
+            node.terminal_value = game.get_terminal_value()
+            return node.terminal_value
+        
+
+        state = game.generate_state_image()
+        if state_cache:
+            state_key = tuple(state.numpy().flatten())
+            result = state_cache.get(state_key)
+            
+            if result:
+                (action_probs, predicted_value) = result
+            else:
+                action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
+                state_cache[state_key] = (action_probs, predicted_value)
+                
+
+        else:
+            action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
+
+
+        value = predicted_value
+        
+        if not game.is_terminal():
+
+            # Expand the node.
+            valid_actions_mask = game.possible_actions().flatten()
+            action_probs = action_probs.cpu()[0].numpy().flatten()
+            
+            
+            probs = action_probs * valid_actions_mask # Use mask to get only valid moves
+            total = np.sum(probs)
+
+
+            for i in range(game.get_num_actions()):
+                if valid_actions_mask[i]:
+                    node.children[i] = Node(probs[i]/total)
+
+        else:
+            # This line will only be reached if config.use_terminal=False and the game is terminal
+            node.terminal_value = game.get_terminal_value()
+            # the node's terminal value is set so that the mcts knows this is a terminal node,
+            # but it is not used during search, since the returned value is the one given by the neural network
+
+        return value 
+
+    def max_action(self, visit_counts):
+        max_pair = max(visit_counts, key=lambda visit_action_pair: visit_action_pair[0])
+        return max_pair[1]
+
+    def softmax_action(self, visit_counts):
+        counts = []
+        actions = []
+        for (count, action) in visit_counts:
+            counts.append(count)	
+            actions.append(action)
+
+        #final_counts = softmax(counts)
+        final_counts = counts/np.sum(counts)
+
+        probs = np.asarray(final_counts, dtype=np.float64).astype('float64')
+        probs /= np.sum(probs) # re-normalize to improve precison
+        return np.random.choice(actions, p=probs)
+    
+    def add_exploration_noise(self, node):
+        frac = self.config.exploration["root_exploration_fraction"]
+        alpha = self.config.exploration["dist_alpha"]
+        beta = self.config.exploration["dist_beta"]
+
+        actions = node.children.keys()
+        noise = np.random.gamma(alpha, beta, len(actions))
+        for a, n in zip(actions, noise):
+            node.children[a].prior = node.children[a].prior * (1 - frac) + n * frac
+
+    def print_tree(self, root, action_space_shape):
+        buffer = []
+        print("\nRoot -> ")
+        buffer.append((root, None, 0, None, 0))
+
+        identifier = 0
+        last_pid = 0    # pid -> parent id
+        while len(buffer) > 0:
+            identifier +=1
+            (node, parent, p_id, action_coords, level) = buffer.pop(0)
+            if last_pid != p_id:
+                print("\n-\n")
+            last_pid = p_id
+            value_score = node.value()
+
+
+            if parent:
+                ucbScore = self.ucb_score(parent, node)
+                print("Level: " + str(level) + " Parent_id: " + str(p_id) + " Node_id: " + format(identifier, '2') + 
+                      " V: " + format(value_score, '.02') + " U: " + format(ucbScore, '.2') + " Visits: " + str(node.visit_count) +
+                      " To_play: " + str(node.to_play) + " Terminal: " + str(node.terminal_value) + " NN_Prior: " + format(node.prior, '.02'))
+            else:
+                print("Node_id: " + str(identifier) + " Level: " + str(level) + " V: " + format(value_score, '.02') + " To_play: " + str(node.to_play))
+            
+            
+            for (a, child) in node.children.items():
+                if child.to_play!=-1:
+                    act = np.unravel_index(a, action_space_shape)
+                    buffer.append((child, node, identifier, act, level+1))		
+        
+
+        return
+    
+    def __str__():
+        return "                                                                \n \
+    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣴⣶⣶⣿⣿⣿⣿⣿⣷⣶⣶⣦⣤⡀⠀⠀       \n \
+    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⠀⠀⠀⠀⢀⣤⠶⠶⠟⠛⠛⠛⠛⠻⠿⠷⣶⣦⣄⡀⠀⠀⠀⠀⠀         ⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⠀⠀⣠⠞⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⢿⣷⣄⠀⠀         ⠀⠀⠀⠀⠀⠀⠰⠛⠋⠉⠉⠉⠀⠀⠀⠀⠀⠀⠉⠉⠉⠙⠛⠄⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⢠⡾⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣷⡀              ⠀⠀⢀⣀⣀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣄⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⢠⡟⠀⠀⠀⠀⠀⢀⣠⣤⣴⠶⠶⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⣄        ⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦ \n \
+ ⠀⢀⣿⠁⠀⠀⠀⢀⣴⠟⠛⢿⣟⠛⢶⡀⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⡄⠀      ⠹⣷⡉⠛⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⡿⠛⠋⣡⣾⠃ \n \
+ ⠀⢸⡏⠀⠀⠀⠀⣾⡇⠀⠀⠀⣿⠃⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠇⠀      ⠀⠈⠻⣶⣀⣸⣿⡇⠀⢀⣭⣭⣭⠉⠉⠉⠉⣭⣭⣤⣤⡄⢸⣿⣇⣀⣶⠟⠁⠀ \n \
+ ⠀⢸⡇⠀⠀⠀⠀⢹⣇⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⡀⠀⠀⠀⠀⢰⣶⣦⠀      ⠀⠀⠀⠈⣿⡏⠀⠀⠐⠉⢥⣤⠀⠀⠀⠀⠀⠀⣴⡤⠀⠀⠀⠀⢹⣿⠁⠀⠀⠀⠀\n \
+ ⠀⠸⣧⠀⠀⠀⠀⠀⠻⣦⣀⠀⠀⠀⣀⣤⡾⠛⠉⠉⠉⠛⣷⡄⠀⠀⢈⡉⠋⠀      ⠀⠀⠀⠀⢹⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀⠀\n \
+ ⠀⠀⢻⡆⠀⠀⠀⠀⠀⠈⠙⠛⠛⠛⠉⠁⠀⠀⠀⠀⠀⠀⢸⣷⠀⠀⣿⡿⠀⠀      ⠀⠀⠀⠀⠀⠉⣿⡇⠀⠶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠶⠀⢸⡿⠉⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠈⢻⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⠇⠀⣸⣿⠃⠀⠀      ⠀⠀⠀⠀⠀⠀⠸⣷⡆⠀⠀⠶⢀⣀⣀⣀⣀⡀⠶⠀⠀⢰⣾⠇⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⠀⠻⣧⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⡾⠋⠀⣴⣿⠃⠀⠀⠀      ⠀⠀⠀⠀⠀⠀⠀⠘⢷⣟⠀⠀⠈⠉⠉⠉⠉⠁⠀⠀⣻⡾⠃⠀⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⠀⠀⠈⠛⢷⣤⣀⠀⠀⠀⠀⠀⠀⠀⢀⣠⡾⠋⠀⣠⣾⣿⠏⠀⠀⠀⠀      ⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣷⣟⠀⡀⠘⠃⢀⠀⣻⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠓⠶⠶⠶⠖⠛⠋⠁⠀⠀⣴⣿⣿⠃⠀⠀⠀⠀⠀      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠿⣷⣤⣤⣾⠿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n \
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n \
+        "

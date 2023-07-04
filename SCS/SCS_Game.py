@@ -248,6 +248,9 @@ class SCS_Game():
         self.player_history.append(player)
         return
     
+    def store_action(self, action_coords):
+        self.action_history.append(action_coords)
+
     def get_name(self):
         return "SCS"
     
@@ -598,8 +601,9 @@ class SCS_Game():
         return  
 
     def step_function(self, action_coords):
+        self.store_player(self.current_player)
+        self.store_action(action_coords)
         self.play_action(action_coords)
-        self.action_history.append(action_coords)
         self.length += 1
         done = self.update_game_env()
         return done
