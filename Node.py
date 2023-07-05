@@ -20,3 +20,9 @@ class Node():
 		if self.visit_count == 0:
 			return 0.0
 		return self.value_sum / self.visit_count
+	
+	def num_children(self):
+		return len(self.children)
+	
+	def get_visit_count(self):
+		return self.visit_count

@@ -21,6 +21,7 @@
 - Implement continuous training option (probably with no intermidiate testing). [medium, low]
 
 ## Tester
+- AI vs AI should allow different networks for each player
 
 ## SCS Game
 - Convert board representation to hexagons [hard, high]!

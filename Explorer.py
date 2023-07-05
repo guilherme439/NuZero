@@ -1,6 +1,8 @@
 import math
 import numpy as np
 
+from scipy.special import softmax
+
 from Node import Node
 
 '''
@@ -31,12 +33,21 @@ class Explorer():
         
         self.config = search_config
         self.training = training
-        self.recurrent_iterations = recurrent_iterations # could also be set at function level istead of class level
+        self.recurrent_iterations = recurrent_iterations
+        self.ucb_score_count = 0 # number of times ucb_score() was called, for stats calculation
 
-    def run_mcts(self, network, game, subtree_root, state_cache=None, action_selection_function=None):
 
+    def run_mcts(self, network, game, subtree_root, state_dict=None):
+        
         self.network = network
         search_start = subtree_root
+
+        self.stats = \
+        {
+        "root_bias_value" : 0,
+        "average_prior_score" : 0,
+        "average_value_score" : 0
+        }
 
         if self.training:
             self.add_exploration_noise(search_start)
@@ -56,23 +67,17 @@ class Explorer():
             if node.is_terminal():
                 value = node.value()
             else:
-                value = self.evaluate(node, scratch_game, state_cache)
+                value = self.evaluate(node, scratch_game, state_dict)
             
             self.backpropagate(search_path, value)
 
-        if action_selection_function:
-            action = action_selection_function(game, search_start)
-        else:
-            action = self.select_action(game, search_start)
+        self.stats["root_bias_score"] = self.calculate_bias(search_start)
+        self.stats["average_prior_score"] /= self.ucb_score_count
+        self.stats["average_value_score"] /= self.ucb_score_count
 
-        return action, search_start.children[action]
+        action = self.select_action(game, search_start)
+        return action, search_start.children[action], self.stats
     
-    def random_selection(self, game, node):
-        valid_actions_mask = game.possible_actions().flatten()
-        n_valids = np.sum(valid_actions_mask)
-        probs = valid_actions_mask/n_valids
-        action_i = np.random.choice(game.get_num_actions(), p=probs)
-        return action_i
 
     def select_action(self, game, node):
         visit_counts = [(child.visit_count, action) for action, child in node.children.items()]
@@ -100,11 +105,16 @@ class Explorer():
         _, action, child = max((self.ucb_score(node, child), action, child) for action, child in node.children.items())
         return action, child
     
-    def ucb_score(self, parent, child):
+    def calculate_bias(self, node):
         pb_c_base = self.config.uct["pb_c_base"]
         pb_c_init = self.config.uct["pb_c_init"]
 
-        bias = math.log((parent.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
+        bias = math.log((node.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
+        return bias
+    
+    def ucb_score(self, parent, child):
+
+        bias = self.calculate_bias(parent)
         pb_c = (math.sqrt(parent.visit_count) / (child.visit_count + 1)) * bias
 
         prior_score = pb_c * child.prior
@@ -114,6 +124,11 @@ class Explorer():
             value_score = (-value_score)
         # for player 2 negative values are good
 
+        self.ucb_score_count += 1
+        self.stats["average_prior_score"] += prior_score
+        self.stats["average_value_score"] += value_score
+
+
         return prior_score + value_score
 
     def backpropagate(self, search_path, value):
@@ -121,7 +136,7 @@ class Explorer():
             node.visit_count += 1
             node.value_sum += value	
 
-    def evaluate(self, node, game, state_cache=None):
+    def evaluate(self, node, game, state_dict):
         
         node.to_play = game.get_current_player()
         
@@ -131,22 +146,22 @@ class Explorer():
         
 
         state = game.generate_state_image()
-        if state_cache:
+        if state_dict is not None:
             state_key = tuple(state.numpy().flatten())
-            result = state_cache.get(state_key)
+            result = state_dict.get(state_key)
             
             if result:
                 (action_probs, predicted_value) = result
             else:
                 action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
-                state_cache[state_key] = (action_probs, predicted_value)
+                state_dict[state_key] = (action_probs, predicted_value)
                 
 
         else:
             action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
 
 
-        value = predicted_value
+        value = predicted_value.item()
         
         if not game.is_terminal():
 
@@ -182,8 +197,8 @@ class Explorer():
             counts.append(count)	
             actions.append(action)
 
-        #final_counts = softmax(counts)
-        final_counts = counts/np.sum(counts)
+        final_counts = softmax(counts)
+        #final_counts = counts/np.sum(counts)
 
         probs = np.asarray(final_counts, dtype=np.float64).astype('float64')
         probs /= np.sum(probs) # re-normalize to improve precison

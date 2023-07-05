@@ -1,5 +1,7 @@
 import configparser
 import ast 
+import os
+
 from numbers import Number
 
 class Config():
@@ -50,6 +52,11 @@ class Config():
         print("\nSaved config at: " + filepath)
 		
     def load(self, filepath):
+        if not os.path.exists(filepath):
+            print("File does not exist.")
+            print("Exiting")
+            exit()
+
         config = configparser.ConfigParser()
         config.read(filepath)
         attributes = self.__dict__.items()

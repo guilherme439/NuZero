@@ -38,6 +38,7 @@ from SCS.SCS_Renderer import SCS_Renderer
 
 from SCS.SCS_Game_hex import SCS_Game_hex
 
+from stats_utilities import print_stats
 
  
 def main():
@@ -56,48 +57,104 @@ def main():
 
         case 0:
 
-            game_class = SCS_Game_hex().__class__
-            game_args = [[3,1],[1,2], True]
-            game = game_class(*game_args)
+            game_class = SCS_Game().__class__
+            print(game_class)
 
-            model = dt_net_2d(game, 128)
-
-            alpha_config = AlphaZero_config()
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
-            Alpha_Zero.run()
-
-        case 1:
+        case 1: # Set default search config
             search_config = Search_config()
 
             filepath = "Configs/Config_files/default_search_config.ini"
             search_config.save(filepath)
 
-        case 2:
+        case 2: # Set default alphazero config
             alpha_config = AlphaZero_config()
 
             filepath = "Configs/Config_files/default_alphazero_config.ini"
             alpha_config.save(filepath)
 
-        case 3:
-            pass
+        case 3: # Start Training
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
+
+            model = dt_net_2d(game, 128)
+            recurrent = True
+
+            search_config_path = "Configs/Config_files/SCS_search_config.ini"
+            alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
+
+            net_name = input("\nSave the network as: ")
+
+            start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent)
+
+        case 4:  # Continue Training
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+
+            recurrent = True
+            net_name = "tests"
+            starting_iteration = 10
+
+            continue_training(game_class, game_args, net_name, recurrent, starting_iteration)
+
+        case 5: # Test trained network
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
+
+            pickle_path = "SCS/models/on_slice/base_model.pkl"
+            trained_model_path = "SCS/models/on_slice/on_slice_6_model"
+
+            with open(pickle_path, 'rb') as file:
+                model = pickle.load(file)
+            model.load_state_dict(torch.load(trained_model_path))
+
+            nn = Torch_NN(model, recurrent=True)
+
+            search_config = Search_config()
+            search_config.load("Configs/Config_files/SCS_search_config.ini")
+
+            tester = Tester(print=True)
+            tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
+
+        case 6: # Temporary "test trained network" before pickles are working
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
+
+            trained_model_path = "SCS/models/on_slice/on_slice_6_model"
+            model = dt_net_2d(game, 128)
+            model.load_state_dict(torch.load(trained_model_path))
+            nn = Torch_NN(model, recurrent=True)
 
 
-        case 4:
-            game = tic_tac_toe()
-            game.play_user_vs_user()
+            search_config = Search_config()
+            search_config.load("Configs/Config_files/SCS_search_config.ini")
+
+            tester = Tester(print=True)
+            tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
+
+            renderer = SCS_Renderer.remote()
+            end = renderer.analyse.remote(game)
+
+            ray.get(end) # wait for the rendering to end
             
         case 7:
-            game = tic_tac_toe()
-            p = input("Choose the AI player: ")
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
 
-            model_class = MLP_Network(game).__class__
 
-            tester = Tester(5, debug=True)
+            model = dt_net_2d(game, 128)
+            nn = Torch_NN(model, recurrent=True)
 
-            tester.ttt_vs_AI_with_policy(int(p), "Tic_Tac_Toe/models/no_square/no_square_200_model", model_class)
+            search_config = Search_config()
+            search_config.load("Configs/Config_files/SCS_search_config.ini")
+
+            tester = Tester(print=True)
+            winner, stats = tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
+
+            print_stats(stats)
 
         case 8:
             game_class = tic_tac_toe().__class__
@@ -115,8 +172,8 @@ def main():
 
             model = Simple_Conv_Network(game_class(*game_args), num_filters=128)
 
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_SCS_config()
+            alpha_config = AlphaZero_config()
+
 
             net_name = input("\nSave the network as: ")
 
@@ -230,7 +287,6 @@ def main():
             model.load_state_dict(torch.load(trained_model_path))
 
             alpha_config = Alpha_Zero_config()
-            alpha_config.set_tic_tac_toe_config()
 
             net_name = input("\nSave the network as: ")
 
@@ -330,10 +386,52 @@ def main():
 
         case _:
             print("default")
-        
-        
 
     return
+
+##########################################################################
+# ----------------------------               --------------------------- #
+# ---------------------------    UTILITIES    -------------------------- #
+# ----------------------------               --------------------------- #
+##########################################################################
+
+def start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent, net_name):
+
+    search_config = Search_config()
+    search_config.load(search_config_path)
+
+    alpha_config = AlphaZero_config()
+    alpha_config.load(alpha_config_path)
+
+    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name)
+    Alpha_Zero.run()
+
+    return
+
+def continue_training(game_class, game_args, net_name, recurrent, starting_iteration):
+    game = game_class(*game_args)
+    
+    game_folder = game.get_name() + "/"
+    model_folder = game_folder + "models/" + net_name + "/" 
+    pickle_path =  model_folder + "base_model.pkl"
+    alpha_config_path = model_folder + "alpha_config_copy.ini"
+    search_config_path = model_folder + "search_config_copy.ini"
+
+    trained_model_path =  model_folder + net_name + "_" + starting_iteration + "_model"
+
+    model = pickle.load(pickle_path)
+    model.load_state_dict(torch.load(trained_model_path))
+
+    search_config = Search_config()
+    search_config.load(search_config_path)
+
+    alpha_config = AlphaZero_config()
+    alpha_config.load(alpha_config_path)
+
+    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name)
+    Alpha_Zero.run(starting_iteration=starting_iteration)
+
+    
 
 # -----------
 # -- STUFF --

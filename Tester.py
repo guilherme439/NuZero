@@ -1,6 +1,3 @@
-import sys
-import os, psutil
-import gc
 import math
 import time
 import ray
@@ -9,8 +6,6 @@ from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
 import numpy as np
-
-from scipy.special import softmax
 
 import torch
 from torch import nn
@@ -51,9 +46,32 @@ class Tester():
 # ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
-    def Test_AI_with_mcts(self, player_choice, game, search_config, nn, recurrent_iterations=1):
+    def Test_AI_with_mcts(self, player_choice, game, search_config, nn, use_state_cache=True, recurrent_iterations=1):
+
+        stats = \
+        {
+        "number_of_moves" : 0,
+        "average_children" : 0,
+        "final_tree_size" : 0,
+        "average_tree_size" : 0,
+        "final_bias_value" : 0,
+        "average_bias_value" : 0,
+        "average_value_score" : 0,
+        "average_prior_score" : 0,
+        }
 
         explorer = Explorer(search_config, False, recurrent_iterations)
+
+        if not isinstance(use_state_cache, bool):
+            print("\"use_state_cache\" is not a boolean.")
+            print("\"use_state_cache\" should be a boolean, representing whether or not to use a state dictionary as cache during this test.")
+            print("Exiting...")
+            exit()
+
+        if use_state_cache:
+            state_dict = {}
+        else:
+            state_dict = None
 
         if player_choice == "both":
             AI_player = 0
@@ -89,13 +107,18 @@ class Tester():
 
             player = game.current_player
             if (AI_player == 0) or (player == AI_player):
-                action_i, chosen_child = explorer.run_mcts(nn, game, subtree_root)
+                action_i, chosen_child, search_stats = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
+                
             else:
-                # The other player chooses randomly
-                action_i, chosen_child = explorer.run_mcts(nn, game, subtree_root, action_selection_function=explorer.random_selection)
+                # The other player chooses randomly 
+                probs = valid_actions_mask/n_valids
+                action_i = np.random.choice(game.get_num_actions(), p=probs)
+                if keep_sub_tree:    
+                    _, _, search_stats = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
+                    chosen_child = subtree_root.children[action_i]
 
-
-            action_coords = np.unravel_index(action_i, game.action_space_shape)
+            tree_size = subtree_root.get_visit_count()
+            node_children = subtree_root.num_children()
 
             if self.print:
                 print(game.string_representation())
@@ -103,22 +126,39 @@ class Tester():
             if self.slow:
                 time.sleep(self.slow_duration)
 
+            action_coords = np.unravel_index(action_i, game.action_space_shape)
             done = game.step_function(action_coords)
 
+            stats["average_children"] += node_children
+            stats["average_tree_size"] += tree_size
+            stats["final_tree_size"] = tree_size
             if keep_sub_tree:
+                stats["average_bias_value"] += search_stats["root_bias_value"]
+                stats["average_prior_score"] += search_stats["average_prior_score"]
+                stats["average_value_score"] += search_stats["average_value_score"]
+                stats["final_bias_value"] = search_stats["root_bias_value"]
+
                 subtree_root = chosen_child
 
             if self.render:
                 ray.get(self.remote_storage.set_item.remote(game))
+
 
             if (done):
                 if self.print:
                     print(game.string_representation())
                 winner = game.check_winner()
                 break
-                
 
-        return winner
+        stats["number_of_moves"] = game.length
+        stats["average_children"] /= game.length
+        stats["average_tree_size"] /= game.length
+        if keep_sub_tree:
+            stats["average_bias_value"] /= game.length
+            stats["average_prior_score"] /= game.length
+            stats["average_value_score"] /= game.length   
+
+        return winner, stats
 
     def Test_AI_with_policy(self, player_choice, game, nn, recurrent_iterations=1):
         

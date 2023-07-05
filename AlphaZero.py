@@ -24,7 +24,6 @@ from termcolor import colored
 
 import torch
 from torch import nn
-from scipy.special import softmax
 
 from Node import Node
 
@@ -41,7 +40,7 @@ from ray.runtime_env import RuntimeEnv
 class AlphaZero():
 
 	
-	def __init__(self, model, recurrent, game_class, game_args, alpha_config_file="default_alphazero_config.ini", search_config_file="default_search_config.ini", network_name="ABC"):
+	def __init__(self, model, recurrent, game_class, game_args, alpha_config, search_config, network_name="ABC"):
 		self.network_name = network_name
 		self.latest_network = Torch_NN(model, recurrent)
 		self.model_class = model.__class__
@@ -49,12 +48,8 @@ class AlphaZero():
 		self.game_args = game_args  # Args for the game's __init__()
 		self.game_class = game_class
 
-		self.alpha_config = AlphaZero_config()
-		self.alpha_config.load("Configs/Config_files/" + alpha_config_file)
-
-		self.search_config = Search_config()
-		self.search_config.load("Configs/Config_files/" + search_config_file) 
-
+		self.alpha_config = alpha_config
+		self.search_config = search_config
 
 		self.n_updates = 0
 		self.decisive_count = 0
@@ -87,7 +82,7 @@ class AlphaZero():
 		self.wr2_stats = [0.0]
 
 
-	def run(self):
+	def run(self, starting_iteration=0):
 		pid = os.getpid()
 		process = psutil.Process(pid)
 
@@ -152,10 +147,10 @@ class AlphaZero():
 			os.mkdir(plots_path)
 		
 		# pickle the network class
-		file_name = model_folder_path + "/network.pkl"
+		file_name = model_folder_path + "/base_model.pkl"
 		with open(file_name, 'wb') as file:
-			pickle.dump(self.latest_network, file)
-			print(f'Successfully pickled network class at "{file_name}".\n')
+			pickle.dump(self.latest_network.get_model(), file)
+			print(f'Successfully pickled model class at "{file_name}".\n')
 
 		# create copies of the config files
 		print("\nCreating config file copies:")
@@ -236,7 +231,8 @@ class AlphaZero():
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 
 		since_reset = 0
-		for b in range(num_batches):
+		batches_to_run = range(starting_iteration, num_batches)
+		for b in batches_to_run:
 			updated = True
 
 			print("\n\n\n\nBatch: " + str(b+1))
@@ -644,8 +640,6 @@ class AlphaZero():
 		return
 			
 	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
-		pid = os.getpid()
-		process = psutil.Process(pid)
 		start = time.time()
 		print("\n")
 
@@ -669,6 +663,7 @@ class AlphaZero():
 			games_to_play = chunk_size
 			if c == num_chunks:
 				games_to_play = rest
+
 			actor_list= [Gamer.remote
 		 				(
 						buffer_to_use,
@@ -687,7 +682,7 @@ class AlphaZero():
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
 
 			for g in range(games_to_play):
-				actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				bar.next()
 	
 		bar.finish()
@@ -733,7 +728,7 @@ class AlphaZero():
 
 		
 			for g in range(games_to_play):
-				winner = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				winner, _ = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				if winner != 0:
 					wins[winner-1] +=1
 				bar.next()
