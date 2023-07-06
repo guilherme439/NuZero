@@ -10,6 +10,8 @@ import ray
 import random
 import resource
 
+from stats_utilities import print_stats
+
 from copy import deepcopy
 
 from Gamer import Gamer
@@ -451,10 +453,10 @@ class AlphaZero():
 
 		train_iterations = self.alpha_config.recurrent_networks["num_train_iterations"]
 
-		replay_size = ray.get(self.replay_buffer.len.remote(), timeout=30)
-		n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=30)
+		replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
+		n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=120)
 		if test_set:
-			test_size = ray.get(self.test_buffer.len.remote(), timeout=30)
+			test_size = ray.get(self.test_buffer.len.remote(), timeout=120)
 
 		print("\nAfter Self-Play there are a total of " + str(replay_size) + " positions in the replay buffer.")
 		print("Total number of games: " + str(n_games))
@@ -497,7 +499,7 @@ class AlphaZero():
 			bar = ChargingBar('Training ', max=learning_epochs)
 			for e in range(learning_epochs):
 
-				ray.get(self.replay_buffer.shuffle.remote(), timeout=30) # ray.get() beacuse we want the shuffle to be done before using buffer
+				ray.get(self.replay_buffer.shuffle.remote(), timeout=120) # ray.get() beacuse we want the shuffle to be done before using buffer
 				if test_set:
 					future_test_shuffle = self.test_buffer.shuffle.remote()
 
@@ -516,7 +518,7 @@ class AlphaZero():
 
 				spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
 				# We get entire buffer and slice locally to avoid a lot of remote calls (buffer.get_slice could also be used)
-				replay_buffer = ray.get(future_replay_buffer) 
+				replay_buffer = ray.get(future_replay_buffer, timeout=300) 
 				for b in range(number_of_batches):		
 					start_index = b*batch_size
 					next_index = (b+1)*batch_size
@@ -606,7 +608,7 @@ class AlphaZero():
 
 			print("\nTotal number of updates: " + str(num_samples) + "\n")
 			bar = ChargingBar('Training ', max=num_samples)
-			replay_buffer = ray.get(future_buffer, timeout=30)
+			replay_buffer = ray.get(future_buffer, timeout=300)
 			for _ in range(num_samples):
 				if probs == []:
 					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True)

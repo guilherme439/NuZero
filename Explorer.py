@@ -34,7 +34,7 @@ class Explorer():
         self.config = search_config
         self.training = training
         self.recurrent_iterations = recurrent_iterations
-        self.ucb_score_count = 0 # number of times ucb_score() was called, for stats calculation
+        self.score_count = 0 # number of times score() was called, for stats calculation
 
 
     def run_mcts(self, network, game, subtree_root, state_dict=None):
@@ -42,11 +42,12 @@ class Explorer():
         self.network = network
         search_start = subtree_root
 
+
         self.stats = \
         {
         "root_bias_value" : 0,
         "average_prior_score" : 0,
-        "average_value_score" : 0
+        "average_value_score" : 0,
         }
 
         if self.training:
@@ -71,9 +72,10 @@ class Explorer():
             
             self.backpropagate(search_path, value)
 
-        self.stats["root_bias_score"] = self.calculate_bias(search_start)
-        self.stats["average_prior_score"] /= self.ucb_score_count
-        self.stats["average_value_score"] /= self.ucb_score_count
+        root_bias = self.calculate_balancing_bias(search_start)
+        self.stats["root_bias_value"] = root_bias
+        self.stats["average_prior_score"] /= self.score_count
+        self.stats["average_value_score"] /= self.score_count
 
         action = self.select_action(game, search_start)
         return action, search_start.children[action], self.stats
@@ -102,29 +104,33 @@ class Explorer():
         return action_i
     
     def select_child(self, node):
-        _, action, child = max((self.ucb_score(node, child), action, child) for action, child in node.children.items())
+        _, action, child = max((self.score(node, child), action, child) for action, child in node.children.items())
         return action, child
     
-    def calculate_bias(self, node):
+    def calculate_balancing_bias(self, node):
+        # Relative importance between value and prior as the game progresses
         pb_c_base = self.config.uct["pb_c_base"]
         pb_c_init = self.config.uct["pb_c_init"]
 
-        bias = math.log((node.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
-        return bias
+        return math.log((node.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
     
-    def ucb_score(self, parent, child):
+    def calculate_child_importance(self, parent, child):
+        # Relative importance amongst children based on their visit counts
+        return (math.sqrt(parent.visit_count) / (child.visit_count + 1))
+    
+    def score(self, parent, child):
+        balance = self.calculate_balancing_bias(parent)
+        child_factor = self.calculate_child_importance(parent, child)
 
-        bias = self.calculate_bias(parent)
-        pb_c = (math.sqrt(parent.visit_count) / (child.visit_count + 1)) * bias
-
-        prior_score = pb_c * child.prior
+        prior_score = child.prior * child_factor
+        prior_score = prior_score * balance
 
         value_score = child.value()
         if parent.to_play == 2:
             value_score = (-value_score)
         # for player 2 negative values are good
 
-        self.ucb_score_count += 1
+        self.score_count += 1
         self.stats["average_prior_score"] += prior_score
         self.stats["average_value_score"] += value_score
 
@@ -137,10 +143,15 @@ class Explorer():
             node.value_sum += value	
 
     def evaluate(self, node, game, state_dict):
-        
         node.to_play = game.get_current_player()
-        
-        if self.config.simulation["use_terminal"] and game.is_terminal():
+
+        # During testing we always use network predictions
+        if self.training:
+            use_terminal = self.config.simulation["use_terminal"]
+        else:
+            use_terminal = False
+
+        if use_terminal and game.is_terminal():
             node.terminal_value = game.get_terminal_value()
             return node.terminal_value
         
@@ -179,7 +190,7 @@ class Explorer():
                     node.children[i] = Node(probs[i]/total)
 
         else:
-            # This line will only be reached if config.use_terminal=False and the game is terminal
+            # This line will only be reached if use_terminal=False and the game is terminal
             node.terminal_value = game.get_terminal_value()
             # the node's terminal value is set so that the mcts knows this is a terminal node,
             # but it is not used during search, since the returned value is the one given by the neural network
@@ -231,7 +242,7 @@ class Explorer():
 
 
             if parent:
-                ucbScore = self.ucb_score(parent, node)
+                ucbScore = self.score(parent, node)
                 print("Level: " + str(level) + " Parent_id: " + str(p_id) + " Node_id: " + format(identifier, '2') + 
                       " V: " + format(value_score, '.02') + " U: " + format(ucbScore, '.2') + " Visits: " + str(node.visit_count) +
                       " To_play: " + str(node.to_play) + " Terminal: " + str(node.terminal_value) + " NN_Prior: " + format(node.prior, '.02'))

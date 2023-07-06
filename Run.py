@@ -40,7 +40,7 @@ from SCS.SCS_Game_hex import SCS_Game_hex
 
 from stats_utilities import print_stats
 
- 
+
 def main():
     pid = os.getpid()
     process = psutil.Process(pid)
@@ -85,15 +85,15 @@ def main():
 
             net_name = input("\nSave the network as: ")
 
-            start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent)
+            start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent, net_name)
 
         case 4:  # Continue Training
             game_class = SCS_Game().__class__
             game_args = [[3,1],[1,2], True]
 
             recurrent = True
-            net_name = "tests"
-            starting_iteration = 10
+            net_name = input("\nName of the network: ")
+            starting_iteration = 0
 
             continue_training(game_class, game_args, net_name, recurrent, starting_iteration)
 
@@ -122,14 +122,15 @@ def main():
             game_args = [[3,1],[1,2], True]
             game = game_class(*game_args)
 
-            trained_model_path = "SCS/models/on_slice/on_slice_6_model"
+            trained_model_path = "SCS/models/tests/tests_10_model"
             model = dt_net_2d(game, 128)
             model.load_state_dict(torch.load(trained_model_path))
             nn = Torch_NN(model, recurrent=True)
 
 
             search_config = Search_config()
-            search_config.load("Configs/Config_files/SCS_search_config.ini")
+            search_config.load("SCS/models/tests/search_config_copy.ini")
+
 
             tester = Tester(print=True)
             tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
@@ -145,11 +146,13 @@ def main():
             game = game_class(*game_args)
 
 
+            trained_model_path = "SCS/models/tests/tests_8_model"
             model = dt_net_2d(game, 128)
+            model.load_state_dict(torch.load(trained_model_path))
             nn = Torch_NN(model, recurrent=True)
 
             search_config = Search_config()
-            search_config.load("Configs/Config_files/SCS_search_config.ini")
+            search_config.load("Configs/Config_files/test_search_config.ini")
 
             tester = Tester(print=True)
             winner, stats = tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
@@ -195,19 +198,7 @@ def main():
             Alpha_Zero.run()
 
         case 11:
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
-            game = game_class(*game_args)
-
-            search = "SCS_search_config.ini"
-            alpha = "SCS_alpha_config.ini"
-
-            model = dt_net_2d(game, 128)
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config_file=alpha, search_config_file=search, network_name=net_name)
-            Alpha_Zero.run()
+            pass
         
         case 12:
             game_class = tic_tac_toe().__class__
@@ -334,52 +325,7 @@ def main():
             ray.get(end) # wait for the rendering to end
 
         case 20:
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
-
-            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
-
-            wins = [0,0]
-            total_length = 0
-            num_games = 5000
-
-            print()
-            bar = ChargingBar("Playing", max=num_games)
-            for g in range(num_games):
-                game = game_class(*game_args)
-                winner = tester.random_vs_random(game)
-                if winner != 0:
-                    wins[winner-1] +=1
-                total_length += game.length
-                bar.next()
-			
-            bar.finish
-
-            # STATISTICS
-            cmp_winrate_1 = 0.0
-            cmp_winrate_2 = 0.0
-            draws = num_games - wins[0] - wins[1]
-            p1_winrate = wins[0]/num_games
-            p2_winrate = wins[1]/num_games
-            draw_percentage = draws/num_games
-            cmp_2_string = "inf"
-            cmp_1_string = "inf"
-
-            if wins[0] > 0:
-                cmp_winrate_2 = wins[1]/wins[0]
-                cmp_2_string = format(cmp_winrate_2, '.4')
-            if wins[1] > 0:  
-                cmp_winrate_1 = wins[0]/wins[1]
-                cmp_1_string = format(cmp_winrate_1, '.4')
-
-            average_length = total_length / num_games
-
-            print("\n\nLength: " + format(average_length, '.4'))   
-            print("P1 Win ratio: " + format(p1_winrate, '.4'))
-            print("P2 Win ratio: " + format(p2_winrate, '.4'))
-            print("Draw percentage: " + format(draw_percentage, '.4'))
-            print("Comparative Win ratio(p1/p2): " + cmp_1_string)
-            print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+            random_play_loop(100000)
             
         case 21:
             pass
@@ -417,9 +363,10 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
     alpha_config_path = model_folder + "alpha_config_copy.ini"
     search_config_path = model_folder + "search_config_copy.ini"
 
-    trained_model_path =  model_folder + net_name + "_" + starting_iteration + "_model"
+    trained_model_path =  model_folder + net_name + "_" + str(starting_iteration) + "_model"
 
-    model = pickle.load(pickle_path)
+    with open(pickle_path, 'rb') as file:
+        model = pickle.load(file)
     model.load_state_dict(torch.load(trained_model_path))
 
     search_config = Search_config()
@@ -437,19 +384,19 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
 # -- STUFF --
 # -----------
 
-def play_loop():
+def random_play_loop(num_games):
 
     game_class = SCS_Game().__class__
     game_args = [[3,1],[1,2], True]
 
-    tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
+    tester = Tester()
 
     wins = [0,0]
     total_length = 0
-    num_games = 5000
 
     print()
-    bar = ChargingBar("Playing", max=num_games)
+    bar = ChargingBar("Playing", max=num_games, suffix='%(percent)d%% - %(remaining)d')
+    bar.next(0)
     for g in range(num_games):
         game = game_class(*game_args)
         winner = tester.random_vs_random(game)
@@ -458,7 +405,7 @@ def play_loop():
         total_length += game.length
         bar.next()
     
-    bar.finish
+    bar.finish()
 
     # STATISTICS
     cmp_winrate_1 = 0.0
