@@ -10,7 +10,7 @@ import ray
 import random
 import resource
 
-from stats_utilities import print_stats
+from stats_utilities import *
 
 from copy import deepcopy
 
@@ -268,8 +268,8 @@ class AlphaZero():
 				torch.save(self.latest_network.get_model().state_dict(), save_path)
 			
 			if (((b+1) % test_frequency) == 0) and updated:
-				wr1, _, _ = self.run_tests("1", num_wr_testing_games)
-				_, wr2, _ = self.run_tests("2", num_wr_testing_games)
+				wr1, _, _ = self.run_tests("1", num_wr_testing_games, state_cache)
+				_, wr2, _ = self.run_tests("2", num_wr_testing_games, state_cache)
 
 				# save wr as p1 and p2 for plotting
 				self.wr1_stats.append(wr1) 
@@ -683,12 +683,14 @@ class AlphaZero():
 			for g in range(games_to_play):
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
 
+			stats_list = []
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				stats_list.append(stats)
 				bar.next()
 	
 		bar.finish()
-		
+		print_stats_list(stats_list)
 
 		end = time.time()
 		total_time = end-start
@@ -697,8 +699,8 @@ class AlphaZero():
 
 		return
 	
-	def run_tests(self, player_choice, num_games, show_results=True, text="Testing"):	
-		start = time.time()
+	def run_tests(self, player_choice, num_games, state_cache, show_results=True, text="Testing"):	
+		first = time.time()
 		print("\n")
 
 		test_iterations = self.alpha_config.recurrent_networks["num_test_iterations"]
@@ -710,9 +712,13 @@ class AlphaZero():
 		num_chunks = num_games // chunk_size
 		rest = num_games % chunk_size
 
-	
-		args_list = [player_choice, None, self.search_config, self.latest_network, test_iterations]
+		use_state_cache = False
+		if state_cache != "disabled":
+			use_state_cache = True
 
+		args_list = [player_choice, None, self.search_config, self.latest_network, use_state_cache, test_iterations]
+		second = time.time()
+		#print(second-first)
 		bar = ChargingBar(text, max=num_games)
 		bar.next(0)
 		for c in range(num_chunks+1):
@@ -728,16 +734,17 @@ class AlphaZero():
 				args_list[1] = game
 				actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
 
-		
+			stats_list = []
 			for g in range(games_to_play):
-				winner, _ = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				winner, stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				stats_list.append(stats)
 				if winner != 0:
 					wins[winner-1] +=1
 				bar.next()
 			
-	
 		bar.finish()
-
+		print_stats_list(stats_list)
+		
 		# STATISTICS
 		cmp_winrate_1 = 0.0
 		cmp_winrate_2 = 0.0
@@ -771,7 +778,7 @@ class AlphaZero():
 
 
 		end = time.time()
-		total_time = end-start
+		total_time = end-first
 		print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
 		print("Average time per game(s): " + format(total_time/num_games, '.4'))
 

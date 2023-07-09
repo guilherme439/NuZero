@@ -72,7 +72,7 @@ class Explorer():
             
             self.backpropagate(search_path, value)
 
-        root_bias = self.calculate_balancing_bias(search_start)
+        root_bias = self.calculate_exploration_bias(search_start)
         self.stats["root_bias_value"] = root_bias
         self.stats["average_prior_score"] /= self.score_count
         self.stats["average_value_score"] /= self.score_count
@@ -107,23 +107,23 @@ class Explorer():
         _, action, child = max((self.score(node, child), action, child) for action, child in node.children.items())
         return action, child
     
-    def calculate_balancing_bias(self, node):
+    def calculate_exploration_bias(self, node):
         # Relative importance between value and prior as the game progresses
         pb_c_base = self.config.uct["pb_c_base"]
         pb_c_init = self.config.uct["pb_c_init"]
 
         return math.log((node.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
     
-    def calculate_child_importance(self, parent, child):
+    def calculate_ucb_factor(self, parent, child):
         # Relative importance amongst children based on their visit counts
         return (math.sqrt(parent.visit_count) / (child.visit_count + 1))
     
     def score(self, parent, child):
-        balance = self.calculate_balancing_bias(parent)
-        child_factor = self.calculate_child_importance(parent, child)
+        c = self.calculate_exploration_bias(parent)
+        ucb_factor = self.calculate_ucb_factor(parent, child)
 
-        prior_score = child.prior * child_factor
-        prior_score = prior_score * balance
+        prior_score = child.prior * ucb_factor
+        prior_score = prior_score * c
 
         value_score = child.value()
         if parent.to_play == 2:

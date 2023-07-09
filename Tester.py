@@ -93,6 +93,8 @@ class Tester():
             self.renderer.render.remote()
             time.sleep(3)
 
+        mcts = 0
+
         subtree_root = Node(0)
         while True:
             
@@ -104,6 +106,8 @@ class Tester():
 
             if not keep_sub_tree:
                 subtree_root = Node(0)
+
+            second = time.time()
 
             player = game.current_player
             if (AI_player == 0) or (player == AI_player):
@@ -119,6 +123,9 @@ class Tester():
 
             tree_size = subtree_root.get_visit_count()
             node_children = subtree_root.num_children()
+
+            third = time.time()
+            mcts += (third-second)
 
             if self.print:
                 print(game.string_representation())
@@ -157,6 +164,9 @@ class Tester():
             stats["average_bias_value"] /= game.length
             stats["average_prior_score"] /= game.length
             stats["average_value_score"] /= game.length   
+
+        print()
+        print("mcts: " + format(mcts/game.length, '.4'))
 
         return winner, stats
 

@@ -6,7 +6,7 @@
 ## Configs
 
 ## Improve algorithm
-- Add option in MCTS to print search information, such as the pb_c values, average possible actions...[easy, medium]!
+- Add option in MCTS to print search information, such as the pb_c values, average possible actions... [easy, medium]!
 - Make possible different training->testing input sizes [hard, medium]
 
 ## Improve ability to define custom game
@@ -21,7 +21,11 @@
 - Implement continuous training option (probably with no intermidiate testing). [medium, low]
 
 ## Tester
-- AI vs AI should allow different networks for each player
+- AI vs AI should allow different networks for each player [easy, low]
 
 ## SCS Game
-- Convert board representation to hexagons [hard, high]!
+- Convert board representation to hexagons [hard, high]
+
+# CENAS IMPORTANTES
+- Perceber pq é que ele está tão lento!
+- Perceber pq é q está mt mais rapido nos testes do que nos jogos normais !?!

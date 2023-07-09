@@ -38,7 +38,11 @@ from SCS.SCS_Renderer import SCS_Renderer
 
 from SCS.SCS_Game_hex import SCS_Game_hex
 
-from stats_utilities import print_stats
+from stats_utilities import *
+
+from Gamer import Gamer
+from Replay_Buffer import Replay_Buffer
+from Shared_network_storage import Shared_network_storage
 
 
 def main():
@@ -140,34 +144,44 @@ def main():
 
             ray.get(end) # wait for the rendering to end
             
-        case 7:
+        case 7: # Debug tester
             game_class = SCS_Game().__class__
             game_args = [[3,1],[1,2], True]
             game = game_class(*game_args)
 
-
-            trained_model_path = "SCS/models/tests/tests_8_model"
             model = dt_net_2d(game, 128)
-            model.load_state_dict(torch.load(trained_model_path))
             nn = Torch_NN(model, recurrent=True)
 
             search_config = Search_config()
-            search_config.load("Configs/Config_files/test_search_config.ini")
+            search_config.load("Configs/Config_files/SCS_search_config.ini")
 
-            tester = Tester(print=True)
-            winner, stats = tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
+            tester = RemoteTester.remote(print=False)
+        
+            winner, stats = ray.get(tester.Test_AI_with_mcts.remote("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2))
 
             print_stats(stats)
 
-        case 8:
-            game_class = tic_tac_toe().__class__
-            game_args = []
-            model_class = TTT_Simple_Network(game_class(*game_args)).__class__
+        case 8: # Debug Gamer
+            game_class = SCS_Game().__class__
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
 
-            tester = Tester(2000, show_bar=True, show_results=True)
+            model = dt_net_2d(game, 128)
+            nn = Torch_NN(model, recurrent=True)
 
-            path = "Tic_Tac_Toe/models/perfection/perfection_100_model"
-            tester.Test_AI_with_policy(1, game_class=game_class, game_args=game_args, model_class=model_class, model_path=path)
+            search_config = Search_config()
+            search_config.load("Configs/Config_files/SCS_search_config.ini")
+
+            buffer = Replay_Buffer.remote(5000, 64)
+            network_storage = Shared_network_storage.remote(4)
+            network_storage.save_network.remote(nn)
+
+            gamer = Gamer.remote(buffer, network_storage, game_class, game_args, search_config, 2, "disabled")
+        
+            stats = ray.get(gamer.play_game.remote())
+
+            print_stats(stats)
+            
 
         case 9:
             game_class = SCS_Game().__class__
