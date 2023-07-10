@@ -155,8 +155,6 @@ class tic_tac_toe():
         return state_image
 
     def step_function(self, action_coords):
-        self.store_player(self.current_player)
-        self.store_action(action_coords)
         self.play_action(action_coords)
         self.length += 1
         _, done = self.check_victory()
@@ -260,12 +258,16 @@ class tic_tac_toe():
 ##########################################################################
 
     def clone(self):
+        return copy.deepcopy(self)
+    
+    def shallow_clone(self):
         game_clone = tic_tac_toe()
-        game_clone.board = copy.copy(self.board)
-        game_clone.current_player = copy.copy(self.current_player)
-        game_clone.length = copy.copy(self.length)
+        game_clone.board = copy.deepcopy(self.board)
+        game_clone.current_player = copy.deepcopy(self.current_player)
+        game_clone.length = copy.deepcopy(self.length)
 
         return game_clone
+
 
     def string_representation(self):
         string = ""

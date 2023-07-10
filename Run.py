@@ -5,6 +5,7 @@ import time
 import random
 import pickle
 import ray
+import copy
 
 import numpy as np
 
@@ -145,6 +146,9 @@ def main():
             ray.get(end) # wait for the rendering to end
             
         case 7: # Debug tester
+            print("\n\n TESTER! \n")
+            ray.init(address="auto", log_to_driver=True)
+
             game_class = SCS_Game().__class__
             game_args = [[3,1],[1,2], True]
             game = game_class(*game_args)
@@ -153,15 +157,18 @@ def main():
             nn = Torch_NN(model, recurrent=True)
 
             search_config = Search_config()
-            search_config.load("Configs/Config_files/SCS_search_config.ini")
+            search_config.load("Configs/Config_files/test_search_config.ini")
 
-            tester = RemoteTester.remote(print=False)
+            tester = Tester(print=True)
         
-            winner, stats = ray.get(tester.Test_AI_with_mcts.remote("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2))
+            winner, stats = tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
 
             print_stats(stats)
 
         case 8: # Debug Gamer
+            print("\n\n GAMER! \n")
+            ray.init(address="auto", log_to_driver=True)
+
             game_class = SCS_Game().__class__
             game_args = [[3,1],[1,2], True]
             game = game_class(*game_args)
@@ -170,7 +177,7 @@ def main():
             nn = Torch_NN(model, recurrent=True)
 
             search_config = Search_config()
-            search_config.load("Configs/Config_files/SCS_search_config.ini")
+            search_config.load("Configs/Config_files/test_search_config.ini")
 
             buffer = Replay_Buffer.remote(5000, 64)
             network_storage = Shared_network_storage.remote(4)
@@ -185,17 +192,18 @@ def main():
 
         case 9:
             game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2]]
+            game_args = [[3,1],[1,2], True]
+            game = game_class(*game_args)
+            clone = game.shallow_clone()
+            #clone = copy.deepcopy(game)
 
-            model = Simple_Conv_Network(game_class(*game_args), num_filters=128)
-
-            alpha_config = AlphaZero_config()
-
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-            Alpha_Zero.run()
+            attributes = game.__dict__.items()
+            for name, value in attributes:
+                print("\n")
+                print(name)
+                print(getattr(game, name))
+                print()
+                print(getattr(clone, name))
             
         case 10:
             game_class = SCS_Game().__class__
@@ -325,10 +333,13 @@ def main():
             model = MLP_Network(game)
             nn = Torch_NN(model, recurrent=False)
 
-            tester = Tester(mcts_simulations=64, pb_c_base=2000, pb_c_init=1.00, use_terminal=True, slow=False, print=False, render=False)
-            tester.set_slow_duration(1.3)
+            search_config = Search_config()
+            search_config.load("Configs/Config_files/test_search_config.ini")
+
+            tester = Tester(render=True)
+            tester.set_slow_duration(2)
             
-            #tester.Test_AI_with_mcts(1, game, nn)
+            #tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
             tester.random_vs_random(game)
 
             print("\n\nLength: " + str(game.length) + "\n")
@@ -336,10 +347,11 @@ def main():
             renderer = SCS_Renderer.remote()
             end = renderer.analyse.remote(game)
 
+
             ray.get(end) # wait for the rendering to end
 
         case 20:
-            random_play_loop(100000)
+            play_loop(1000)
             
         case 21:
             pass
@@ -398,7 +410,7 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
 # -- STUFF --
 # -----------
 
-def random_play_loop(num_games):
+def play_loop(num_games):
 
     game_class = SCS_Game().__class__
     game_args = [[3,1],[1,2], True]

@@ -23,6 +23,7 @@ from Neural_Networks.Torch_NN import Torch_NN
 class Tester():
 
     def __init__(self, slow=False, print=False, render=False):
+        torch.multiprocessing.set_sharing_strategy('file_system')
 
         self.slow = slow
         self.print = print
@@ -47,17 +48,14 @@ class Tester():
 # ------------------------------------------------ #
 
     def Test_AI_with_mcts(self, player_choice, game, search_config, nn, use_state_cache=True, recurrent_iterations=1):
-
         stats = \
         {
         "number_of_moves" : 0,
         "average_children" : 0,
-        "final_tree_size" : 0,
         "average_tree_size" : 0,
-        "final_bias_value" : 0,
+        "final_tree_size" : 0,
         "average_bias_value" : 0,
-        "average_value_score" : 0,
-        "average_prior_score" : 0,
+        "final_bias_value" : 0,
         }
 
         explorer = Explorer(search_config, False, recurrent_iterations)
@@ -93,8 +91,6 @@ class Tester():
             self.renderer.render.remote()
             time.sleep(3)
 
-        mcts = 0
-
         subtree_root = Node(0)
         while True:
             
@@ -107,25 +103,20 @@ class Tester():
             if not keep_sub_tree:
                 subtree_root = Node(0)
 
-            second = time.time()
-
             player = game.current_player
             if (AI_player == 0) or (player == AI_player):
-                action_i, chosen_child, search_stats = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
-                
+                action_i, chosen_child, root_bias = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
+
             else:
                 # The other player chooses randomly 
                 probs = valid_actions_mask/n_valids
                 action_i = np.random.choice(game.get_num_actions(), p=probs)
                 if keep_sub_tree:    
-                    _, _, search_stats = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
+                    _, _, root_bias = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
                     chosen_child = subtree_root.children[action_i]
 
             tree_size = subtree_root.get_visit_count()
             node_children = subtree_root.num_children()
-
-            third = time.time()
-            mcts += (third-second)
 
             if self.print:
                 print(game.string_representation())
@@ -140,10 +131,8 @@ class Tester():
             stats["average_tree_size"] += tree_size
             stats["final_tree_size"] = tree_size
             if keep_sub_tree:
-                stats["average_bias_value"] += search_stats["root_bias_value"]
-                stats["average_prior_score"] += search_stats["average_prior_score"]
-                stats["average_value_score"] += search_stats["average_value_score"]
-                stats["final_bias_value"] = search_stats["root_bias_value"]
+                stats["average_bias_value"] += root_bias
+                stats["final_bias_value"] = root_bias
 
                 subtree_root = chosen_child
 
@@ -157,16 +146,13 @@ class Tester():
                 winner = game.check_winner()
                 break
 
+
         stats["number_of_moves"] = game.length
         stats["average_children"] /= game.length
         stats["average_tree_size"] /= game.length
         if keep_sub_tree:
-            stats["average_bias_value"] /= game.length
-            stats["average_prior_score"] /= game.length
-            stats["average_value_score"] /= game.length   
+            stats["average_bias_value"] /= game.length   
 
-        print()
-        print("mcts: " + format(mcts/game.length, '.4'))
 
         return winner, stats
 

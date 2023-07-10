@@ -1,3 +1,4 @@
+import time
 import math
 import numpy as np
 
@@ -34,21 +35,11 @@ class Explorer():
         self.config = search_config
         self.training = training
         self.recurrent_iterations = recurrent_iterations
-        self.score_count = 0 # number of times score() was called, for stats calculation
 
 
     def run_mcts(self, network, game, subtree_root, state_dict=None):
-        
         self.network = network
         search_start = subtree_root
-
-
-        self.stats = \
-        {
-        "root_bias_value" : 0,
-        "average_prior_score" : 0,
-        "average_value_score" : 0,
-        }
 
         if self.training:
             self.add_exploration_noise(search_start)
@@ -56,29 +47,27 @@ class Explorer():
         num_searches = self.config.simulation["mcts_simulations"]
         for i in range(num_searches):
             node = search_start
-            scratch_game = game.clone()
+            scratch_game = game.shallow_clone()
             search_path = [node]
-            
+        
             while node.expanded():
                 action_i, node = self.select_child(node)
                 action_coords = np.unravel_index(action_i, scratch_game.get_action_space_shape())
                 scratch_game.step_function(action_coords)
                 search_path.append(node)
-            
+        
             if node.is_terminal():
                 value = node.value()
             else:
                 value = self.evaluate(node, scratch_game, state_dict)
             
             self.backpropagate(search_path, value)
+        
 
-        root_bias = self.calculate_exploration_bias(search_start)
-        self.stats["root_bias_value"] = root_bias
-        self.stats["average_prior_score"] /= self.score_count
-        self.stats["average_value_score"] /= self.score_count
+        final_root_bias = self.calculate_exploration_bias(search_start)
 
         action = self.select_action(game, search_start)
-        return action, search_start.children[action], self.stats
+        return action, search_start.children[action], final_root_bias
     
 
     def select_action(self, game, node):
@@ -130,10 +119,7 @@ class Explorer():
             value_score = (-value_score)
         # for player 2 negative values are good
 
-        self.score_count += 1
-        self.stats["average_prior_score"] += prior_score
-        self.stats["average_value_score"] += value_score
-
+        value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
 
         return prior_score + value_score
 

@@ -34,18 +34,14 @@ class Gamer():
         torch.multiprocessing.set_sharing_strategy('file_system')
         future_network = self.shared_storage.get_latest_network.remote() # ask for latest network
 
-        mcts = 0
-
         stats = \
         {
         "number_of_moves" : 0,
         "average_children" : 0,
-        "final_tree_size" : 0,
         "average_tree_size" : 0,
-        "final_bias_value" : 0,
+        "final_tree_size" : 0,
         "average_bias_value" : 0,
-        "average_value_score" : 0,
-        "average_prior_score" : 0,
+        "final_bias_value" : 0,
         }
 
         if self.state_cache == "per_game":
@@ -59,20 +55,18 @@ class Gamer():
         while not game.is_terminal():
             state = game.generate_state_image()
             game.store_state(state)
+            #game.store_player(game.get_current_player())
             
             if not keep_sub_tree:
                 subtree_root = Node(0)
-
-            second = time.time()
             
-            action_i, chosen_child, search_stats = self.explorer.run_mcts(network, game, subtree_root, self.state_dict)
+            action_i, chosen_child, root_bias = self.explorer.run_mcts(network, game, subtree_root, self.state_dict)
             tree_size = subtree_root.get_visit_count()
             node_children = subtree_root.num_children()
 
-            third = time.time()
-            mcts += (third-second)
 
             action_coords = np.unravel_index(action_i, game.get_action_space_shape())
+            #game.store_action(action_coords)
             game.step_function(action_coords)
 
             game.store_search_statistics(subtree_root)
@@ -82,22 +76,14 @@ class Gamer():
             stats["average_children"] += node_children
             stats["average_tree_size"] += tree_size
             stats["final_tree_size"] = tree_size
-            stats["average_bias_value"] += search_stats["root_bias_value"]
-            stats["final_bias_value"] = search_stats["root_bias_value"]
-            stats["average_prior_score"] += search_stats["average_prior_score"]
-            stats["average_value_score"] += search_stats["average_value_score"]
-
+            stats["average_bias_value"] += root_bias
+            stats["final_bias_value"] = root_bias
             
             
         stats["number_of_moves"] = game.length
         stats["average_children"] /= game.length
         stats["average_tree_size"] /= game.length
         stats["average_bias_value"] /= game.length
-        stats["average_prior_score"] /= game.length
-        stats["average_value_score"] /= game.length
-
-        print()
-        print("mcts: " + format(mcts/game.length, '.4'))
 
 
         ray.get(self.buffer.save_game.remote(game)) # each actor waits for the game to be saved before returning

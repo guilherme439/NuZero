@@ -1,13 +1,13 @@
 # TO DO's:
 
 [dificulty, priority]
-! -> I'm working on it
+
 
 ## Configs
 
 ## Improve algorithm
-- Add option in MCTS to print search information, such as the pb_c values, average possible actions... [easy, medium]!
 - Make possible different training->testing input sizes [hard, medium]
+- Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, high]
 
 ## Improve ability to define custom game
 - Find a way for people to import their own maps, and also set specific rules such as: specific initial unit placement locations. [hard, high]
@@ -26,6 +26,3 @@
 ## SCS Game
 - Convert board representation to hexagons [hard, high]
 
-# CENAS IMPORTANTES
-- Perceber pq é que ele está tão lento!
-- Perceber pq é q está mt mais rapido nos testes do que nos jogos normais !?!

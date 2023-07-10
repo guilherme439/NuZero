@@ -7,8 +7,6 @@ stats = \
 "average_tree_size" : 0,
 "final_bias_value" : 0,
 "average_bias_value" : 0,
-"average_value_score" : 0,
-"average_prior_score" : 0,
 }
 
 
@@ -26,8 +24,6 @@ def print_stats_list(stats_list):
     "average_tree_size" : 0,
     "final_bias_value" : 0,
     "average_bias_value" : 0,
-    "average_value_score" : 0,
-    "average_prior_score" : 0,
     }
 
     print("\n")

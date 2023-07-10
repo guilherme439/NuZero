@@ -1,12 +1,10 @@
-import copy
+
 import math
 import numpy as np
 import torch
-import enum
-import sys
-import gc
 import time
-import hexagdly
+
+from copy import copy, deepcopy
 
 from enum import Enum
 from collections import Counter
@@ -20,7 +18,6 @@ from .Terrain import Terrain
 
 
 class SCS_Game():
-
     WIDTH = 5
     HEIGHT = 5
     TURNS = 7
@@ -33,7 +30,7 @@ class SCS_Game():
 
 
 
-    def __init__(self, r1=[1,1], r2=[1,1], use_terrain=True):
+    def __init__(self, r1=[1,1], r2=[1,1], use_terrain=True, prepare=True):
 
         # ------------------------------------------------------------ #
         # ---------------------- INITIALIZATION ---------------------- #
@@ -67,15 +64,131 @@ class SCS_Game():
             np.repeat(i+1, self.reinforcements_by_type[p][i])
             for i in range(len(self.reinforcements_by_type[p]))
             ]
-            ).tolist()       
+            ).tolist()
 
+        self.length = 0
+        self.terminal_value = 0
+        self.terminal = False
+        
 
         # ------------------------------------------------------------ #
-        # ----------------------- BOARD SETUP ------------------------ #
+        # ------------- SPACE AND ACTION REPRESENTATION -------------- #
         # ------------------------------------------------------------ #
+
+        ## ACTION REPRESENTATION
+
+        # Number of planes per type
+        self.placement_planes = self.N_UNIT_TYPES 
+        self.movement_planes = 4 # {N, S, E, 0} directions
+        self.fight_planes = 4 # {N, S, E, 0} directions
+        self.no_move_planes = 1
+        self.no_fight_planes = 1
+
+        self.total_action_planes = \
+        self.placement_planes + \
+        self.movement_planes + \
+        self.fight_planes + \
+        self.no_move_planes + \
+        self.no_fight_planes
+
+        self.action_space_shape = (self.total_action_planes , self.HEIGHT , self.WIDTH)
+        self.num_actions     =     self.total_action_planes * self.HEIGHT * self.WIDTH
+
+
+        ## STATE REPRESENTATION
+        n_vic_dims = self.N_PLAYERS
+        n_reinforcement_dims = self.N_PLAYERS * self.N_UNIT_TYPES
+        n_unit_dims = self.N_PLAYERS * self.N_UNIT_TYPES * self.N_UNIT_STATUSES
+        n_feature_dims = 3 # turn, phase and player
+        total_dims = n_vic_dims + n_reinforcement_dims + n_unit_dims + n_feature_dims
+
+        n_terrain_dims = 3 # atack, defense, movement
+        if self.use_terrain:
+            total_dims += n_terrain_dims
+
+        self.game_state_shape = (total_dims, self.HEIGHT, self.WIDTH)
+
+
+        # ------------------------------------------------------ #
+        # --------------- MCTS RELATED ATRIBUTES --------------- #
+        # ------------------------------------------------------ #
+
+        self.child_policy = []
+        self.state_history = []
+        self.player_history = []
+        self.action_history = []
+
+        # ------------------------------------------------------ #
+        # ----------------- INITIAL GAME SETUP ----------------- #
+        # ------------------------------------------------------ #
+
+        if prepare:
+            self.prepare_game()
+
+        return
+    
+##########################################################################
+# -------------------------                    ------------------------- #
+# -----------------------  GET AND SET METHODS  ------------------------ #
+# -------------------------                    ------------------------- #
+##########################################################################
+
+    def get_board(self):
+        return self.board
+    
+    def getBoardWidth(self):
+        return self.WIDTH
+
+    def getBoardHeight(self):
+        return self.HEIGHT    
+
+    def get_action_space_shape(self):
+        return self.action_space_shape
+
+    def get_num_actions(self):
+        return self.num_actions
+
+    def get_current_player(self):
+        return self.current_player
+    
+    def get_terminal_value(self):
+        return self.terminal_value
+
+    def is_terminal(self):
+        return self.terminal
+
+    def get_length(self):
+        return self.length
+
+    def get_state_from_history(self, i):
+        return self.state_history[i]
+
+    def state_shape(self):
+        return self.game_state_shape
+
+    def store_state(self, state):
+        self.state_history.append(state)
+        return
+
+    def store_player(self, player):
+        self.player_history.append(player)
+        return
+    
+    def store_action(self, action_coords):
+        self.action_history.append(action_coords)
+
+    def get_name(self):
+        return "SCS"
+    
+##########################################################################
+# ----------------------------              ---------------------------- #
+# --------------------------  CORE FUNCTIONS  -------------------------- #
+# ----------------------------              ---------------------------- #
+##########################################################################
+
+    def prepare_game(self, map_choice=1, random_seed=None):
 
         ## TILES AND TERRAIN
-        map_choice = 1
         if not self.use_terrain:
 
             for i in range(self.HEIGHT):
@@ -144,121 +257,9 @@ class SCS_Game():
 
         ## INITIAL REINFORCEMENTS
         for p in range(self.N_PLAYERS):
-            self.reinforcements[p] = copy.copy(self.reinforcements_as_list[p])
-        
+            self.reinforcements[p] = copy(self.reinforcements_as_list[p])
 
-        # ------------------------------------------------------------ #
-        # ------------- SPACE AND ACTION REPRESENTATION -------------- #
-        # ------------------------------------------------------------ #
-
-        ## ACTION REPRESENTATION
-
-        # Number of planes per type
-        self.placement_planes = self.N_UNIT_TYPES 
-        self.movement_planes = 4 # {N, S, E, 0} directions
-        self.fight_planes = 4 # {N, S, E, 0} directions
-        self.no_move_planes = 1
-        self.no_fight_planes = 1
-
-        self.total_action_planes = \
-        self.placement_planes + \
-        self.movement_planes + \
-        self.fight_planes + \
-        self.no_move_planes + \
-        self.no_fight_planes
-
-        self.action_space_shape = (self.total_action_planes , self.HEIGHT , self.WIDTH)
-        self.num_actions     =     self.total_action_planes * self.HEIGHT * self.WIDTH
-
-
-        ## STATE REPRESENTATION
-        n_vic_dims = self.N_PLAYERS
-        n_reinforcement_dims = self.N_PLAYERS * self.N_UNIT_TYPES
-        n_unit_dims = self.N_PLAYERS * self.N_UNIT_TYPES * self.N_UNIT_STATUSES
-        n_feature_dims = 3 # turn, phase and player
-        total_dims = n_vic_dims + n_reinforcement_dims + n_unit_dims + n_feature_dims
-
-        n_terrain_dims = 3 # atack, defense, movement
-        if self.use_terrain:
-            total_dims += n_terrain_dims
-
-        self.game_state_shape = (total_dims, self.HEIGHT, self.WIDTH)
-
-
-        # ------------------------------------------------------ #
-        # --------------- MCTS RELATED ATRIBUTES --------------- #
-        # ------------------------------------------------------ #
-
-        self.terminal = False
-        self.length = 0
-        self.terminal_value = 0
-        self.child_policy = []
-        self.state_history = []
-        self.player_history = []
-        self.action_history = []
-
-
-        self.update_game_env() # Just in case
-        return
-    
-##########################################################################
-# -------------------------                    ------------------------- #
-# -----------------------  GET AND SET METHODS  ------------------------ #
-# -------------------------                    ------------------------- #
-##########################################################################
-
-    def get_board(self):
-        return self.board
-    
-    def getBoardWidth(self):
-        return self.WIDTH
-
-    def getBoardHeight(self):
-        return self.HEIGHT    
-
-    def get_action_space_shape(self):
-        return self.action_space_shape
-
-    def get_num_actions(self):
-        return self.num_actions
-
-    def get_current_player(self):
-        return self.current_player
-    
-    def get_terminal_value(self):
-        return self.terminal_value
-
-    def is_terminal(self):
-        return self.terminal
-
-    def get_length(self):
-        return self.length
-
-    def get_state_from_history(self, i):
-        return self.state_history[i]
-
-    def state_shape(self):
-        return self.game_state_shape
-
-    def store_state(self, state):
-        self.state_history.append(state)
-        return
-
-    def store_player(self, player):
-        self.player_history.append(player)
-        return
-    
-    def store_action(self, action_coords):
-        self.action_history.append(action_coords)
-
-    def get_name(self):
-        return "SCS"
-    
-##########################################################################
-# ----------------------------              ---------------------------- #
-# --------------------------  CORE FUNCTIONS  -------------------------- #
-# ----------------------------              ---------------------------- #
-##########################################################################
+        self.update_game_env()
 
     def reset_env(self):
 
@@ -266,6 +267,10 @@ class SCS_Game():
         self.current_phase = 0   
         self.current_stage = 0   
         self.current_turn = 1
+
+        self.length = 0
+        self.terminal_value = 0
+        self.terminal = False
 
         for p in [0,1]:
             self.available_units[p].clear()
@@ -281,9 +286,6 @@ class SCS_Game():
 
         
         # MCTS RELATED ATRIBUTES 
-        self.terminal = False
-        self.terminal_value = 0
-        self.length = 0
         self.child_policy.clear()
         self.state_history.clear()
         self.player_history.clear()
@@ -562,7 +564,7 @@ class SCS_Game():
                 self.new_turn()
                 continue
             break
-
+        
         if(done):
             self.terminal_value = self.check_final_result()
     
@@ -601,8 +603,6 @@ class SCS_Game():
         return  
 
     def step_function(self, action_coords):
-        self.store_player(self.current_player)
-        self.store_action(action_coords)
         self.play_action(action_coords)
         self.length += 1
         done = self.update_game_env()
@@ -980,6 +980,19 @@ class SCS_Game():
 
     def clone(self):
         return copy.deepcopy(self)
+    
+    def shallow_clone(self):
+        ignore_list = ["child_policy", "state_history", "player_history", "action_history"]
+        new_game = SCS_Game(self.reinforcements_by_type[0].copy(), self.reinforcements_by_type[1].copy(), self.use_terrain, prepare=False)
+
+        memo = {} # memo dict for deepcopy so that it knows what objects it has already copied before
+        attributes = self.__dict__.items()
+        for name, value in attributes:
+            if (not(name.startswith('__') and name.endswith('__'))) and (name not in ignore_list):
+                value_copy = deepcopy(value, memo)
+                setattr(new_game, name, value_copy)
+                
+        return new_game
     
     def string_representation(self):
         
