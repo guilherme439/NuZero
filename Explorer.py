@@ -111,17 +111,19 @@ class Explorer():
         c = self.calculate_exploration_bias(parent)
         ucb_factor = self.calculate_ucb_factor(parent, child)
 
-        prior_score = child.prior * ucb_factor
-        prior_score = prior_score * c
+        confidence_score = child.prior * ucb_factor
+        confidence_score = confidence_score * c
 
-        value_score = child.value()
+
+        value_factor = self.config.exploration["value_factor"]
+
+        value_score = child.value() * value_factor
         if parent.to_play == 2:
             value_score = (-value_score)
         # for player 2 negative values are good
-
         value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
 
-        return prior_score + value_score
+        return confidence_score + value_score
 
     def backpropagate(self, search_path, value):
         for node in search_path:

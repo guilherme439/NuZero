@@ -192,7 +192,7 @@ class Tester():
                 state = game.generate_state_image()
                 action_probs, value_pred = nn.inference(state, False, recurrent_iterations)
                 probs = action_probs.cpu()[0].numpy().flatten()
-            
+
 
                 raw_action = np.argmax(probs)
                 if not valid_actions_mask[raw_action]:
@@ -405,3 +405,5 @@ class Tester():
     
         print("\nFunction incomplete!\n")
         return
+    
+

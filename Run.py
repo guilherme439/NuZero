@@ -79,7 +79,7 @@ def main():
 
         case 3: # Start Training
             game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+            game_args = [[1,0],[0,0], True]
             game = game_class(*game_args)
 
             model = dt_net_2d(game, 128)
@@ -98,52 +98,54 @@ def main():
 
             recurrent = True
             net_name = input("\nName of the network: ")
-            starting_iteration = 0
+            starting_iteration = int(input("\nStarting iteration: "))
 
             continue_training(game_class, game_args, net_name, recurrent, starting_iteration)
 
         case 5: # Test trained network
             game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+            game_args = [[1,0],[0,0], True]
             game = game_class(*game_args)
 
-            pickle_path = "SCS/models/on_slice/base_model.pkl"
-            trained_model_path = "SCS/models/on_slice/on_slice_6_model"
+            recurrent = True
+            net_name = input("\nName of the network: ")
+            model_iteration = int(input("\nModel iteration number: "))
+            AI_player = input("\nChose the AI player (\"1\", \"2\", \"both\"): ")
+
+            test_trained_network(game, net_name, recurrent, model_iteration, AI_player)
+            
+
+        case 6: # Debug Value
+
+            game_class = SCS_Game().__class__
+            game_args = [[1,0],[0,0], True]
+            game = game_class(*game_args)
+
+            recurrent = True
+            net_name = input("\nName of the network: ")
+            model_iteration = int(input("\nModel iteration number: "))
+            move_num = int(input("\nMove number: "))
+
+
+            game_folder = game.get_name() + "/"
+            model_folder = game_folder + "models/" + net_name + "/" 
+            pickle_path =  model_folder + "base_model.pkl"
+            search_config_path = model_folder + "search_config_copy.ini"
+
+            trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
 
             with open(pickle_path, 'rb') as file:
                 model = pickle.load(file)
             model.load_state_dict(torch.load(trained_model_path))
 
-            nn = Torch_NN(model, recurrent=True)
+            nn = Torch_NN(model, recurrent=recurrent)
 
-            search_config = Search_config()
-            search_config.load("Configs/Config_files/SCS_search_config.ini")
-
-            tester = Tester(print=True)
-            tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
-
-        case 6: # Temporary "test trained network" before pickles are working
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
-            game = game_class(*game_args)
-
-            trained_model_path = "SCS/models/tests/tests_10_model"
-            model = dt_net_2d(game, 128)
-            model.load_state_dict(torch.load(trained_model_path))
-            nn = Torch_NN(model, recurrent=True)
-
-
-            search_config = Search_config()
-            search_config.load("SCS/models/tests/search_config_copy.ini")
-
-
-            tester = Tester(print=True)
-            tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
 
             renderer = SCS_Renderer.remote()
-            end = renderer.analyse.remote(game)
+            end = renderer.debug_value.remote(move_num, game, nn, 2)
 
-            ray.get(end) # wait for the rendering to end
+
+            ray.get(end)
             
         case 7: # Debug tester
             print("\n\n TESTER! \n")
@@ -327,7 +329,7 @@ def main():
 
         case 19:
             game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+            game_args = [[1,0],[0,0], True]
             game = game_class(*game_args)
 
             model = MLP_Network(game)
@@ -337,7 +339,7 @@ def main():
             search_config.load("Configs/Config_files/test_search_config.ini")
 
             tester = Tester(render=True)
-            tester.set_slow_duration(2)
+            tester.set_slow_duration(1.3)
             
             #tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
             tester.random_vs_random(game)
@@ -366,6 +368,37 @@ def main():
 # ---------------------------    UTILITIES    -------------------------- #
 # ----------------------------               --------------------------- #
 ##########################################################################
+
+
+def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
+
+    game_folder = game.get_name() + "/"
+    model_folder = game_folder + "models/" + net_name + "/" 
+    pickle_path =  model_folder + "base_model.pkl"
+    search_config_path = model_folder + "search_config_copy.ini"
+
+    trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
+
+    with open(pickle_path, 'rb') as file:
+        model = pickle.load(file)
+    model.load_state_dict(torch.load(trained_model_path))
+
+    nn = Torch_NN(model, recurrent=recurrent)
+
+    search_config = Search_config()
+    search_config.load(search_config_path)
+
+    tester = Tester(print=True)
+    tester.Test_AI_with_mcts(AI_player, game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
+    #tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=2)
+
+    print("\n\nLength: " + str(game.length) + "\n")
+
+    renderer = SCS_Renderer.remote()
+    end = renderer.analyse.remote(game)
+
+
+    ray.get(end) # wait for the rendering to end
 
 def start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent, net_name):
 
@@ -413,7 +446,7 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
 def play_loop(num_games):
 
     game_class = SCS_Game().__class__
-    game_args = [[3,1],[1,2], True]
+    game_args = [[1,0],[0,0], True]
 
     tester = Tester()
 

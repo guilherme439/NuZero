@@ -277,7 +277,7 @@ class SCS_Game():
             self.moved_units[p].clear()
             self.atacked_units[p].clear()
             self.reinforcements[p].clear()
-            self.reinforcements[p] = copy.copy(self.reinforcements_as_list[p])
+            self.reinforcements[p] = copy(self.reinforcements_as_list[p])
 
         
         for i in range(self.HEIGHT):
@@ -603,6 +603,7 @@ class SCS_Game():
         return  
 
     def step_function(self, action_coords):
+        self.store_action(action_coords)
         self.play_action(action_coords)
         self.length += 1
         done = self.update_game_env()
@@ -979,7 +980,7 @@ class SCS_Game():
 ##########################################################################
 
     def clone(self):
-        return copy.deepcopy(self)
+        return deepcopy(self)
     
     def shallow_clone(self):
         ignore_list = ["child_policy", "state_history", "player_history", "action_history"]

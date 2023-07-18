@@ -22,7 +22,7 @@ class Search_config(Config):
         )
 
         # pb_c_base and pb_c_init will be use to calculate the pb_c bias.
-        # You can check the formula in the function "ucb_score()" or in the paper.
+        # You can check the formula in the function "score()" or in the paper.
 
         # The pb_c bias value added by the deepmind team is used to
         # counter act the increased importance of the value in the later stages of the game
@@ -33,7 +33,7 @@ class Search_config(Config):
         (
         number_of_softmax_moves = 5,
         epsilon_random_exploration = 0.0001,
-
+        value_factor = 1.0,
         root_exploration_destribution = "gamma", # gamma | beta | normal
         root_exploration_fraction = 0.2,
         dist_alpha = 0.2,
@@ -54,8 +54,8 @@ class Search_config(Config):
 		)
 
 
-		# Important to tune the noise in the prior score as well as the pb_c bias in the value score
-		# to determine the importance given to the value/prior given by the network throughout the search
+		# Important to tune the noise in the prior score as well as the pb_c bias factor,
+        # to determine the importance given to the value/prior given by the network throughout the search
 		
 
 			

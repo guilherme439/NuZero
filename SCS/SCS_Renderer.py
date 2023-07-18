@@ -4,6 +4,7 @@ import ray
 import math
 
 from enum import Enum
+from .Soldier import Soldier
 
 import sys
 sys.path.append("..")
@@ -178,8 +179,10 @@ class SCS_Renderer():
         pygame.quit()
         return
     
-    def render_board(self, screen, game):
+    def render_board(self, screen, game, debug=[]):
         # For now it only renders square boards
+
+        values, positions = list(zip(*debug))
 
         GAME_HEIGHT = game.getBoardHeight()
         GAME_WIDTH = game.getBoardWidth()
@@ -260,6 +263,18 @@ class SCS_Renderer():
         
                     screen.blit(terrain_surface, terrain_position)
 
+                # DEBUG INFO
+                if (i,j) in positions:
+                    idx = positions.index((i,j))
+                    value = values[idx]
+                    value_text = format(value, '.3')
+                    value_font = pygame.font.SysFont('notosansmonocjkkr', 25)
+                    value_font.set_bold(True)
+                    value_block = value_font.render(value_text, True, Color.BLACK.rgb())
+                    value_text_position = (tile_position[0] + tile_height/2, tile_position[1] + tile_width/2)
+                    value_rect = value_block.get_rect(center=value_text_position)
+                    screen.blit(value_block, value_rect)
+
                 # VICTORY POINTS
                 vp = tile.victory
                 p1_path = "SCS/Images/blue_star.png"
@@ -297,6 +312,85 @@ class SCS_Renderer():
 
                     screen.blit(unit_surface, unit_position)
     
+    def debug_value(self, move_num, base_game, nn, recurrent_iterations=2):
+        games_list = []
+        
+        base_game.reinforcements = [[],[]]
+        for i in range(base_game.HEIGHT):
+            for j in range(base_game.WIDTH):
+                tile = base_game.board[i][j]
+                scratch_game = base_game.shallow_clone()
+                scratch_tile = scratch_game.board[tile.x][tile.y]
+                position = (tile.x, tile.y)
+                new_unit = Soldier(1, tile.x, tile.y)
+                scratch_game.available_units[0].append(new_unit)
+                scratch_tile.place_unit(new_unit)
+                scratch_game.update_game_env()
+                games_list.append((scratch_game, position))
+
+
+        no_move_index = (base_game.placement_planes + base_game.movement_planes + base_game.fight_planes + base_game.no_move_planes) - 1
+
+        values_list = []
+        for i in range(len(games_list)):
+            pair = games_list[i]
+            game = pair[0]
+            position = pair[1]
+
+            for j in range(move_num):
+                action_coords = (no_move_index, position[0], position[1])
+                game.step_function(action_coords)
+
+            state_image = game.generate_state_image()
+            _, value_pred = nn.inference(state_image, False, recurrent_iterations)
+
+            values_list.append((value_pred.item(), position))
+
+        
+    
+        pygame.init()
+
+        render_game = base_game.clone() # scratch game for rendering
+        
+        # Set up the drawing window
+        screen = pygame.display.set_mode([self.WINDOW_WIDTH, self.WINDOW_HEIGHT])
+
+        time.sleep(0.1)
+        # Run until user closes window
+        running=True
+        while running:
+            
+            for event in pygame.event.get():
+                match event.type:
+                    case pygame.QUIT:
+                        running=False
+                    
+
+            # Fill the background with white
+
+            screen.fill(Color.WHITE.rgb())
+    
+            self.render_board(screen, render_game, debug=values_list)
+
+
+            title_text = "SCS Value Debug"
+            title_font = pygame.font.SysFont("meera", 40)
+            title_block = title_font.render(title_text, True, Color.RED.rgb())
+            title_rect = title_block.get_rect(center=(self.WINDOW_WIDTH/2, 50))
+            screen.blit(title_block, title_rect)
+
+            # Update de full display
+            pygame.display.flip()
+
+            # Limit fps
+            time.sleep(0.4)
+        
+        # Done! Time to quit.
+        pygame.quit()
+
+
+
+        return 
 # ------------------------------------------------------ #
 # ----------------------- FONTS ------------------------ #
 # ------------------------------------------------------ #

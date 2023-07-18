@@ -103,7 +103,7 @@ class AlphaZero():
 							}
 					)
 		
-		context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=False)
+		context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)
 
 		# ------------------------------------------------------ #
         # ------------------ RUNTIME CONFIGS ------------------- #
