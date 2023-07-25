@@ -103,14 +103,7 @@ def main():
             game_class = SCS_Game
             game_args = [5, 5, 7, [3,1], [1,2], True]
 
-            
-            net_name = input("\nName of the network: ")
-            rec = input("\nRecurrent?(y/n):")
-            if rec == "y":
-                recurrent = True
-            starting_iteration = int(input("\nStarting iteration: "))
-
-            continue_training(game_class, game_args, net_name, recurrent, starting_iteration)
+            continue_training(game_class, game_args)
 
         case 5: # Test trained network
             game_class = SCS_Game
@@ -423,11 +416,24 @@ def start_training(game_class, game_args, search_config_path, alpha_config_path,
 
     return
 
-def continue_training(game_class, game_args, net_name, recurrent, starting_iteration):
+def continue_training(game_class, game_args):
     game = game_class(*game_args)
+
+    trained_name = input("\nName of the trained network: ")
+    new_name_answer = input("\nDo you wish to save this tun with a new name?(y/n)")
+    if new_name_answer == "y":
+        save_name = input("\nNew network name: ")
+    else:
+        save_name = trained_name
+
+    rec = input("\nIs the network recurrent?(y/n):")
+    if rec == "y":
+        recurrent = True
+
+    starting_iteration = int(input("\nStarting iteration: "))
     
     game_folder = game.get_name() + "/"
-    model_folder = game_folder + "models/" + net_name + "/" 
+    model_folder = game_folder + "models/" + trained_name + "/" 
     pickle_path =  model_folder + "base_model.pkl"
 
     copies = input("Continue with the same configs?(y/n)")
@@ -438,7 +444,7 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
         search_config_path = "Configs/Config_files/SCS_search_config.ini"
         alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
 
-    trained_model_path =  model_folder + net_name + "_" + str(starting_iteration) + "_model"
+    trained_model_path =  model_folder + trained_name + "_" + str(starting_iteration) + "_model"
 
     with open(pickle_path, 'rb') as file:
         model = pickle.load(file)
@@ -450,7 +456,7 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
     alpha_config = AlphaZero_config()
     alpha_config.load(alpha_config_path)
 
-    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name, continuing=True)
+    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=save_name, continuing=True)
     Alpha_Zero.run(starting_iteration=starting_iteration)
 
     
