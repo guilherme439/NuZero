@@ -420,7 +420,7 @@ def continue_training(game_class, game_args):
     game = game_class(*game_args)
 
     trained_name = input("\nName of the trained network: ")
-    new_name_answer = input("\nDo you wish to save this tun with a new name?(y/n)")
+    new_name_answer = input("\nDo you wish to save this run with a new name?(y/n)")
     if new_name_answer == "y":
         save_name = input("\nNew network name: ")
     else:
