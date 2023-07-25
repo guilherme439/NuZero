@@ -9,14 +9,10 @@ from torch import nn
 
 class MLP_Network(nn.Module):
 
-    def __init__(self, game):
+    def __init__(self, out_features):
 
         super(MLP_Network, self).__init__()
     
-        self.action_space_shape = game.get_action_space_shape()
-        total_action_planes = list(self.action_space_shape)[0]
-        self.input_shape = game.state_shape()
-        n_channels = self.input_shape[0]
 
 
         # General Module
@@ -36,16 +32,14 @@ class MLP_Network(nn.Module):
         
 
         # Policy Head
-        size_of_action_space = self.action_space_shape[0] * self.action_space_shape[1] * self.action_space_shape[2]
 
         self.policy_head = nn.Sequential(
             nn.Linear(in_features=64, out_features=32),
             nn.SiLU(),
             nn.Linear(in_features=32, out_features=16),
             nn.SiLU(),
-            nn.Linear(in_features=16, out_features=size_of_action_space),
-            nn.Softmax(dim=1),
-            nn.Unflatten(1, self.action_space_shape)
+            nn.Linear(in_features=16, out_features=out_features),
+            nn.Softmax(dim=1)
         )
         
 

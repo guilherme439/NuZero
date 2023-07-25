@@ -6,8 +6,7 @@
 ## Configs
 
 ## Improve algorithm
-- Make possible different training->testing input sizes [hard, medium]
-- Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, high]
+- Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, high] (Might not be possible because of object lifetimes)
 
 ## Improve ability to define custom game
 - Find a way for people to import their own maps, and also set specific rules such as: specific initial unit placement locations. [hard, high]
@@ -25,4 +24,5 @@
 
 ## SCS Game
 - Convert board representation to hexagons [hard, high]
+
 

@@ -133,11 +133,14 @@ class Explorer():
     def evaluate(self, node, game, state_dict):
         node.to_play = game.get_current_player()
 
+        '''
         # During testing we always use network predictions
         if self.training:
             use_terminal = self.config.simulation["use_terminal"]
         else:
             use_terminal = False
+        '''
+        use_terminal = self.config.simulation["use_terminal"]
 
         if use_terminal and game.is_terminal():
             node.terminal_value = game.get_terminal_value()

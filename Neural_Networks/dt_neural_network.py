@@ -21,13 +21,9 @@ from .blocks import BasicBlock2D as BasicBlock
 class DTNet(nn.Module):
     """DeepThinking Network 2D model class"""
 
-    def __init__(self, game, block, num_blocks, width, recall=True, group_norm=False, **kwargs):
+    def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, group_norm=False, **kwargs):
         super().__init__()
 
-        action_space_shape = game.get_action_space_shape()
-        total_action_planes = list(action_space_shape)[0]
-        input_shape = game.state_shape()
-        in_channels = input_shape[0]
 
         self.recall = recall
         self.width = int(width)
@@ -63,16 +59,15 @@ class DTNet(nn.Module):
         '''
 
         # number of filters should be close to the dim of the output but not smaller (I think)
-        policy_filters = int(math.pow(2, math.ceil(math.log(total_action_planes, 2)))) 
+        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) 
         
         self.policy_head = nn.Sequential(
             nn.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=3,stride=1, padding=1, bias=False),
             nn.BatchNorm2d(num_features=policy_filters),
             nn.ReLU(),
-            nn.Conv2d(in_channels=policy_filters, out_channels=total_action_planes, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.Flatten(), # there in no softmax for a 3D policy (that I am aware), so we need to flatten and unflatten the policy to apply softmax
-            nn.Softmax(dim=1),
-            nn.Unflatten(1, action_space_shape)
+            nn.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Flatten(), # there in no softmax for a 3D policy (that I am aware), so we need to flatten the policy to apply softmax
+            nn.Softmax(dim=1)
         )
 
 
@@ -121,17 +116,17 @@ class DTNet(nn.Module):
         return all_outputs[-1]
 
 
-def dt_net_2d(game, width, **kwargs):
-    return DTNet(game ,BasicBlock, [2], width=width, recall=False)
+def dt_net_2d(in_channels, policy_channels, width, **kwargs):
+    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=False)
 
 
-def dt_net_recall_2d(game, width, **kwargs):
-    return DTNet(game, BasicBlock, [2], width=width, recall=True)
+def dt_net_recall_2d(in_channels, policy_channels, width, **kwargs):
+    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=True)
 
 
-def dt_net_gn_2d(game, width, **kwargs):
-    return DTNet(game, BasicBlock, [2], width=width, recall=False, group_norm=True)
+def dt_net_gn_2d(in_channels, policy_channels, width, **kwargs):
+    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=False, group_norm=True)
 
 
-def dt_net_recall_gn_2d(game, width, **kwargs):
-    return DTNet(game, BasicBlock, [2], width=width, recall=True, group_norm=True)
+def dt_net_recall_gn_2d(in_channels, policy_channels, width, **kwargs):
+    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=True, group_norm=True)

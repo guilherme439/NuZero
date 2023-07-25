@@ -7,7 +7,6 @@ class AlphaZero_config(Config):
 
         self.optimization = dict \
         (
-        parallel_testing = True,
         state_cache = "per_game"		# disabled | per_game | per_actor
         # Wether to keep a cache within each actor/game of previously seen states, to avoid using slow network inference.
         # Consumes a lot of memory so it is only worth using if the game being played repeats states frequently.
@@ -26,6 +25,8 @@ class AlphaZero_config(Config):
         early_fill = 1000,
         num_games_per_batch = 200,
         num_batches = 40,
+
+        testing_mode = "policy",        # policy | mcts
         num_wr_testing_games = 100,
 
         test_set = False,
@@ -64,7 +65,8 @@ class AlphaZero_config(Config):
         self.epochs = dict \
         (
         batch_size = 32,
-        learning_epochs = 8
+        learning_epochs = 8,
+        plot_epoch = False
         )
 
 

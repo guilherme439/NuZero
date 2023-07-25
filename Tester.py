@@ -47,7 +47,7 @@ class Tester():
 # ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
-    def Test_AI_with_mcts(self, player_choice, game, search_config, nn, use_state_cache=True, recurrent_iterations=1):
+    def Test_AI_with_mcts(self, player_choice, game, nn, search_config, use_state_cache=True, recurrent_iterations=1):
         stats = \
         {
         "number_of_moves" : 0,
@@ -244,7 +244,7 @@ class Tester():
                 winner = game.check_winner()
                 break
             
-        return winner
+        return winner, {}
 
     def ttt_vs_AI_with_policy(self, AI_player, nn, recurrent_iterations=1):
 

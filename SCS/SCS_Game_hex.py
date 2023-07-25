@@ -1,12 +1,10 @@
-import copy
+
 import math
 import numpy as np
 import torch
-import enum
-import sys
-import gc
 import time
-import hexagdly
+
+from copy import copy, deepcopy
 
 from enum import Enum
 from collections import Counter
@@ -38,54 +36,40 @@ from hexagonal to ortogonal representation:
 
 class SCS_Game_hex():
 
-    # On a 2D tensor, Hexagdly expects:
-    # the first coordenate to be along the vertical axis
-    # and the second coordenate to along the horizontal axis
-    #
-    # However in some of their examples they call
-    # the first coordenate "number of columns" 
-    # and the second coordenate "number of rows",
-    # which was a bit confusing to me.
-    #
-    # In my game implementation, the board 
-    # is represented the same way as in hexagdly,
-    # the only difference being that,
-    # I call row to a horizontal sequence of tiles
-    # and column to vertical a sequence of tiles.
-
-    
-                        #   This is a row:
-                        #    __    __                    __ __ __ __
-                        #   /11\__/31\__     ----->     |11|21|31|41| 
-    ROWS = 5            #   \__/21\__/41\               |__|__|__|__|
-                        #      \__/  \__/
-                        #
-
-                        #   And this is a column:
-                        #    __                          __
-                        #   /11\                        |11|
-    COLUMNS = 5         #   \__/        ----->          |__|
-                        #   /12\                        |12|
-                        #   \__/                        |__|
-                        #
-            
-   
-
-    TURNS = 7
+    PHASES = 3          # Placement, Movement, Fighting
+    STAGES = 6          # P1 Placement, P2 Placement, P1 Movement, P1 Fighting, P2 Movement, P2 Fighting
 
     N_PLAYERS = 2
 
     N_VP = 1            # Number of victory points
     N_UNIT_TYPES = 2
     N_UNIT_STATUSES = 3
+    
 
 
 
-    def __init__(self, r1=[1,1], r2=[1,1], use_terrain=True):
+    def __init__(self, rows, columns, turns, r1=[1,1], r2=[1,1], use_terrain=True, prepare=True):
 
         # ------------------------------------------------------------ #
         # ---------------------- INITIALIZATION ---------------------- #
         # ------------------------------------------------------------ #
+        
+                                #   This is a row:
+                                #    __    __                    __ __ __ __
+                                #   /11\__/31\__     ----->     |11|21|31|41| 
+        self.rows = rows        #   \__/21\__/41\               |__|__|__|__|
+                                #      \__/  \__/
+                                #
+
+                                #   And this is a column:
+                                #    __                          __
+                                #   /11\                        |11|
+        self.columns = columns  #   \__/        ----->          |__|
+                                #   /12\                        |12|
+                                #   \__/                        |__|
+                                #
+
+        self.turns = turns
 
         self.board = []
         self.current_player = 1
@@ -115,85 +99,11 @@ class SCS_Game_hex():
             np.repeat(i+1, self.reinforcements_by_type[p][i])
             for i in range(len(self.reinforcements_by_type[p]))
             ]
-            ).tolist()       
+            ).tolist()
 
-
-        # ------------------------------------------------------------ #
-        # ----------------------- BOARD SETUP ------------------------ #
-        # ------------------------------------------------------------ #
-
-        ## TILES AND TERRAIN
-
-        map_choice = 1
-        if not self.use_terrain:
-
-            for i in range(self.ROWS):
-                self.board.append([])
-                for j in range(self.COLUMNS):
-                    self.board[i].append(Tile(i,j))
-
-        else:
-            if map_choice == 1:
-            # Distribution based map
-
-                mountain = Terrain(atack_modifier=1, defense_modifier=2, cost=2, name="Mountain", image_path="SCS/Images/mountain.jpg")
-                plains = Terrain(atack_modifier=1, defense_modifier=1, cost=1, name="Plains", image_path="SCS/Images/plains.jpg")
-                bush = Terrain(atack_modifier=2, defense_modifier=1/2, cost=1, name="Bush", image_path="SCS/Images/plains_with_bush.jpg")
-                swamp = Terrain(atack_modifier=1/2, defense_modifier=1/2, cost=2, name="Swamp", image_path="SCS/Images/swamp.jpg")
-
-                self.terrain_types = [mountain, plains, bush, swamp]
-                probs = [0.1, 0.65, 0.15, 0.1]
-
-                for i in range(self.ROWS):
-                    self.board.append([])
-                    for j in range(self.COLUMNS): 
-                        terrain = np.random.choice(self.terrain_types, p=probs)
-                        self.board[i].append(Tile(i,j,terrain))
-
-
-        ## VICTORY POINTS
-
-        # p1 victory points will be on the left side and p2 victory points on the right side
-        if self.ROWS % 2 != 0:
-            middle_index = math.ceil(self.ROWS/2)-1
-            self.p1_last_index = middle_index-1
-            self.p2_first_index = middle_index+1
-        else:
-            # if number of rows is even there are two middle collumns one on the right and one on the left
-            left_side_collumn = (self.ROWS/2)
-            right_side_collumn = (self.ROWS/2) + 1
-            left_index = left_side_collumn - 1
-            right_index = right_side_collumn - 1
-            
-            # so that victory points are not adjacent, we separate them by one more collumn
-            self.p1_last_index = max(0, left_index-1)
-            self.p2_first_index = min(self.ROWS-1, right_index+1)
-
-        row_coords_p1 = np.random.choice(range(self.ROWS), size=self.N_VP, replace=False)
-        col_coords_p1 = np.random.choice(range(self.p1_last_index+1), size=self.N_VP, replace=False)
-
-        for i in range(len(self.victory_p1)):
-            self.victory_p1[i][0]=row_coords_p1[i]
-            self.victory_p1[i][1]=col_coords_p1[i]
-                
-        row_coords_p2 = np.random.choice(range(self.ROWS), size=self.N_VP, replace=False)
-        col_coords_p2 = np.random.choice(range(self.p2_first_index, self.COLUMNS), size=self.N_VP, replace=False)
-
-
-        for i in range(len(self.victory_p2)):
-            self.victory_p2[i][0]=row_coords_p2[i]
-            self.victory_p2[i][1]=col_coords_p2[i]
-    
-        for point in self.victory_p1:
-            self.board[point[0]][point[1]].victory = 1
-
-        for point in self.victory_p2:
-            self.board[point[0]][point[1]].victory = 2
-
-
-        ## INITIAL REINFORCEMENTS
-        for p in range(self.N_PLAYERS):
-            self.reinforcements[p] = copy.copy(self.reinforcements_as_list[p])
+        self.length = 0
+        self.terminal_value = 0
+        self.terminal = False
         
 
         # ------------------------------------------------------------ #
@@ -215,9 +125,9 @@ class SCS_Game_hex():
         self.fight_planes + \
         self.no_move_planes + \
         self.no_fight_planes
-
-        self.action_space_shape = (self.total_action_planes , self.ROWS , self.COLUMNS)
-        self.num_actions     =     self.total_action_planes * self.ROWS * self.COLUMNS
+        
+        self.action_space_shape = (self.total_action_planes , self.height , self.width)
+        self.num_actions     =     self.total_action_planes * self.height * self.width
 
 
         ## STATE REPRESENTATION
@@ -231,23 +141,25 @@ class SCS_Game_hex():
         if self.use_terrain:
             total_dims += n_terrain_dims
 
-        self.game_state_shape = (total_dims, self.ROWS, self.COLUMNS)
+        self.game_state_shape = (total_dims, self.height, self.width)
 
 
         # ------------------------------------------------------ #
         # --------------- MCTS RELATED ATRIBUTES --------------- #
         # ------------------------------------------------------ #
 
-        self.terminal = False
-        self.length = 0
-        self.terminal_value = 0
         self.child_policy = []
         self.state_history = []
         self.player_history = []
         self.action_history = []
 
+        # ------------------------------------------------------ #
+        # ----------------- INITIAL GAME SETUP ----------------- #
+        # ------------------------------------------------------ #
 
-        self.update_game_env() # Just in case
+        if prepare:
+            self.prepare_game()
+
         return
     
 ##########################################################################
@@ -260,10 +172,10 @@ class SCS_Game_hex():
         return self.board
     
     def getBoardWidth(self):
-        return self.COLUMNS
+        return self.width
 
     def getBoardHeight(self):
-        return self.ROWS    
+        return self.height    
 
     def get_action_space_shape(self):
         return self.action_space_shape
@@ -309,6 +221,81 @@ class SCS_Game_hex():
 # ----------------------------              ---------------------------- #
 ##########################################################################
 
+    def prepare_game(self, map_choice=1, random_seed=None):
+
+        ## TILES AND TERRAIN
+        if not self.use_terrain:
+
+            for i in range(self.height):
+                self.board.append([])
+                for j in range(self.width):
+                    self.board[i].append(Tile(i,j))
+
+        else:
+            if map_choice == 1:
+            # Distribution based map
+
+                mountain = Terrain(atack_modifier=1, defense_modifier=2, cost=2, name="Mountain", image_path="SCS/Images/mountain.jpg")
+                plains = Terrain(atack_modifier=1, defense_modifier=1, cost=1, name="Plains", image_path="SCS/Images/plains.jpg")
+                bush = Terrain(atack_modifier=2, defense_modifier=1/2, cost=1, name="Bush", image_path="SCS/Images/plains_with_bush.jpg")
+                swamp = Terrain(atack_modifier=1/2, defense_modifier=1/2, cost=2, name="Swamp", image_path="SCS/Images/swamp.jpg")
+
+                self.terrain_types = [mountain, plains, bush, swamp]
+                probs = [0.1, 0.65, 0.15, 0.1]
+
+                for i in range(self.height):
+                    self.board.append([])
+                    for j in range(self.width): 
+                        terrain = np.random.choice(self.terrain_types, p=probs)
+                        self.board[i].append(Tile(i,j,terrain))
+
+
+        ## VICTORY POINTS
+
+        # p1 victory points will be on the left side and p2 victory points on the right side
+        if self.width % 2 != 0:
+            middle_index = math.floor(self.width/2)
+            self.p1_last_index = middle_index-1
+            self.p2_first_index = middle_index+1
+        else:
+            # if number of rows is even there are two middle collumns one on the right and one on the left
+            mid = int(self.width/2)
+            left_side_collumn = mid
+            right_side_collumn = mid + 1
+            left_index = left_side_collumn - 1
+            right_index = right_side_collumn - 1
+            
+            # so that victory points are not adjacent, we separate them by one more collumn
+            self.p1_last_index = max(0, left_index-1)
+            self.p2_first_index = min(self.width-1, right_index+1)
+
+        x_coords_p1 = np.random.choice(range(self.height), size=self.N_VP, replace=False)
+        y_coords_p1 = np.random.choice(range(self.p1_last_index+1), size=self.N_VP, replace=False)
+
+        for i in range(len(self.victory_p1)):
+            self.victory_p1[i][0]=x_coords_p1[i]
+            self.victory_p1[i][1]=y_coords_p1[i]
+                
+        x_coords_p2 = np.random.choice(range(self.height), size=self.N_VP, replace=False)
+        y_coords_p2 = np.random.choice(range(self.p2_first_index, self.width), size=self.N_VP, replace=False)        
+
+        for i in range(len(self.victory_p2)):
+            self.victory_p2[i][0]=x_coords_p2[i]
+            self.victory_p2[i][1]=y_coords_p2[i]
+    
+        for point in self.victory_p1:
+            self.board[point[0]][point[1]].victory = 1
+
+        for point in self.victory_p2:
+            self.board[point[0]][point[1]].victory = 2
+
+
+        ## INITIAL REINFORCEMENTS
+        for p in range(self.N_PLAYERS):
+            self.reinforcements[p] = copy(self.reinforcements_as_list[p])
+
+        self.update_game_env()
+
     def reset_env(self):
 
         self.current_player = 1  
@@ -316,23 +303,24 @@ class SCS_Game_hex():
         self.current_stage = 0   
         self.current_turn = 1
 
+        self.length = 0
+        self.terminal_value = 0
+        self.terminal = False
+
         for p in [0,1]:
             self.available_units[p].clear()
             self.moved_units[p].clear()
             self.atacked_units[p].clear()
             self.reinforcements[p].clear()
-            self.reinforcements[p] = copy.copy(self.reinforcements_as_list[p])
+            self.reinforcements[p] = copy(self.reinforcements_as_list[p])
 
         
-        for i in range(self.ROWS):
-            for j in range(self.COLUMNS):
+        for i in range(self.height):
+            for j in range(self.width):
                 self.board[i][j].reset() # reset each tile    
 
         
         # MCTS RELATED ATRIBUTES 
-        self.terminal = False
-        self.terminal_value = 0
-        self.length = 0
         self.child_policy.clear()
         self.state_history.clear()
         self.player_history.clear()
@@ -343,30 +331,30 @@ class SCS_Game_hex():
     def possible_actions(self):
         player = self.current_player
         phase = self.current_phase
-        size = self.ROWS * self.COLUMNS
+        size = self.height * self.width
         
         placement_planes = []
-        movement_planes = np.zeros((4, self.ROWS, self.COLUMNS), dtype=np.int32)
-        fight_planes = np.zeros((4, self.ROWS, self.COLUMNS), dtype=np.int32)
-        no_move_plane = np.zeros((1, self.ROWS, self.COLUMNS), dtype=np.int32)
-        no_fight_plane = np.zeros((1, self.ROWS, self.COLUMNS), dtype=np.int32)
+        movement_planes = np.zeros((4, self.height, self.width), dtype=np.int32)
+        fight_planes = np.zeros((4, self.height, self.width), dtype=np.int32)
+        no_move_plane = np.zeros((1, self.height, self.width), dtype=np.int32)
+        no_fight_plane = np.zeros((1, self.height, self.width), dtype=np.int32)
         
-
+        #print(phase)
         if (phase == 0):
             available_types = set(self.reinforcements[player-1])
             for t in range(self.N_UNIT_TYPES):
                 if t+1 in available_types:
                     available_collumns = self.p1_last_index + 1 # number of columns on my side of the board
-                    my_half = np.ones((self.ROWS, available_collumns), dtype=np.int32)
-                    rest_of_columns = self.COLUMNS - available_collumns
-                    enemy_half = np.zeros((self.ROWS, rest_of_columns), dtype=np.int32)
+                    my_half = np.ones((self.height, available_collumns), dtype=np.int32)
+                    rest_of_columns = self.width - available_collumns
+                    enemy_half = np.zeros((self.height, rest_of_columns), dtype=np.int32)
                         
                     if player == 1:
                         u_plane = np.concatenate((my_half, enemy_half), axis=1)
                     else:
                         u_plane = np.concatenate((enemy_half, my_half), axis=1)
                 else:
-                    u_plane = np.zeros((self.ROWS, self.COLUMNS), dtype=np.int32)
+                    u_plane = np.zeros((self.height, self.width), dtype=np.int32)
 
 
                 placement_planes.insert(t,u_plane)
@@ -382,7 +370,7 @@ class SCS_Game_hex():
             
         
         if (phase == 1):
-            placement_planes = np.zeros((self.N_UNIT_TYPES, self.ROWS, self.COLUMNS), dtype=np.int32)
+            placement_planes = np.zeros((self.N_UNIT_TYPES, self.height, self.width), dtype=np.int32)
             
             for unit in self.available_units[player-1]:
                 x = unit.tile_x
@@ -400,7 +388,7 @@ class SCS_Game_hex():
                             movement_planes[i][x][y] = 1
                  
         if (phase == 2):
-            placement_planes = np.zeros((self.N_UNIT_TYPES, self.ROWS, self.COLUMNS), dtype=np.int32)
+            placement_planes = np.zeros((self.N_UNIT_TYPES, self.height, self.width), dtype=np.int32)
 
             for unit in self.moved_units[player-1]:
                 pos_x = unit.tile_x
@@ -425,7 +413,7 @@ class SCS_Game_hex():
         start = (None, None) # Starting point of the action
         dest = (None, None)  # Destination point for the action
 
-        board_size = self.ROWS * self.COLUMNS
+        board_size = self.height * self.width
 
         current_plane = action_coords[0]
 
@@ -602,7 +590,7 @@ class SCS_Game_hex():
                 stage+=1
                 continue
             if stage == 5 and self.moved_units[1] == []:        # second player atacked with all his units
-                if self.current_turn+1 > self.TURNS:
+                if self.current_turn+1 > self.turns:
                     done = True
                     self.terminal = True
                     break
@@ -611,7 +599,7 @@ class SCS_Game_hex():
                 self.new_turn()
                 continue
             break
-
+        
         if(done):
             self.terminal_value = self.check_final_result()
     
@@ -650,7 +638,6 @@ class SCS_Game_hex():
         return  
 
     def step_function(self, action_coords):
-        self.store_player(self.current_player)
         self.store_action(action_coords)
         self.play_action(action_coords)
         self.length += 1
@@ -666,12 +653,12 @@ class SCS_Game_hex():
         else:
             up = self.board[x-1][y]
 
-        if (x+1) == self.ROWS:
+        if (x+1) == self.height:
             down = None
         else:
             down = self.board[x+1][y]
 
-        if (y+1) == self.COLUMNS:
+        if (y+1) == self.width:
             right = None
         else:
             right = self.board[x][y+1]
@@ -784,6 +771,7 @@ class SCS_Game_hex():
                 defender_unit.edit_defense(remaining_defender_defense)
                 self.moved_units[atacking_player-1].remove(atacker_unit)
                 atacker_tile.unit = None
+
             else:                               # Both lived
                 atacker_unit.edit_defense(remaining_atacker_defense)
                 defender_unit.edit_defense(remaining_defender_defense)
@@ -866,8 +854,8 @@ class SCS_Game_hex():
     def generate_state_image(self):
         
         # Initialization
-        p1_victory = np.zeros((self.ROWS, self.COLUMNS), dtype=np.int32)
-        p2_victory = np.zeros((self.ROWS, self.COLUMNS), dtype=np.int32)
+        p1_victory = np.zeros((self.height, self.width), dtype=np.int32)
+        p2_victory = np.zeros((self.height, self.width), dtype=np.int32)
 
         p_units = [[],[]]
 
@@ -880,12 +868,12 @@ class SCS_Game_hex():
         
         # Terrain Channels
         if self.use_terrain:
-            atack_modifiers = torch.ones((self.ROWS, self.COLUMNS))
-            defense_modifiers = torch.ones((self.ROWS, self.COLUMNS))
-            movement_costs = torch.ones((self.ROWS, self.COLUMNS))
+            atack_modifiers = torch.ones((self.height, self.width))
+            defense_modifiers = torch.ones((self.height, self.width))
+            movement_costs = torch.ones((self.height, self.width))
 
-            for i in range(self.ROWS):
-                for j in range(self.COLUMNS):
+            for i in range(self.height):
+                for j in range(self.width):
                     tile = self.board[i][j]
                     terrain = tile.get_terrain()
                     a = terrain.atack_modifier
@@ -910,13 +898,13 @@ class SCS_Game_hex():
             if u < len(p2_reinforcement_counts):
                 p2_value = p2_reinforcement_counts[u]
 
-            p1_reinforcements[u] = torch.full((self.ROWS, self.COLUMNS), p1_value, dtype=torch.float32)
-            p2_reinforcements[u] = torch.full((self.ROWS, self.COLUMNS), p2_value, dtype=torch.float32)
+            p1_reinforcements[u] = torch.full((self.height, self.width), p1_value, dtype=torch.float32)
+            p2_reinforcements[u] = torch.full((self.height, self.width), p2_value, dtype=torch.float32)
 
             
             for s in range(self.N_UNIT_STATUSES):
-                p_units[0].append(np.zeros((self.ROWS, self.COLUMNS), dtype=np.int32))
-                p_units[1].append(np.zeros((self.ROWS, self.COLUMNS), dtype=np.int32))
+                p_units[0].append(np.zeros((self.height, self.width), dtype=np.int32))
+                p_units[1].append(np.zeros((self.height, self.width), dtype=np.int32))
 
 
         # Victory Points Channels
@@ -931,7 +919,7 @@ class SCS_Game_hex():
             p2_victory[x][y] = 1
 
 
-        # Unit Placement Channels
+        # Unit Representation Channels
         for p in [0,1]: 
             # for each player check each unit status
             for unit in self.available_units[p]:
@@ -965,20 +953,20 @@ class SCS_Game_hex():
                 p_units[p][type_i + status][x][y] = 1
 
         # Player Channel
-        player_plane = np.ones((self.ROWS,self.COLUMNS), dtype=np.int32)
+        player_plane = np.ones((self.height,self.width), dtype=np.int32)
         if self.current_player == 2:
             player_plane.fill(-1)
 
         player_plane = torch.unsqueeze(torch.as_tensor(player_plane,dtype=torch.float32), 0)
 
-        # Phase plane
+        # Phase Channel
         phase = self.current_phase
-        state_phase = torch.full((self.ROWS, self.COLUMNS), phase, dtype=torch.float32)
+        state_phase = torch.full((self.height, self.width), phase, dtype=torch.float32)
         state_phase = torch.unsqueeze(state_phase, 0)
 
-        # Turn plane
-        turn = self.current_turn
-        state_turn = torch.full((self.ROWS, self.COLUMNS), turn, dtype=torch.float32)
+        # Turn Channel
+        turn_percent = self.current_turn/self.turns
+        state_turn = torch.full((self.height, self.width), turn_percent, dtype=torch.float32)
         state_turn = torch.unsqueeze(state_turn, 0)
 
         # Final operations
@@ -1027,23 +1015,37 @@ class SCS_Game_hex():
 ##########################################################################
 
     def clone(self):
-        return copy.deepcopy(self)
+        return deepcopy(self)
+    
+    def shallow_clone(self):
+        ignore_list = ["child_policy", "state_history", "player_history", "action_history"]
+        game_args = [self.height, self.width, self.turns, self.reinforcements_by_type[0].copy(), self.reinforcements_by_type[1].copy(), self.use_terrain, False]
+        new_game = SCS_Game(*game_args)
+
+        memo = {} # memo dict for deepcopy so that it knows what objects it has already copied before
+        attributes = self.__dict__.items()
+        for name, value in attributes:
+            if (not(name.startswith('__') and name.endswith('__'))) and (name not in ignore_list):
+                value_copy = deepcopy(value, memo)
+                setattr(new_game, name, value_copy)
+                
+        return new_game
     
     def string_representation(self):
         
         string = "\n   "
-        for k in range(self.COLUMNS):
+        for k in range(self.width):
             string += (" " + format(k+1, '02') + " ")
         
         string += "\n  |"
-        for k in range(self.COLUMNS-1):
+        for k in range(self.width-1):
             string += "---|"
 
         string += "---|\n"
 
-        for i in range(self.ROWS):
+        for i in range(self.height):
             string += format(i+1, '02') + "| "
-            for j in range(self.COLUMNS):
+            for j in range(self.width):
                 mark = " "
                 if self.board[i][j].victory == 1:
                     mark = colored("V", "cyan")
@@ -1067,19 +1069,19 @@ class SCS_Game_hex():
                 string += mark + ' | '
             string += "\n"
 
-            if(i<self.ROWS-1):
+            if(i<self.height-1):
                 string += "  |"
-                for k in range(self.COLUMNS-1):
+                for k in range(self.width-1):
                     string += "---|"
                 string += "---|\n"
             else:
                 string += "   "
-                for k in range(self.COLUMNS-1):
+                for k in range(self.width-1):
                     string += "--- "
                 string += "--- \n"
 
         string += "=="
-        for k in range(self.COLUMNS):
+        for k in range(self.width):
             string += "===="
         string += "==\n"
 
@@ -1140,10 +1142,10 @@ class SCS_Game_hex():
                 unit_name = "Tank"
             while(True):
                 x = int(input("P1: You have a " + unit_name + " to place.\nPlease choose the row where you want to place it:"))
-                while x<1 or x>self.ROWS:
+                while x<1 or x>self.height:
                     x = int(input("You must choose a row inside the board:"))
                 y = int(input("And the collumn:"))
-                while y> math.floor(self.COLUMNS/2) or y<0:
+                while y> math.floor(self.width/2) or y<0:
                     y = int(input("You must choose a collumn on your side of the board:"))
             
                 if (self.board[x-1][y-1].unit):
@@ -1178,10 +1180,10 @@ class SCS_Game_hex():
                 unit_name = "Tank"
             while(True):
                 x = int(input("P2: You have a " + unit_name + " to place.\nPlease choose the row where you want to place it:"))
-                while x<1 or x>self.ROWS:
+                while x<1 or x>self.height:
                     x = int(input("You must choose a row inside the board:"))
                 y = int(input("And the collumn:"))
-                while (y<= math.ceil(self.COLUMNS/2) or y>self.COLUMNS):
+                while (y<= math.ceil(self.width/2) or y>self.width):
                     y = int(input("You must choose a collumn on your side of the board:"))
 
                 if (self.board[x-1][y-1].unit):
@@ -1220,7 +1222,7 @@ class SCS_Game_hex():
                 x = int(input("P" + str(player) + ": You have a " + unit.unit_name() + " at (" + str(pos_x + 1) + "," + str(pos_y + 1) + ")"
                 + " with " + str(mov) + " movement points.\nPlease choose the row you want to move it to:"))
                 y = int(input("And the collumn:"))
-                if ((abs(x-(pos_x+1)))+(abs(y-(pos_y+1)))<=mov and x>=1 and y>=1 and x<=self.ROWS and y <=self.COLUMNS and
+                if ((abs(x-(pos_x+1)))+(abs(y-(pos_y+1)))<=mov and x>=1 and y>=1 and x<=self.height and y <=self.width and
                     (((pos_x == (x-1)) and (pos_y == (y-1))) or self.board[x-1][y-1].unit is None)):
                     invalid=0
                 else:
@@ -1286,7 +1288,7 @@ class SCS_Game_hex():
         self.user_p1_position_units()
         self.user_p2_position_units()
 
-        while(self.current_turn<=self.TURNS):
+        while(self.current_turn<=self.turns):
             print("\nTurn: " + str(self.current_turn))
             
             self.move_units(1)

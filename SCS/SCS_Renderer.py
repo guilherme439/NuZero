@@ -182,7 +182,8 @@ class SCS_Renderer():
     def render_board(self, screen, game, debug=[]):
         # For now it only renders square boards
 
-        values, positions = list(zip(*debug))
+        if len(debug) > 0:
+            values, positions = list(zip(*debug))
 
         GAME_HEIGHT = game.getBoardHeight()
         GAME_WIDTH = game.getBoardWidth()
@@ -264,16 +265,17 @@ class SCS_Renderer():
                     screen.blit(terrain_surface, terrain_position)
 
                 # DEBUG INFO
-                if (i,j) in positions:
-                    idx = positions.index((i,j))
-                    value = values[idx]
-                    value_text = format(value, '.3')
-                    value_font = pygame.font.SysFont('notosansmonocjkkr', 25)
-                    value_font.set_bold(True)
-                    value_block = value_font.render(value_text, True, Color.BLACK.rgb())
-                    value_text_position = (tile_position[0] + tile_height/2, tile_position[1] + tile_width/2)
-                    value_rect = value_block.get_rect(center=value_text_position)
-                    screen.blit(value_block, value_rect)
+                if len(debug) > 0:
+                    if (i,j) in positions:
+                        idx = positions.index((i,j))
+                        value = values[idx]
+                        value_text = format(value, '.3')
+                        value_font = pygame.font.SysFont('notosansmonocjkkr', 25)
+                        value_font.set_bold(True)
+                        value_block = value_font.render(value_text, True, Color.BLACK.rgb())
+                        value_text_position = (tile_position[0] + tile_height/2, tile_position[1] + tile_width/2)
+                        value_rect = value_block.get_rect(center=value_text_position)
+                        screen.blit(value_block, value_rect)
 
                 # VICTORY POINTS
                 vp = tile.victory

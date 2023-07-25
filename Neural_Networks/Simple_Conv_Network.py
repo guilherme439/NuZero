@@ -9,21 +9,18 @@ from torch import nn
 
 class Simple_Conv_Network(nn.Module):
 
-    def __init__(self, game, kernel_size=(3,3), num_filters=256):
+    def __init__(self, in_channels, policy_channels, kernel_size=(3,3), num_filters=256):
 
         super(Simple_Conv_Network, self).__init__()
 
-        self.action_space_shape = game.get_action_space_shape()
-        total_action_planes = list(self.action_space_shape)[0]
-        self.input_shape = game.state_shape()
-        n_channels = self.input_shape[0]
+
         self.kernel_size = kernel_size
         self.num_filters = num_filters
 
 
         # General Module
         self.general_module = nn.Sequential(
-            nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=n_channels, out_channels=64),
+            nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=in_channels, out_channels=64),
             nn.ELU(),
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=self.num_filters, out_channels=self.num_filters),
             nn.ELU(),
@@ -39,15 +36,14 @@ class Simple_Conv_Network(nn.Module):
         
     
         # Policy Head
-        policy_filters = int(math.pow(2, math.ceil(math.log(total_action_planes, 2)))) # number of filters should be close to the dim of the output but not smaller (I think)
+        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) # number of filters should be close to the dim of the output but not smaller (I think)
 
         self.policy_head = nn.Sequential(
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=self.num_filters, out_channels=policy_filters),
             nn.SiLU(),
-            nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=policy_filters, out_channels=total_action_planes),
+            nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=policy_filters, out_channels=policy_channels),
             nn.Flatten(),
-            nn.Softmax(dim=1),
-            nn.Unflatten(1, self.action_space_shape)
+            nn.Softmax(dim=1)
         )
         
 

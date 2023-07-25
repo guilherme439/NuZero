@@ -37,7 +37,7 @@ from RemoteTester import RemoteTester
 
 from SCS.SCS_Renderer import SCS_Renderer
 
-from SCS.SCS_Game_hex import SCS_Game_hex
+#from SCS.SCS_Game_hex import SCS_Game_hex
 
 from stats_utilities import *
 
@@ -62,7 +62,7 @@ def main():
 
         case 0:
 
-            game_class = SCS_Game().__class__
+            game_class = SCS_Game
             print(game_class)
 
         case 1: # Set default search config
@@ -78,37 +78,50 @@ def main():
             alpha_config.save(filepath)
 
         case 3: # Start Training
-            game_class = SCS_Game().__class__
-            game_args = [[1,0],[0,0], True]
+            game_class = SCS_Game
+            game_args = [5, 5, 7, [3,1], [1,2], True]
             game = game_class(*game_args)
 
-            model = dt_net_2d(game, 128)
-            recurrent = True
+            in_channels = game.state_shape()[0]
+            policy_channels = game.get_action_space_shape()[0]
+
+            model = dt_net_2d(in_channels, policy_channels, 128)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
 
             search_config_path = "Configs/Config_files/SCS_search_config.ini"
             alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
 
             net_name = input("\nSave the network as: ")
+            recurrent = False
+            rec = input("\nRecurrent?(y/n):")
+            if rec == "y":
+                recurrent = True
 
             start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent, net_name)
 
         case 4:  # Continue Training
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+            game_class = SCS_Game
+            game_args = [5, 5, 7, [3,1], [1,2], True]
 
-            recurrent = True
+            
             net_name = input("\nName of the network: ")
+            rec = input("\nRecurrent?(y/n):")
+            if rec == "y":
+                recurrent = True
             starting_iteration = int(input("\nStarting iteration: "))
 
             continue_training(game_class, game_args, net_name, recurrent, starting_iteration)
 
         case 5: # Test trained network
-            game_class = SCS_Game().__class__
-            game_args = [[1,0],[0,0], True]
+            game_class = SCS_Game
+            game_args = [5, 5, 7, [3,1], [1,2], True]
             game = game_class(*game_args)
 
-            recurrent = True
             net_name = input("\nName of the network: ")
+            recurrent = False
+            rec = input("\nRecurrent?(y/n):")
+            if rec == "y":
+                recurrent = True
             model_iteration = int(input("\nModel iteration number: "))
             AI_player = input("\nChose the AI player (\"1\", \"2\", \"both\"): ")
 
@@ -118,13 +131,16 @@ def main():
         case 6: # Debug Value
 
             game_class = SCS_Game().__class__
-            game_args = [[1,0],[0,0], True]
+            game_args = [5, 5, 7, [1,0],[0,0], True]
             game = game_class(*game_args)
 
-            recurrent = True
+            recurrent = False
             net_name = input("\nName of the network: ")
             model_iteration = int(input("\nModel iteration number: "))
             move_num = int(input("\nMove number: "))
+            rec = input("\nRecurrent?(y/n):")
+            if rec == "y":
+                recurrent = True
 
 
             game_folder = game.get_name() + "/"
@@ -194,18 +210,8 @@ def main():
 
         case 9:
             game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+            game_args = [5, 5, 7, [3,1],[1,2], True]
             game = game_class(*game_args)
-            clone = game.shallow_clone()
-            #clone = copy.deepcopy(game)
-
-            attributes = game.__dict__.items()
-            for name, value in attributes:
-                print("\n")
-                print(name)
-                print(getattr(game, name))
-                print()
-                print(getattr(clone, name))
             
         case 10:
             game_class = SCS_Game().__class__
@@ -227,11 +233,13 @@ def main():
         case 12:
             game_class = tic_tac_toe().__class__
             game_args = []
-            
-            model = MLP_Network(game_class(*game_args))
+            game = game_class(*game_args)
 
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_tic_tac_toe_config()
+            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
+            
+            model = MLP_Network(features)
+
+
 
             net_name = input("\nSave the network as: ")
 
@@ -329,10 +337,12 @@ def main():
 
         case 19:
             game_class = SCS_Game().__class__
-            game_args = [[1,0],[0,0], True]
+            game_args = [[1,0],[0,0], True]         
             game = game_class(*game_args)
+            
+            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
+            model = MLP_Network(features)
 
-            model = MLP_Network(game)
             nn = Torch_NN(model, recurrent=False)
 
             search_config = Search_config()
@@ -383,13 +393,13 @@ def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
         model = pickle.load(file)
     model.load_state_dict(torch.load(trained_model_path))
 
-    nn = Torch_NN(model, recurrent=recurrent)
+    nn = Torch_NN(game, model, recurrent=recurrent)
 
     search_config = Search_config()
     search_config.load(search_config_path)
 
     tester = Tester(print=True)
-    tester.Test_AI_with_mcts(AI_player, game, search_config, nn, use_state_cache=True, recurrent_iterations=2)
+    tester.Test_AI_with_mcts(AI_player, game, nn, search_config, use_state_cache=True, recurrent_iterations=2)
     #tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=2)
 
     print("\n\nLength: " + str(game.length) + "\n")
@@ -408,7 +418,7 @@ def start_training(game_class, game_args, search_config_path, alpha_config_path,
     alpha_config = AlphaZero_config()
     alpha_config.load(alpha_config_path)
 
-    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name)
+    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name, continuing=False)
     Alpha_Zero.run()
 
     return
@@ -419,8 +429,14 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
     game_folder = game.get_name() + "/"
     model_folder = game_folder + "models/" + net_name + "/" 
     pickle_path =  model_folder + "base_model.pkl"
-    alpha_config_path = model_folder + "alpha_config_copy.ini"
-    search_config_path = model_folder + "search_config_copy.ini"
+
+    copies = input("Continue with the same configs?(y/n)")
+    if copies == "y":
+        alpha_config_path = model_folder + "alpha_config_copy.ini"
+        search_config_path = model_folder + "search_config_copy.ini"
+    else:
+        search_config_path = "Configs/Config_files/SCS_search_config.ini"
+        alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
 
     trained_model_path =  model_folder + net_name + "_" + str(starting_iteration) + "_model"
 
@@ -434,7 +450,7 @@ def continue_training(game_class, game_args, net_name, recurrent, starting_itera
     alpha_config = AlphaZero_config()
     alpha_config.load(alpha_config_path)
 
-    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name)
+    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name, continuing=True)
     Alpha_Zero.run(starting_iteration=starting_iteration)
 
     

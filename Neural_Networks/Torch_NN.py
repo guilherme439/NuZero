@@ -12,13 +12,14 @@ from torch import nn
 
 class Torch_NN():
 
-    def __init__(self, model, recurrent):
+    def __init__(self, game, model, recurrent):
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         #print(f"\n--------------\nUsing {self.device} device\n--------------\n")
 
         self.model = model.to(self.device)
         self.recurrent = recurrent
+        self.game = game
         
 
     def get_model(self):
@@ -41,7 +42,8 @@ class Torch_NN():
                     p,v = self.model(state.to(self.device), iters_to_do)
             else:
                 p,v = self.model(state.to(self.device), iters_to_do)
-                
+
+        p = torch.unflatten(p, 1, self.game.get_action_space_shape())
         return p,v
     
     
