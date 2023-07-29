@@ -1,8 +1,10 @@
+import numpy as np
+import hexagdly
+import torch
+import math
 import time
 import os
-import math
-import numpy as np
-import torch
+
 from torch import nn
 
 
@@ -13,7 +15,6 @@ class MLP_Network(nn.Module):
 
         super(MLP_Network, self).__init__()
     
-
 
         # General Module
         self.general_module = nn.Sequential(

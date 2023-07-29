@@ -16,15 +16,19 @@ from progress.bar import ChargingBar
 
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network
-from Neural_Networks.Simple_Conv_Network import Simple_Conv_Network
-from Neural_Networks.ResNet import ResNet
 
-from Neural_Networks.dt_neural_network import *
+from Neural_Networks.Rectangular.Simple_Conv_Network import Simple_Conv_Network
+from Neural_Networks.Rectangular.ResNet import ResNet
+from Neural_Networks.Rectangular.dt_neural_network import *
 
-from SCS.SCS_Renderer import SCS_Renderer
+#from Neural_Networks.Hexagonal.Simple_Conv_Network import Simple_Conv_Network
+#from Neural_Networks.Hexagonal.ResNet import ResNet
+#from Neural_Networks.Hexagonal.dt_neural_network import *
+
 
 from SCS.SCS_Game import SCS_Game
-from SCS.Terrain import Terrain
+#from SCS.SCS_Game_hex import SCS_Game
+from SCS.SCS_Renderer import SCS_Renderer
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
@@ -34,10 +38,6 @@ from Configs.Search_config import Search_config
 from AlphaZero import AlphaZero
 from Tester import Tester
 from RemoteTester import RemoteTester
-
-from SCS.SCS_Renderer import SCS_Renderer
-
-#from SCS.SCS_Game_hex import SCS_Game_hex
 
 from stats_utilities import *
 
@@ -79,14 +79,15 @@ def main():
 
         case 3: # Start Training
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [1,2], True]
+            game_args = [5, 5, 7, [3,1], [3,1], True]
             game = game_class(*game_args)
 
             in_channels = game.state_shape()[0]
             policy_channels = game.get_action_space_shape()[0]
 
-            model = dt_net_2d(in_channels, policy_channels, 128)
+            model = dt_net_recall_2d(in_channels, policy_channels, 128)
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
 
             search_config_path = "Configs/Config_files/SCS_search_config.ini"
             alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
@@ -101,13 +102,13 @@ def main():
 
         case 4:  # Continue Training
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [1,2], True]
+            game_args = [5, 5, 7, [3,1], [3,1], True]
 
             continue_training(game_class, game_args)
 
         case 5: # Test trained network
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [1,2], True]
+            game_args = [5, 5, 7, [3,1], [3,1], True]
             game = game_class(*game_args)
 
             net_name = input("\nName of the network: ")
@@ -436,7 +437,7 @@ def continue_training(game_class, game_args):
     model_folder = game_folder + "models/" + trained_name + "/" 
     pickle_path =  model_folder + "base_model.pkl"
 
-    copies = input("Continue with the same configs?(y/n)")
+    copies = input("\nContinue with the same configs?(y/n)")
     if copies == "y":
         alpha_config_path = model_folder + "alpha_config_copy.ini"
         search_config_path = model_folder + "search_config_copy.ini"

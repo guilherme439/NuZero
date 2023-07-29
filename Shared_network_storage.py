@@ -1,7 +1,7 @@
 import ray
 
 
-@ray.remote
+@ray.remote(scheduling_strategy="SPREAD")
 class Shared_network_storage():
 
     def __init__(self, window_size):

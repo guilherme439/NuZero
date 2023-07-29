@@ -1,13 +1,10 @@
-""" dt_net_2d.py
-    DeepThinking network 2D.
-    Collaboratively developed
-    by Avi Schwarzschild, Eitan Borgnia,
-    Arpit Bansal, and Zeyad Emam.
-    Developed for DeepThinking project
-    October 2021
+""" 
+Adapted and simplified from the Deepthinking repository.
 """
 import math
 import torch
+import hexagdly
+
 from torch import nn
 
 from .blocks import BasicBlock2D as BasicBlock
@@ -21,18 +18,17 @@ from .blocks import BasicBlock2D as BasicBlock
 class DTNet(nn.Module):
     """DeepThinking Network 2D model class"""
 
-    def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, group_norm=False, **kwargs):
+    def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, **kwargs):
         super().__init__()
 
 
         self.recall = recall
         self.width = int(width)
-        self.group_norm = group_norm
-        proj_conv = nn.Conv2d(in_channels, width, kernel_size=3,
-                              stride=1, padding=1, bias=False)
+        proj_conv = hexagdly.Conv2d(in_channels, width, kernel_size=1,
+                              stride=1, bias=False)
 
-        conv_recall = nn.Conv2d(width + in_channels, width, kernel_size=3,
-                                stride=1, padding=1, bias=False)
+        conv_recall = hexagdly.Conv2d(width + in_channels, width, kernel_size=1,
+                                stride=1, bias=False)
 
         recur_layers = []
         if recall:
@@ -45,41 +41,28 @@ class DTNet(nn.Module):
         self.projection = nn.Sequential(proj_conv, nn.ReLU())
         self.recur_block = nn.Sequential(*recur_layers)
 
-        '''
-        head_conv1 = nn.Conv2d(width, 32, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        head_conv2 = nn.Conv2d(32, 8, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        head_conv3 = nn.Conv2d(8, 2, kernel_size=3,
-                               stride=1, padding=1, bias=False)
 
-        self.head = nn.Sequential(head_conv1, nn.ReLU(),
-                                  head_conv2, nn.ReLU(),
-                                  head_conv3)
-        '''
-
+        ## POLICY HEAD
         # number of filters should be close to the dim of the output but not smaller (I think)
         policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) 
         
         self.policy_head = nn.Sequential(
-            nn.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=3,stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(num_features=policy_filters),
+            hexagdly.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=1, stride=1, bias=False),
             nn.ReLU(),
-            nn.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.Flatten(), # there in no softmax for a 3D policy (that I am aware), so we need to flatten the policy to apply softmax
+            hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False),
+            nn.Flatten(), # there is no softmax function for a 3D policy in pytorch (that I am aware), so we need to flatten the policy to apply softmax
             nn.Softmax(dim=1)
         )
 
 
-        # Value Head
+        ## VALUE HEAD
         depth_of_first_stack = 32
         depth_of_final_stack = 1
 
         self.value_head = nn.Sequential(
-            nn.Conv2d(in_channels=width, out_channels=depth_of_first_stack, kernel_size=3,stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(num_features=depth_of_first_stack),
+            hexagdly.Conv2d(in_channels=width, out_channels=depth_of_first_stack, kernel_size=1, stride=1, bias=False),
             nn.Hardtanh(),
-            nn.Conv2d(in_channels=depth_of_first_stack, out_channels=depth_of_final_stack, kernel_size=3,stride=1, padding=1, bias=False),
+            hexagdly.Conv2d(in_channels=depth_of_first_stack, out_channels=depth_of_final_stack, kernel_size=1, stride=1, bias=False),
             nn.AdaptiveAvgPool3d(1),
             nn.Flatten(),
             nn.Tanh()
@@ -89,7 +72,7 @@ class DTNet(nn.Module):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
         for strd in strides:
-            layers.append(block(self.width, planes, strd, group_norm=self.group_norm))
+            layers.append(block(self.width, planes, strd))
             self.width = planes * block.expansion
         return nn.Sequential(*layers)
 
@@ -99,8 +82,7 @@ class DTNet(nn.Module):
         if interim_thought is None:
             interim_thought = initial_thought
 
-        all_outputs = []
-
+        #all_outputs = []
         for i in range(iters_to_do):
             if self.recall:
                 interim_thought = torch.cat([interim_thought, x], 1)
@@ -108,12 +90,12 @@ class DTNet(nn.Module):
             policy_out = self.policy_head(interim_thought)
             value_out = self.value_head(interim_thought)
             out = (policy_out, value_out)
-            all_outputs.append(out)
+            #all_outputs.append(out)
 
         #if self.training:
             #return out, interim_thought
 
-        return all_outputs[-1]
+        return out
 
 
 def dt_net_2d(in_channels, policy_channels, width, **kwargs):
@@ -122,11 +104,3 @@ def dt_net_2d(in_channels, policy_channels, width, **kwargs):
 
 def dt_net_recall_2d(in_channels, policy_channels, width, **kwargs):
     return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=True)
-
-
-def dt_net_gn_2d(in_channels, policy_channels, width, **kwargs):
-    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=False, group_norm=True)
-
-
-def dt_net_recall_gn_2d(in_channels, policy_channels, width, **kwargs):
-    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=True, group_norm=True)

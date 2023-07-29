@@ -3,12 +3,14 @@ import numpy as np
 import os
 import psutil
 import gc
+import resource
+import random
+import pickle
 import time
 import sys
-import pickle
 import ray
-import random
-import resource
+
+import torch
 
 from stats_utilities import *
 
@@ -24,17 +26,9 @@ from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 from termcolor import colored
 
-import torch
-from torch import nn
-
-from Node import Node
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from Configs.AlphaZero_config import AlphaZero_config
-from Configs.Search_config import Search_config
-
-from Tester import Tester
 from RemoteTester import RemoteTester
 
 from ray.runtime_env import RuntimeEnv
@@ -240,8 +234,10 @@ class AlphaZero():
 		# Weight graphs
 		all_weights = torch.Tensor()
 		for k, v in model_dict.items():
+			print(k)
 			if "weight" in k:
 				all_weights = torch.cat((all_weights, v.flatten()))
+
 
 		self.weight_size_max.append(max(abs(all_weights)))
 		self.weight_size_min.append(min(abs(all_weights)))

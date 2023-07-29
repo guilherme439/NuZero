@@ -25,4 +25,7 @@
 ## SCS Game
 - Convert board representation to hexagons [hard, high]
 
+## Graphs
+- Use network.parameters() to get wight parameters instead [easy, high]
+
 

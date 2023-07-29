@@ -646,25 +646,14 @@ class SCS_Game():
     def check_tiles(self, coords):
         # Clock-wise rotation order
 
+        ''' 
+             n
+        nw   __   ne
+            /  \ 
+            \__/ 
+        sw        se
+              s
         '''
-        From the hexagly source code, this is how the board is converted
-        from hexagonal to ortogonal representation:
-
-
-         __    __                                 __ __ __ __
-        /11\__/31\__  . . .                      |11|21|31|41| . . .
-        \__/21\__/41\                            |__|__|__|__| 
-        /12\__/32\__/ . . .        _______|\     |12|22|32|42| . . .
-        \__/22\__/42\             |         \    |__|__|__|__| 
-           \__/  \__/             |_______  /                           
-         .  .  .  .  .                    |/       .  .  .  .  .
-         .  .  .  .    .                           .  .  .  .    .
-         .  .  .  .      .                         .  .  .  .      .
-
-
-        '''
-
-
         (row, col) = coords
 
         n = None
@@ -674,8 +663,6 @@ class SCS_Game():
         sw = None
         nw = None
 
-        if (self.columns % 2) == 0:
-            even = True
 
         if (row-1) != -1:
             n = self.board[row-1][col]
@@ -683,13 +670,30 @@ class SCS_Game():
         if (row+1) != self.rows:
             s = self.board[row+1][col]
 
-        if (col == self.columns-1):
-            if even:
-                nw = self.board[row][col-1]
+        if not ((col == 0) or (row == 0 and col % 2 == 0)):
+            if col % 2 == 0:
+                nw = self.board[row-1][col-1]
             else:
-                pass
+                nw = self.board[row][col-1]
 
-                
+        if not ((col == 0) or (row == self.rows-1 and col % 2 != 0)):
+            if col % 2 == 0:
+                sw = self.board[row][col-1]
+            else:
+                sw = self.board[row+1][col-1]
+
+        if not ((col == self.columns-1) or (row == 0 and col % 2 == 0)):
+            if col % 2 == 0:
+                ne = self.board[row-1][col+1]
+            else:
+                ne = self.board[row][col+1]
+
+        if not ((col == self.columns-1) or (row == self.rows-1 and col % 2 != 0)):
+            if col % 2 == 0:
+                se = self.board[row][col+1]
+            else:
+                se = self.board[row-1][col+1]
+        
 
         return n, ne, se, s, sw, nw
 
