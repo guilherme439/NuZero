@@ -89,22 +89,16 @@ def main():
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
 
-            search_config_path = "Configs/Config_files/SCS_search_config.ini"
-            alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
-
-            net_name = input("\nSave the network as: ")
-            recurrent = False
-            rec = input("\nRecurrent?(y/n):")
-            if rec == "y":
-                recurrent = True
-
-            start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent, net_name)
+            alpha_zero = AlphaZero(game_class, game_args, model=model)
+            alpha_zero.run()
+            
 
         case 4:  # Continue Training
             game_class = SCS_Game
             game_args = [5, 5, 7, [3,1], [3,1], True]
 
-            continue_training(game_class, game_args)
+            alpha_zero = AlphaZero(game_class, game_args)
+            alpha_zero.run()
 
         case 5: # Test trained network
             game_class = SCS_Game
@@ -404,61 +398,8 @@ def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
 
     ray.get(end) # wait for the rendering to end
 
-def start_training(game_class, game_args, search_config_path, alpha_config_path, model, recurrent, net_name):
-
-    search_config = Search_config()
-    search_config.load(search_config_path)
-
-    alpha_config = AlphaZero_config()
-    alpha_config.load(alpha_config_path)
-
-    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=net_name, continuing=False)
-    Alpha_Zero.run()
-
     return
 
-def continue_training(game_class, game_args):
-    game = game_class(*game_args)
-
-    trained_name = input("\nName of the trained network: ")
-    new_name_answer = input("\nDo you wish to save this run with a new name?(y/n)")
-    if new_name_answer == "y":
-        save_name = input("\nNew network name: ")
-    else:
-        save_name = trained_name
-
-    rec = input("\nIs the network recurrent?(y/n):")
-    if rec == "y":
-        recurrent = True
-
-    starting_iteration = int(input("\nStarting iteration: "))
-    
-    game_folder = game.get_name() + "/"
-    model_folder = game_folder + "models/" + trained_name + "/" 
-    pickle_path =  model_folder + "base_model.pkl"
-
-    copies = input("\nContinue with the same configs?(y/n)")
-    if copies == "y":
-        alpha_config_path = model_folder + "alpha_config_copy.ini"
-        search_config_path = model_folder + "search_config_copy.ini"
-    else:
-        search_config_path = "Configs/Config_files/SCS_search_config.ini"
-        alpha_config_path = "Configs/Config_files/SCS_alpha_config.ini"
-
-    trained_model_path =  model_folder + trained_name + "_" + str(starting_iteration) + "_model"
-
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
-    model.load_state_dict(torch.load(trained_model_path))
-
-    search_config = Search_config()
-    search_config.load(search_config_path)
-
-    alpha_config = AlphaZero_config()
-    alpha_config.load(alpha_config_path)
-
-    Alpha_Zero = AlphaZero(model, recurrent, game_class, game_args, alpha_config, search_config, network_name=save_name, continuing=True)
-    Alpha_Zero.run(starting_iteration=starting_iteration)
 
     
 

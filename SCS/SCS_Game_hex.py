@@ -703,8 +703,7 @@ class SCS_Game():
         
         tiles = self.check_tiles((x,y))
 
-        num_directions = 6
-        can_move = [False for i in range(len(num_directions))]
+        can_move = [False for i in range(len(tiles))]
 
         for i in range(len(tiles)):
             tile = tiles[i]

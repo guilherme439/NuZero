@@ -8,7 +8,6 @@ from progress.spinner import PieSpinner
 import numpy as np
 
 import torch
-from torch import nn
 
 from Node import Node
 from Explorer import Explorer
@@ -47,7 +46,7 @@ class Tester():
 # ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
-    def Test_AI_with_mcts(self, player_choice, game, nn, search_config, use_state_cache=True, recurrent_iterations=1):
+    def Test_AI_with_mcts(self, player_choice, search_config, game, nn1, nn2=None, use_state_cache=True, recurrent_iterations=1):
         stats = \
         {
         "number_of_moves" : 0,
@@ -73,10 +72,18 @@ class Tester():
 
         if player_choice == "both":
             AI_player = 0
+            p1_nn = nn1
+            if nn2:
+                p2_nn = nn2
+            else:
+                p2_nn = nn1
+
         elif player_choice == "1":
             AI_player = 1
+            p1_nn = nn1
         elif player_choice == "2":
             AI_player = 2
+            p2_nn = nn1
         else:
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()
@@ -104,15 +111,20 @@ class Tester():
                 subtree_root = Node(0)
 
             player = game.current_player
+            if player == 1:
+                net_to_use = p1_nn
+            else:
+                net_to_use = p2_nn
+
             if (AI_player == 0) or (player == AI_player):
-                action_i, chosen_child, root_bias = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
+                action_i, chosen_child, root_bias = explorer.run_mcts(net_to_use, game, subtree_root, state_dict=state_dict)
 
             else:
                 # The other player chooses randomly 
                 probs = valid_actions_mask/n_valids
                 action_i = np.random.choice(game.get_num_actions(), p=probs)
                 if keep_sub_tree:    
-                    _, _, root_bias = explorer.run_mcts(nn, game, subtree_root, state_dict=state_dict)
+                    _, _, root_bias = explorer.run_mcts(net_to_use, game, subtree_root, state_dict=state_dict)
                     chosen_child = subtree_root.children[action_i]
 
             tree_size = subtree_root.get_visit_count()
@@ -156,7 +168,7 @@ class Tester():
 
         return winner, stats
 
-    def Test_AI_with_policy(self, player_choice, game, nn, recurrent_iterations=1):
+    def Test_AI_with_policy(self, player_choice, game, nn1, nn2=None, recurrent_iterations=1):
         
         if self.print:
             print("\n")
@@ -168,17 +180,25 @@ class Tester():
 
         if player_choice == "both":
             AI_player = 0
+            p1_nn = nn1
+            if nn2:
+                p2_nn = nn2
+            else:
+                p2_nn = nn1
+
         elif player_choice == "1":
             AI_player = 1
+            p1_nn = nn1
         elif player_choice == "2":
             AI_player = 2
+            p2_nn = nn1
         else:
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()
+        
 
         while True:
             
-            player = game.current_player
             valid_actions_mask = game.possible_actions()
             valid_actions_mask = valid_actions_mask.flatten()
             n_valids = np.sum(valid_actions_mask)
@@ -186,11 +206,17 @@ class Tester():
             if (n_valids == 0):
                 print("Zero valid actions!")
                 exit()
+
+            player = game.current_player
+            if player == 1:
+                net_to_use = p1_nn
+            else:
+                net_to_use = p2_nn
             
             if (AI_player == 0) or (player == AI_player):
 
                 state = game.generate_state_image()
-                action_probs, value_pred = nn.inference(state, False, recurrent_iterations)
+                action_probs, value_pred = net_to_use.inference(state, False, recurrent_iterations)
                 probs = action_probs.cpu()[0].numpy().flatten()
 
 
@@ -370,7 +396,7 @@ class Tester():
 
         return winner
 
-    def test_game(self, game_class, game_args): #TODO: Incomplete
+    def test_game(self, game_class, game_args): #TODO: Very incomplete
         
         # Plays games at random and displays stats about what terminal states it found, who won, etc...
 

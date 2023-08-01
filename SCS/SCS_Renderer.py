@@ -312,38 +312,73 @@ class SCS_Renderer():
                     unit_surface = pygame.transform.scale(unit_image, unit_dimensions)
 
                     screen.blit(unit_surface, unit_position)
-    
+
+    def draw_hexagon(surface, color, radius, position, width=0):
+        n = 6
+        r = radius
+        x, y = position
+        pygame.draw.polygon(surface, color, [
+            (x + r * math.cos(2 * math.pi * i / n), y + r * math.sin(2 * math.pi * i / n))
+            for i in range(n)
+        ], width)
+
     def render_board_hexagons(self, screen, game, debug=[]):
 
         if len(debug) > 0:
             values, positions = list(zip(*debug))
 
-        GAME_HEIGHT = game.getBoardRows()
-        GAME_WIDTH = game.getBoardColumns()
+        height_to_width_ratio = 1.1547005
+        width_to_height_ratio = 0.8660254
+
+        GAME_ROWS = game.getBoardRows()
+        GAME_COLS = game.getBoardColumns()
 
         # Draw the board
-        board_top_offset = math.floor(0.15*self.WINDOW_HEIGHT)
-        board_bottom_offset = math.floor(0.05*self.WINDOW_HEIGHT)
+        board_top_gap = math.floor(0.15*self.WINDOW_HEIGHT)
+        board_bottom_gap = math.floor(0.05*self.WINDOW_HEIGHT)
 
-        board_height = (self.WINDOW_HEIGHT - board_top_offset - board_bottom_offset)
-        board_height = board_height - (board_height%GAME_HEIGHT) # make sure the board height is divisible by the number of tiles
+        board_right_gap = math.floor(0.05*self.WINDOW_HEIGHT)
+        board_left_gap = board_right_gap
 
-        board_width = board_height
+        board_height = (self.WINDOW_HEIGHT - board_top_gap - board_bottom_gap)
+        board_height = board_height - (board_height%GAME_ROWS) # make sure the board height is divisible by the number of tiles
 
-        tile_height = board_height//GAME_HEIGHT
-        tile_width = tile_height
+        board_width = self.WINDOW_WIDTH - board_left_gap - board_right_gap
+        board_width = board_width - (board_width%GAME_COLS)
+
+        # Find the max size of each hexagon based on the available space and the number of rows and cols
+        horizontal_number_of_sides = 1.5 * GAME_COLS
+        odd_cols = GAME_COLS % 2
+        if odd_cols: 
+            horizontal_number_of_sides += 2
+        else: 
+            horizontal_number_of_sides += 0.5
+
+
+        vertical_number_of_short_sides =  (GAME_ROWS*2) + 1
+        vertical_number_of_sides = vertical_number_of_short_sides * width_to_height_ratio
+
+        width_based_side = board_width // horizontal_number_of_sides
+        height_based_side = board_height // vertical_number_of_sides
+
+        hexagon_side = min(width_based_side, height_based_side)
+        hexagon_short_side = hexagon_side * width_to_height_ratio
+        radius = hexagon_side
         
+        border_rectangle_width = hexagon_side * horizontal_number_of_sides
+        border_rectangle_height = hexagon_side * vertical_number_of_sides
+        border_dimensions = (border_rectangle_width, border_rectangle_height)
+        
+        board_center = (board_left_gap + board_width//2, board_top_gap + board_height//2)
+        border_rectangle = pygame.Rect((0,0), border_dimensions)
+        border_rectangle.center = board_center
+
         # values in pixels
-        tile_border_width = 2
-        board_border_width = 8
+        tile_border_thickness = 2
+        board_border_thickness = 8
         
         numbers_gap = 25
-
-        board_center = (self.WINDOW_WIDTH//2, board_top_offset + board_height/2)
-        
-        x_offset = board_center[0] - board_width//2
-        y_offset = board_center[1] - board_height//2
-        
+                
 
         board_position = (x_offset-board_border_width, y_offset-board_border_width)
         board_dimensions = (board_width+(2*board_border_width), board_height+(2*board_border_width))
@@ -352,7 +387,7 @@ class SCS_Renderer():
 
 
         board = game.get_board()
-        for i in range(GAME_HEIGHT):
+        for i in range(GAME_ROWS):
             
             # BOARD NUMBERS
             number_font = pygame.font.SysFont("uroob", 30)

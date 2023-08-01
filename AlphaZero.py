@@ -9,8 +9,23 @@ import pickle
 import time
 import sys
 import ray
-
+import glob
+import re
 import torch
+
+from Neural_Networks.Torch_NN import Torch_NN
+from Neural_Networks.MLP_Network import MLP_Network
+
+from Neural_Networks.Rectangular.Simple_Conv_Network import Simple_Conv_Network
+from Neural_Networks.Rectangular.ResNet import ResNet
+from Neural_Networks.Rectangular.dt_neural_network import *
+
+#from Neural_Networks.Hexagonal.Simple_Conv_Network import Simple_Conv_Network
+#from Neural_Networks.Hexagonal.ResNet import ResNet
+#from Neural_Networks.Hexagonal.dt_neural_network import *
+
+from Configs.AlphaZero_config import AlphaZero_config
+from Configs.Search_config import Search_config
 
 from stats_utilities import *
 
@@ -36,30 +51,104 @@ from ray.runtime_env import RuntimeEnv
 class AlphaZero():
 
 	
-	def __init__(self, model, recurrent, game_class, game_args, alpha_config, search_config, network_name="ABC", continuing=False):
+	def __init__(self, game_class, game_args, model=None, default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", default_search_config="Configs/Config_files/SCS_search_config.ini"):
+
+		
+		# ------------------------------------------------------ #
+        # -------------------- SYSTEM SETUP -------------------- #
+        # ------------------------------------------------------ #
+
+		self.continuing = False
+		self.starting_iteration = 0
+
 		self.game_args = game_args  # Args for the game's __init__()
 		self.game_class = game_class
 		game = game_class(*game_args)
 
-		self.network_name = network_name
-		self.latest_network = Torch_NN(game, model, recurrent)
-		self.model_class = model.__class__
+		self.network_name = input("\nName of the network you wish to train: ")
 
-		self.alpha_config = alpha_config
-		self.search_config = search_config
-		self.continuing = continuing
+		self.game_folder_name = game.get_name()
+		self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
+		self.plots_path = self.model_folder_path + "plots/"
+
+		if os.path.exists(self.model_folder_path):
+			continue_answer = input("\nThere is a network with that name already.\nDo you wish to continue training this network?(y/n)")
+			if continue_answer == "y":
+				self.continuing = True
+
+				pickle_path =  self.model_folder_path + "base_model.pkl"
+				with open(pickle_path, 'rb') as file:
+					self.model = pickle.load(file)
+
+				model_paths = glob.glob(self.model_folder_path + "*_model")
+				model_paths.sort()
+				latest_model_path = model_paths[-1]
+				self.model.load_state_dict(torch.load(latest_model_path))
+
+				# Uses RegExp to find all the numbers in the string, converts them to int and puts them in a list.
+				self.starting_iteration = list(map(int, re.findall(r'\d+', latest_model_path)))[-1] # The last number is the iteration number.
+
+				configs_answer = input("\nContinue with the same configs?(y/n)")
+				if configs_answer == "y":
+					alpha_config_path = self.model_folder_path + "alpha_config_copy.ini"
+					search_config_path = self.model_folder_path + "search_config_copy.ini"
+				else:
+					print("\nThe default config paths are:\n " + default_alpha_config + "\n " + default_search_config)
+					alpha_config_path = default_alpha_config
+					search_config_path = default_search_config
+			else:
+				overwrite_answer = input("\nThis will overwrite the previous network data. Continue?(y/n)")
+				if overwrite_answer != "y":
+					print("Overwrite canceled. Exiting...")
+					exit()
+
+					
+		if not self.continuing:
+			if not os.path.exists(self.model_folder_path):
+				os.mkdir(self.model_folder_path)
+			if not os.path.exists(self.plots_path):	
+				os.mkdir(self.plots_path)
+			
+
+			pickled_model_answer = input("\nDo you wish to import a pickled model?(y/n)")
+			if pickled_model_answer == "y":
+				pickle_path = input("\nPath to the pickled model: ")
+				with open(pickle_path, 'rb') as file:
+					self.model = pickle.load(file)
+			else:
+				if model:
+					self.model = model
+				else:
+					print("If you are not importing a model, please provide one as argument to AlphaZero.")
+					exit()
+
+			print("\nThe default config paths are:\n " + default_alpha_config + "\n " + default_search_config)
+			alpha_config_path = default_alpha_config
+			search_config_path = default_search_config
+
+		recurrent = False
+		recurrent_answer = input("\nIs the network recurrent?(y/n)")
+		if recurrent_answer == "y":
+			recurrent = True
+
+		self.latest_network = Torch_NN(game, self.model, recurrent)
+			
+		self.search_config = Search_config()
+		self.search_config.load(search_config_path)
+
+		self.alpha_config = AlphaZero_config()
+		self.alpha_config.load(alpha_config_path)
 
 		self.n_updates = 0
 		self.decisive_count = 0
-		
 
-		#Plots
+		# ------------------------------------------------------ #
+        # ----------------------- PLOTS ------------------------ #
+        # ------------------------------------------------------ #
+
 		self.plot_loss = True
 		self.plot_wr = True
-		
-		self.value_loss = []
-		self.policy_loss = []
-		self.total_loss = []
+		self.plot_weights = True
 
 		self.epochs_value_loss = []
 		self.epochs_policy_loss = []
@@ -77,14 +166,16 @@ class AlphaZero():
 		self.test_global_policy_loss = []
 		self.test_global_combined_loss = []
 
-		self.wr1_stats = [0.0]
-		self.wr2_stats = [0.0]
+		self.p1_wr_stats = [[],[]]
+		self.p2_wr_stats = [[],[]]
 
 		self.weight_size_max = []
 		self.weight_size_min = []
 		self.weight_size_average = []
+		
 
-	def run(self, starting_iteration=0):
+
+	def run(self):
 		pid = os.getpid()
 		process = psutil.Process(pid)
 
@@ -113,6 +204,7 @@ class AlphaZero():
 
 		state_cache = self.alpha_config.optimization["state_cache"]
 
+
 		num_games_per_batch = self.alpha_config.running["num_games_per_batch"]
 		num_batches = self.alpha_config.running["num_batches"]
 		early_fill = self.alpha_config.running["early_fill"]
@@ -121,6 +213,7 @@ class AlphaZero():
 		# Test set requires playing extra games
 		test_set = self.alpha_config.running["test_set"]
 		num_test_set_games = self.alpha_config.running["num_test_set_games"]
+
 
 		save_frequency = self.alpha_config.frequency["save_frequency"]
 		test_frequency = self.alpha_config.frequency["test_frequency"]
@@ -134,30 +227,21 @@ class AlphaZero():
 			return
 		
 		# ------------------------------------------------------ #
-        # ------------------- FOLDERS SETUP -------------------- #
+        # ------------------- BACKUP FILES --------------------- #
         # ------------------------------------------------------ #
 
 		print("\n--------------------------------\n\n")
-		self.game = self.game_class(*self.game_args)
-		game_folder_name = self.game.get_name()
-
-		model_folder_path = game_folder_name + "/models/" + self.network_name
-		plots_path = model_folder_path + "/plots"
-		if not os.path.exists(model_folder_path):
-			os.mkdir(model_folder_path)
-		if not os.path.exists(plots_path):
-			os.mkdir(plots_path)
 		
 		# pickle the network class
-		file_name = model_folder_path + "/base_model.pkl"
+		file_name = self.model_folder_path + "base_model.pkl"
 		with open(file_name, 'wb') as file:
 			pickle.dump(self.latest_network.get_model(), file)
 			print(f'Successfully pickled model class at "{file_name}".\n')
 
 		# create copies of the config files
 		print("\nCreating config file copies:")
-		search_config_copy_path = model_folder_path + "/search_config_copy.ini"
-		alpha_config_copy_path = model_folder_path + "/alpha_config_copy.ini"
+		search_config_copy_path = self.model_folder_path + "search_config_copy.ini"
+		alpha_config_copy_path = self.model_folder_path + "alpha_config_copy.ini"
 		self.alpha_config.save(alpha_config_copy_path)
 		self.search_config.save(search_config_copy_path)
 		print("\n\n--------------------------------\n")
@@ -171,7 +255,7 @@ class AlphaZero():
 		learning_method = self.alpha_config.learning["learning_method"]
 
 		self.network_storage = Shared_network_storage.remote(shared_storage_size)
-		future_save = self.network_storage.save_network.remote(self.latest_network)
+		initial_storage_future = self.network_storage.save_network.remote(self.latest_network)
 
 		if learning_method == "epochs":
 			batch_size = self.alpha_config.epochs["batch_size"]
@@ -220,37 +304,69 @@ class AlphaZero():
 		print("\nRunning for " + str(num_batches) + " batches of " + str(num_games_per_batch) + " games each.")
 		if state_cache != "disabled":
 			print("\n-Using state dictonary as cache.")			  
+		if self.starting_iteration != 0:
+			print("\n-Starting from iteration " + str(self.starting_iteration+1) + ".\n")
 
-		ray.get(future_save) # wait for the network to be in storage
 
 		model = self.latest_network.get_model()
 		model_dict = model.state_dict()
 
-		if not self.continuing:
+		if self.continuing:
+			# Load all the plot data
+			plot_data_path = self.model_folder_path + "plot_data.pkl"
+			with open(plot_data_path, 'rb') as file:
+				self.epochs_value_loss = pickle.load(file)
+				self.epochs_policy_loss = pickle.load(file)
+				self.epochs_combined_loss = pickle.load(file)
+
+				self.tests_value_loss = pickle.load(file)
+				self.tests_policy_loss = pickle.load(file)
+				self.tests_combined_loss = pickle.load(file)
+
+				self.train_global_value_loss = pickle.load(file)
+				self.train_global_policy_loss = pickle.load(file)
+				self.train_global_combined_loss = pickle.load(file)
+
+				self.test_global_value_loss = pickle.load(file)
+				self.test_global_policy_loss = pickle.load(file)
+				self.test_global_combined_loss = pickle.load(file)
+
+				self.p1_wr_stats = pickle.load(file)
+				self.p2_wr_stats = pickle.load(file)
+
+				self.weight_size_max = pickle.load(file)
+				self.weight_size_min = pickle.load(file)
+				self.weight_size_average = pickle.load(file)
+		else:
 			# Initial save (untrained network)
-			save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_0_model"
+			save_path = self.model_folder_path + self.network_name + "_0_model"
 			torch.save(model_dict, save_path)
 
-		# Weight graphs
-		all_weights = torch.Tensor()
-		for k, v in model_dict.items():
-			print(k)
-			if "weight" in k:
-				all_weights = torch.cat((all_weights, v.flatten()))
+			# Set initial win rate to 0 (simplification to avoid testing untrained network)
+			if self.plot_wr:
+				for player in (0,1):
+					self.p1_wr_stats[player].append(0.0)
+					self.p2_wr_stats[player].append(0.0)
 
+			if self.plot_weights:
+				# Weight graphs
+				all_weights = torch.Tensor()
+				for param in model.parameters():
+					all_weights = torch.cat((all_weights, param.clone().detach().flatten()), 0)
 
-		self.weight_size_max.append(max(abs(all_weights)))
-		self.weight_size_min.append(min(abs(all_weights)))
-		self.weight_size_average.append(torch.mean(abs(all_weights)))
-		del all_weights
+				self.weight_size_max.append(max(abs(all_weights)))
+				self.weight_size_min.append(min(abs(all_weights)))
+				self.weight_size_average.append(torch.mean(abs(all_weights)))
+				del all_weights
 		
-		updates = 0
+		ray.get(initial_storage_future) # wait for the network to be in storage
+
 		if early_fill > 0:
 			print("\n\n\n\nEarly Buffer Fill")
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 
-		since_reset = 0
-		batches_to_run = range(starting_iteration, num_batches)
+		updates = 0
+		batches_to_run = range(self.starting_iteration, num_batches)
 		for b in batches_to_run:
 			updated = True
 
@@ -262,7 +378,6 @@ class AlphaZero():
 			print("\nreplay buffer:")	
 			print(ray.get(self.replay_buffer.played_games.remote()))
 
-
 			if test_set:
 				self.decisive_count = 0
 				self.run_selfplay(num_test_set_games, True, text="Test-set Games")
@@ -273,63 +388,72 @@ class AlphaZero():
 
 			print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
 			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set)
+			updates +=1
 
 			if (((b+1) % storage_frequency) == 0):
-				future_storage = self.network_storage.save_network.remote(self.latest_network)
-
-			since_reset += 1
-			updates +=1
+				iteration_storage_future = self.network_storage.save_network.remote(self.latest_network)			
 			
-
 			if (((b+1) % save_frequency) == 0):
-				save_path = game_folder_name + "/models/" + self.network_name + "/" + self.network_name + "_" + str(b+1) + "_model"
+				save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"
 				torch.save(self.latest_network.get_model().state_dict(), save_path)
 			
 			if (((b+1) % test_frequency) == 0) and updated:
-				wr1, _, _ = self.run_tests("1", num_wr_testing_games, state_cache)
-				_, wr2, _ = self.run_tests("2", num_wr_testing_games, state_cache)
+				p1_results = self.run_tests("1", num_wr_testing_games, state_cache)
+				p2_results = self.run_tests("2", num_wr_testing_games, state_cache)
 
 				# save wr as p1 and p2 for plotting
-				self.wr1_stats.append(wr1) 
-				self.wr2_stats.append(wr2)
+				for player in (0,1):
+					self.p1_wr_stats[player].append(p1_results[player])
+					self.p2_wr_stats[player].append(p2_results[player])
 
-			if (((b+1) % debug_frequency) == 0):				
+			if (((b+1) % debug_frequency) == 0):
 				pass			
 
 			if (((b+1) % plot_frequency) == 0):
 				
-				model_dict = self.latest_network.get_model().state_dict()
-				all_weights = torch.Tensor()
-				for k, v in model_dict.items():
-					if "weight" in k:
-						all_weights = torch.cat((all_weights, v.flatten()))
+				if self.plot_weights:
 
-				self.weight_size_max.append(max(abs(all_weights)))
-				self.weight_size_min.append(min(abs(all_weights)))
-				self.weight_size_average.append(torch.mean(abs(all_weights)))
-				del all_weights
+					model = self.latest_network.get_model()
+					
+					all_weights = torch.Tensor()
+					for param in model.parameters():
+						all_weights = torch.cat((all_weights, param.clone().detach().flatten()), 0)
 
-				plt.plot(range(since_reset+1), self.weight_size_max)
-				plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_weight_max.png')
-				plt.clf()
+					self.weight_size_max.append(max(abs(all_weights)))
+					self.weight_size_min.append(min(abs(all_weights)))
+					self.weight_size_average.append(torch.mean(abs(all_weights)))
+					del all_weights
 
-				plt.plot(range(since_reset+1), self.weight_size_min)
-				plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_weight_min.png')
-				plt.clf()
+					plt.plot(range(len(self.weight_size_max)), self.weight_size_max)
+					plt.savefig(self.plots_path + self.network_name + '_weight_max.png')
+					plt.clf()
 
-				plt.plot(range(since_reset+1), self.weight_size_average)
-				plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_weight_average.png')
-				plt.clf()
+					plt.plot(range(len(self.weight_size_min)), self.weight_size_min)
+					plt.savefig(self.plots_path + self.network_name + '_weight_min.png')
+					plt.clf()
+
+					plt.plot(range(len(self.weight_size_average)), self.weight_size_average)
+					plt.savefig(self.plots_path + self.network_name + '_weight_average.png')
+					plt.clf()
 
 
 				if self.plot_wr:
-					number_of_tests = range(0, math.floor(updates/test_frequency) + 1)
-					plt.plot(number_of_tests, self.wr1_stats, label = "Wr as P1")
-					plt.plot(number_of_tests, self.wr2_stats, label = "Wr as P2")
 
+					plt.plot(range(len(self.p1_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
+					plt.plot(range(len(self.p1_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
+					plt.title("Win rates as P1")
 					plt.legend()
-					plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_wr.png')
+					plt.savefig(self.plots_path + self.network_name + '_p1_wr.png')
 					plt.clf()
+
+
+					plt.plot(range(len(self.p2_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
+					plt.plot(range(len(self.p2_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
+					plt.title("Win rates as P2")
+					plt.legend()
+					plt.savefig(self.plots_path + self.network_name + '_p2_wr.png')
+					plt.clf()
+
 
 				if self.plot_loss:
 
@@ -341,7 +465,7 @@ class AlphaZero():
 								plt.plot(range(learning_epochs), self.tests_value_loss, label = "Testing")
 
 							plt.legend()
-							plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_value_loss_' + str((b+1)) + '.png')
+							plt.savefig(self.plots_path + self.network_name + '_value_loss_' + str((b+1)) + '.png')
 							plt.clf()
 
 							
@@ -350,7 +474,7 @@ class AlphaZero():
 								plt.plot(range(learning_epochs), self.tests_policy_loss, label = "Testing")
 
 							plt.legend()
-							plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_policy_loss_' + str((b+1)) + '.png')
+							plt.savefig(self.plots_path + self.network_name + '_policy_loss_' + str((b+1)) + '.png')
 							plt.clf()
 
 							
@@ -359,47 +483,68 @@ class AlphaZero():
 								plt.plot(range(learning_epochs), self.tests_combined_loss, label = "Testing")
 
 							plt.legend()
-							plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/" + self.network_name + '_total_loss_' + str((b+1)) + '.png')
+							plt.savefig(self.plots_path + self.network_name + '_total_loss_' + str((b+1)) + '.png')
 							plt.clf()
 
-					if learning_method == "epochs":
-						number_of_data_points = learning_epochs*(since_reset)
-					else:
-						number_of_data_points = since_reset
+					num_points = len(self.train_global_value_loss)
+					if num_points > 1:
+						x = range(num_points)
+						plt.plot(x, self.train_global_value_loss, label = "Training")
+						if test_set:
+							plt.plot(x, self.test_global_value_loss, label = "Testing")
 
-					x = range(number_of_data_points)
-					plt.plot(x, self.train_global_value_loss, label = "Training")
-					if test_set:
-						plt.plot(x, self.test_global_value_loss, label = "Testing")
+						plt.legend()
+						plt.savefig(self.plots_path + "_" + self.network_name + '_global_value_loss.png')
+						plt.clf()
 
-					plt.legend()
-					plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/_" + self.network_name + '_global_value_loss.png')
-					plt.clf()
+						plt.plot(x, self.train_global_policy_loss, label = "Training")
+						if test_set:
+							plt.plot(x, self.test_global_policy_loss, label = "Testing")
 
-					plt.plot(x, self.train_global_policy_loss, label = "Training")
-					if test_set:
-						plt.plot(x, self.test_global_policy_loss, label = "Testing")
+						plt.legend()
+						plt.savefig(self.plots_path + "_" + self.network_name + '_global_policy_loss.png')
+						plt.clf()
 
-					plt.legend()
-					plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/_" + self.network_name + '_global_policy_loss.png')
-					plt.clf()
+						plt.plot(x, self.train_global_combined_loss, label = "Training")
+						if test_set:
+							plt.plot(x, self.test_global_combined_loss, label = "Testing")
 
-					plt.plot(x, self.train_global_combined_loss, label = "Training")
-					if test_set:
-						plt.plot(x, self.test_global_combined_loss, label = "Testing")
-
-					plt.legend()
-					plt.savefig(game_folder_name + "/models/" + self.network_name + "/plots/_" + self.network_name + '_global_total_loss.png')
-					plt.clf()
-				
+						plt.legend()
+						plt.savefig(self.plots_path + "_" + self.network_name + '_global_total_loss.png')
+						plt.clf()
+					
 			if (((b+1) % plot_reset) == 0):
-				self.policy_loss.clear()
-				self.value_loss.clear()
-				self.total_loss.clear()
 				self.train_global_combined_loss.clear()
 				self.train_global_policy_loss.clear()
 				self.train_global_value_loss.clear()
-				since_reset = 0
+
+
+			# Save ploting information to use when continuing training
+			plot_data_path = self.model_folder_path + "plot_data.pkl"
+			with open(plot_data_path, 'wb') as file:
+				pickle.dump(self.epochs_value_loss, file)
+				pickle.dump(self.epochs_policy_loss, file)
+				pickle.dump(self.epochs_combined_loss, file)
+
+				pickle.dump(self.tests_value_loss, file)
+				pickle.dump(self.tests_policy_loss, file)
+				pickle.dump(self.tests_combined_loss, file)
+
+				pickle.dump(self.train_global_value_loss, file)
+				pickle.dump(self.train_global_policy_loss, file)
+				pickle.dump(self.train_global_combined_loss, file)
+
+				pickle.dump(self.test_global_value_loss, file)
+				pickle.dump(self.test_global_policy_loss, file)
+				pickle.dump(self.test_global_combined_loss, file)
+
+				pickle.dump(self.p1_wr_stats, file)
+				pickle.dump(self.p2_wr_stats, file)
+
+				pickle.dump(self.weight_size_max, file)
+				pickle.dump(self.weight_size_min, file)
+				pickle.dump(self.weight_size_average, file)
+
 			
 			print("\n\nMain process memory usage: ")
 			print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
@@ -407,7 +552,7 @@ class AlphaZero():
 			# psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
 			
-			ray.get(future_storage) # wait for the network to be stored before next iteration	
+			ray.get(iteration_storage_future) # wait for the network to be stored before next iteration	
 			
 		
 		return
@@ -462,9 +607,9 @@ class AlphaZero():
 
 			predicted_value = predicted_values[i]
 			predicted_policy = predicted_policies[i]
-
-			policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
-			#policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
+			
+			policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
+			#policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
 			#Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
 
 			value_loss += ((target_value - predicted_value) ** 2)
@@ -474,16 +619,7 @@ class AlphaZero():
 		policy_loss /= batch_size
 
 		loss = policy_loss + value_loss
-		#loss = value_loss
 
-		'''
-		if self.plot_loss:
-			self.policy_loss.append(policy_loss.item())
-			self.value_loss.append(value_loss.item())
-			self.total_loss.append(loss.item())
-		'''
-
-		#print(loss)
 		# In PyThorch SGD optimizer already applies L2 weight regularization
 		
 		loss.backward()
@@ -764,9 +900,11 @@ class AlphaZero():
 			use_state_cache = True
 		
 		if test_mode == "policy":
-			args_list = [player_choice, None, self.latest_network, test_iterations]
+			args_list = [player_choice, None, self.latest_network, None, test_iterations]
 		elif test_mode == "mcts":
-			args_list = [player_choice, None, self.latest_network, self.search_config, use_state_cache, test_iterations]
+			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations]
+
+		
 
 		bar = ChargingBar(text, max=num_games)
 		bar.next(0)
