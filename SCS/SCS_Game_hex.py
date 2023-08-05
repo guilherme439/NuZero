@@ -429,16 +429,26 @@ class SCS_Game():
             y = action_coords[2]
             start = (x, y)
 
+            odd_col = y % 2
             plane_index = current_plane-self.placement_planes
-            # UP(0) DOWN(1) RIGHT(2) LEFT(3)
-            if plane_index == 0:
-                dest= (x-1,y)
-            elif plane_index == 1:
-                dest= (x+1,y)
-            elif plane_index == 2:
-                dest= (x,y+1)
-            elif plane_index == 3:
-                dest= (x,y-1)
+            # n, ne, se, s, sw, nw
+            if plane_index == 0:    # N
+                dest = self.get_n_coords(start)
+
+            elif plane_index == 1:  # NE
+                dest = self.get_ne_coords(start)
+
+            elif plane_index == 2:  # SE
+                dest = self.get_se_coords(start)
+
+            elif plane_index == 3:  # S
+                dest = self.get_s_coords(start)
+
+            elif plane_index == 4:  # SW
+                dest = self.get_sw_coords(start)
+
+            elif plane_index == 5:  # NW
+                dest = self.get_nw_coords(start)
             else:
                 print("Problem parsing action...Exiting")
                 exit()
@@ -450,17 +460,26 @@ class SCS_Game():
             y = action_coords[2]
             start = (x, y)
 
+            odd_col = y % 2
             plane_index = current_plane - (self.placement_planes + self.movement_planes)
+            # n, ne, se, s, sw, nw
+            if plane_index == 0:    # N
+                dest = self.get_n_coords(start)
 
-            # UP(0) DOWN(1) RIGHT(2) LEFT(3)
-            if plane_index == 0:
-                dest= (x-1,y)
-            elif plane_index == 1:
-                dest= (x+1,y)
-            elif plane_index == 2:
-                dest= (x,y+1)
-            elif plane_index == 3:
-                dest= (x,y-1)
+            elif plane_index == 1:  # NE
+                dest = self.get_ne_coords(start)
+
+            elif plane_index == 2:  # SE
+                dest = self.get_se_coords(start)
+
+            elif plane_index == 3:  # S
+                dest = self.get_s_coords(start)
+
+            elif plane_index == 4:  # SW
+                dest = self.get_sw_coords(start)
+
+            elif plane_index == 5:  # NW
+                dest = self.get_nw_coords(start)
             else:
                 print("Problem parsing action...Exiting")
                 exit()
@@ -643,6 +662,52 @@ class SCS_Game():
         done = self.update_game_env()
         return done
     
+    def get_n_coords(self, coords):
+        (row, col) = coords
+        n = (row-1, col)
+        return n
+    
+    def get_ne_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            ne = (row-1, col+1)
+        else:
+            ne = (row, col+1)
+
+        return ne
+    
+    def get_se_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            se = (row, col+1)
+        else:
+            se = (row+1, col+1)
+    
+        return se
+    
+    def get_s_coords(self, coords):
+        (row, col) = coords
+        s = (row+1, col)
+        return s
+
+    def get_sw_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            sw = (row, col-1)
+        else:
+            sw = (row+1, col-1)
+
+        return sw
+    
+    def get_nw_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            nw = (row-1, col-1)
+        else:
+            nw = (row, col-1)
+
+        return nw
+
     def check_tiles(self, coords):
         # Clock-wise rotation order
 
@@ -665,34 +730,28 @@ class SCS_Game():
 
 
         if (row-1) != -1:
-            n = self.board[row-1][col]
+            (x, y) = self.get_n_coords(coords)
+            n = self.board[x][y]
 
         if (row+1) != self.rows:
-            s = self.board[row+1][col]
+            (x, y) = self.get_s_coords(coords)
+            s = self.board[x][y]
 
         if not ((col == 0) or (row == 0 and col % 2 == 0)):
-            if col % 2 == 0:
-                nw = self.board[row-1][col-1]
-            else:
-                nw = self.board[row][col-1]
+            (x, y) = self.get_nw_coords(coords)
+            nw = self.board[x][y]
 
         if not ((col == 0) or (row == self.rows-1 and col % 2 != 0)):
-            if col % 2 == 0:
-                sw = self.board[row][col-1]
-            else:
-                sw = self.board[row+1][col-1]
+            (x, y) = self.get_sw_coords(coords)
+            sw = self.board[x][y]
 
         if not ((col == self.columns-1) or (row == 0 and col % 2 == 0)):
-            if col % 2 == 0:
-                ne = self.board[row-1][col+1]
-            else:
-                ne = self.board[row][col+1]
+            (x, y) = self.get_ne_coords(coords)
+            ne = self.board[x][y]
 
         if not ((col == self.columns-1) or (row == self.rows-1 and col % 2 != 0)):
-            if col % 2 == 0:
-                se = self.board[row][col+1]
-            else:
-                se = self.board[row-1][col+1]
+            (x, y) = self.get_se_coords(coords)
+            se = self.board[x][y]
         
 
         return n, ne, se, s, sw, nw
@@ -1059,7 +1118,8 @@ class SCS_Game():
         return new_game
     
     def string_representation(self):
-        
+        print("string representation for squared boards")
+
         string = "\n   "
         for k in range(self.columns):
             string += (" " + format(k+1, '02') + " ")

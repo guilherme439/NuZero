@@ -17,6 +17,7 @@ class Color(Enum):
     RED = (200, 0, 0)
     BROWN = (90, 50, 0)
     GREEN = (45, 110, 10)
+    BAD_PINK = (255, 0, 255)
 
     def rgb(self):
         return self.value
@@ -60,8 +61,9 @@ class SCS_Renderer():
 
             # Fill the background with white
             screen.fill(Color.WHITE.rgb())
-    
-            self.render_board(screen, game)
+
+            self.render_board_hexagons(screen, game)
+            #self.render_board_squares(screen, game)
 
             text = "SCS Board live rendering!"
             if len(game.action_history) > 0:
@@ -313,14 +315,16 @@ class SCS_Renderer():
 
                     screen.blit(unit_surface, unit_position)
 
-    def draw_hexagon(surface, color, radius, position, width=0):
+    def draw_hexagon(self, surface, color, radius, position, width=0):
         n = 6
         r = radius
         x, y = position
-        pygame.draw.polygon(surface, color, [
+        rectangle = pygame.draw.polygon(surface, color, [
             (x + r * math.cos(2 * math.pi * i / n), y + r * math.sin(2 * math.pi * i / n))
             for i in range(n)
         ], width)
+
+        return rectangle
 
     def render_board_hexagons(self, screen, game, debug=[]):
 
@@ -333,7 +337,22 @@ class SCS_Renderer():
         GAME_ROWS = game.getBoardRows()
         GAME_COLS = game.getBoardColumns()
 
-        # Draw the board
+        # values in pixels
+        tile_border_thickness = 3
+        board_border_thickness = 8
+        if tile_border_thickness % 2 == 0:
+            outter_tile_border_thickness = (tile_border_thickness / 2) - 1
+        else:
+            outter_tile_border_thickness = (tile_border_thickness // 2)
+
+        numbers_gap = 25
+
+        # Dimensions
+        star_scale = 0.3 # as a percentage of hexagon size
+
+        unit_scale = 0.6 # as a percentage of tile size
+
+        # Board sizes
         board_top_gap = math.floor(0.15*self.WINDOW_HEIGHT)
         board_bottom_gap = math.floor(0.05*self.WINDOW_HEIGHT)
 
@@ -341,20 +360,14 @@ class SCS_Renderer():
         board_left_gap = board_right_gap
 
         board_height = (self.WINDOW_HEIGHT - board_top_gap - board_bottom_gap)
-        board_height = board_height - (board_height%GAME_ROWS) # make sure the board height is divisible by the number of tiles
+        board_height = board_height - (board_height%GAME_ROWS) # make sure the board height is divisible by the number of rows
 
         board_width = self.WINDOW_WIDTH - board_left_gap - board_right_gap
         board_width = board_width - (board_width%GAME_COLS)
 
         # Find the max size of each hexagon based on the available space and the number of rows and cols
-        horizontal_number_of_sides = 1.5 * GAME_COLS
-        odd_cols = GAME_COLS % 2
-        if odd_cols: 
-            horizontal_number_of_sides += 2
-        else: 
-            horizontal_number_of_sides += 0.5
-
-
+        horizontal_number_of_sides = 1.5 * GAME_COLS + 0.5
+        
         vertical_number_of_short_sides =  (GAME_ROWS*2) + 1
         vertical_number_of_sides = vertical_number_of_short_sides * width_to_height_ratio
 
@@ -365,72 +378,79 @@ class SCS_Renderer():
         hexagon_short_side = hexagon_side * width_to_height_ratio
         radius = hexagon_side
         
-        border_rectangle_width = hexagon_side * horizontal_number_of_sides
-        border_rectangle_height = hexagon_side * vertical_number_of_sides
+        border_rectangle_width = hexagon_side * horizontal_number_of_sides + (board_border_thickness * 2)
+        border_rectangle_height = hexagon_side * vertical_number_of_sides + (board_border_thickness * 2)
         border_dimensions = (border_rectangle_width, border_rectangle_height)
         
         board_center = (board_left_gap + board_width//2, board_top_gap + board_height//2)
         border_rectangle = pygame.Rect((0,0), border_dimensions)
         border_rectangle.center = board_center
 
-        # values in pixels
-        tile_border_thickness = 2
-        board_border_thickness = 8
+        board_x = border_rectangle.x
+        board_y = border_rectangle.y
+
+        x_offset = board_x + hexagon_side + board_border_thickness
+        y_offset = board_y + hexagon_short_side + board_border_thickness
         
-        numbers_gap = 25
-                
 
-        board_position = (x_offset-board_border_width, y_offset-board_border_width)
-        board_dimensions = (board_width+(2*board_border_width), board_height+(2*board_border_width))
-        board_border = pygame.Rect(board_position, board_dimensions)
-        pygame.draw.rect(screen, Color.BROWN.rgb(), board_border, board_border_width)
-
-
+        pygame.draw.rect(screen, Color.BROWN.rgb(), border_rectangle, board_border_thickness)
+        
         board = game.get_board()
         for i in range(GAME_ROWS):
-            
-            # BOARD NUMBERS
-            number_font = pygame.font.SysFont("uroob", 30)
-            number_block = number_font.render(str(i+1), True, Color.BLACK.rgb())
-            number_rect = number_block.get_rect(center=(board_position[0] - numbers_gap, board_position[1] + tile_height/2 + (tile_height)*i))
-            screen.blit(number_block, number_rect)
-
-            for j in range(GAME_WIDTH):
+            for j in range(GAME_COLS):
 
                 # x goes left and right
                 # j goes left and right
                 # y goes up and down
                 # i goes up and down
 
+                odd_col = j % 2
+
+                center_x = x_offset + j*((3/2*hexagon_side))
+                center_y = y_offset + i*((hexagon_short_side*2))
+                if odd_col:
+                    center_y += hexagon_short_side
+
+
                 # BOARD NUMBERS
+                if j==0:
+                    number_font = pygame.font.SysFont("uroob", 30)
+                    number_block = number_font.render(str(i+1), True, Color.BLACK.rgb())
+                    number_rect = number_block.get_rect(center=(board_x - numbers_gap, center_y))
+                    screen.blit(number_block, number_rect)
                 if i==0:
                     number_font = pygame.font.SysFont("uroob", 30)
                     number_block = number_font.render(str(j+1), True, Color.BLACK.rgb())
-                    number_rect = number_block.get_rect(center=(board_position[0] + tile_width/2 + (tile_width)*j, board_position[1] - numbers_gap))
+                    number_rect = number_block.get_rect(center=(center_x, board_y - numbers_gap))
                     screen.blit(number_block, number_rect)
 
-
+                
                 # TILES
-                x_position = ((tile_width)*j)+x_offset
-                y_position = ((tile_height)*i)+y_offset
-                tile_position = (x_position, y_position)
-                tile_dimensions = (tile_height, tile_width)
-                tile_rect = pygame.Rect(tile_position, tile_dimensions)
-                pygame.draw.rect(screen, Color.BLACK.rgb(), tile_rect, tile_border_width)
-
                 tile = board[i][j]
-
+                tile_radius = radius-(outter_tile_border_thickness*height_to_width_ratio)
+                tile_center = (center_x, center_y)
+                tile_rect_dims = ((2*hexagon_side, hexagon_short_side*2)) 
 
                 # TERRAIN
-                terrain = tile.get_terrain()                
-                if terrain:
-                    terrain_image = pygame.image.load(terrain.get_image_path())
+                terrain = tile.get_terrain()   
+                if terrain:   
+                    hexagon_surface = pygame.Surface(tile_rect_dims)
+                    hexagon_surface.fill(Color.BAD_PINK.rgb())
+                    terrain_radius = tile_radius - (outter_tile_border_thickness*height_to_width_ratio) + 1 # We add 1 to slighylt overlap the image behind the border
+                    self.draw_hexagon(hexagon_surface, Color.WHITE.rgb(), terrain_radius, hexagon_surface.get_rect().center, width=0)
 
-                    terrain_dimensions = (tile_width-(2*tile_border_width), tile_height-(2*tile_border_width))
-                    terrain_position = (tile_position[0]+tile_border_width, tile_position[1]+tile_border_width)
-                    terrain_surface = pygame.transform.scale(terrain_image, terrain_dimensions)
-        
-                    screen.blit(terrain_surface, terrain_position)
+
+                    terrain_image = pygame.image.load(terrain.get_image_path())
+                    terrain_surface = pygame.transform.scale(terrain_image, tile_rect_dims)
+                    pygame.transform.threshold(terrain_surface, hexagon_surface, Color.BAD_PINK.rgb(), inverse_set=True, set_color=Color.BAD_PINK.rgb())
+                    terrain_surface.set_colorkey(Color.BAD_PINK.rgb())
+                    terrain_rect = terrain_surface.get_rect(center=(center_x, center_y))
+
+                    screen.blit(terrain_surface, terrain_rect)
+                    self.draw_hexagon(screen, Color.BLACK.rgb(), tile_radius, (center_x, center_y), width=tile_border_thickness)
+
+                tile_rect = self.draw_hexagon(screen, Color.BLACK.rgb(), tile_radius, (center_x, center_y), width=tile_border_thickness)
+                # Delay tile rendering util after  terrain rendering
 
                 # DEBUG INFO
                 if len(debug) > 0:
@@ -441,7 +461,7 @@ class SCS_Renderer():
                         value_font = pygame.font.SysFont('notosansmonocjkkr', 25)
                         value_font.set_bold(True)
                         value_block = value_font.render(value_text, True, Color.BLACK.rgb())
-                        value_text_position = (tile_position[0] + tile_height/2, tile_position[1] + tile_width/2)
+                        value_text_position = (tile_rect.center)
                         value_rect = value_block.get_rect(center=value_text_position)
                         screen.blit(value_block, value_rect)
 
@@ -455,32 +475,26 @@ class SCS_Renderer():
                     elif vp == 2:
                         star_image = pygame.image.load(p2_path)
 
-                    # As percentage of tile size
-                    star_scale = 0.2
-                    star_margin = 0.1
-
-                    star_dimensions = (star_scale*tile_dimensions[0], star_scale*tile_dimensions[1])
-                    star_x_offset = (1-(star_scale+star_margin))*tile_dimensions[0]
-                    star_y_offset = star_margin*tile_dimensions[1]
-                    star_position = (tile_position[0] + star_x_offset, tile_position[1] + star_y_offset)
+                    star_dimensions = (star_scale*hexagon_side, star_scale*hexagon_side)
                     star_surface = pygame.transform.scale(star_image, star_dimensions)
-        
-                    screen.blit(star_surface, star_position)
+                    (midtop_x, midtop_y) = tile_rect.midtop
+                    star_x_offset = hexagon_side * 0.4
+                    star_y_offset = hexagon_side * 0.25
+                    star_position = (midtop_x + star_x_offset, midtop_y + star_y_offset)
+                    star_rect = star_surface.get_rect(center=star_position)
+                    screen.blit(star_surface, star_rect)
 
                 # UNITS
                 unit = tile.unit
                 if unit:
-                    unit_scale = 0.75
                     unit_image = pygame.image.load(unit.get_image_path())
+                    image_height = unit_image.get_rect().h
+                    tile_size_ratio = tile_rect_dims[0]/image_height
 
-                    unit_dimensions = (unit_scale*tile_dimensions[0], unit_scale*tile_dimensions[1])
-
-                    unit_x_offset = (tile_dimensions[0]-unit_dimensions[0])//2
-                    unit_y_offset = (tile_dimensions[1]-unit_dimensions[1])//2
-                    unit_position = (tile_position[0] + unit_x_offset, tile_position[1] + unit_y_offset)
-                    unit_surface = pygame.transform.scale(unit_image, unit_dimensions)
-
-                    screen.blit(unit_surface, unit_position)
+                    unit_surface = pygame.transform.scale_by(unit_image, tile_size_ratio)
+                    unit_surface = pygame.transform.scale_by(unit_surface, unit_scale)
+                    unit_rect = unit_surface.get_rect(center=tile_center)                   
+                    screen.blit(unit_surface, unit_rect)
 
     def debug_value(self, move_num, base_game, nn, recurrent_iterations=2):
         games_list = []

@@ -51,7 +51,7 @@ class Gamer():
         
         subtree_root = Node(0)
         game = self.game_class(*self.game_args)
-        network = ray.get(future_network, timeout=120)
+        network = ray.get(future_network, timeout=200)
         while not game.is_terminal():
             state = game.generate_state_image()
             game.store_state(state)

@@ -17,17 +17,17 @@ from progress.bar import ChargingBar
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network
 
-from Neural_Networks.Rectangular.Simple_Conv_Network import Simple_Conv_Network
-from Neural_Networks.Rectangular.ResNet import ResNet
-from Neural_Networks.Rectangular.dt_neural_network import *
+#from Neural_Networks.Rectangular.Simple_Conv_Network import Simple_Conv_Network
+#from Neural_Networks.Rectangular.ResNet import ResNet
+#from Neural_Networks.Rectangular.dt_neural_network import *
 
-#from Neural_Networks.Hexagonal.Simple_Conv_Network import Simple_Conv_Network
-#from Neural_Networks.Hexagonal.ResNet import ResNet
-#from Neural_Networks.Hexagonal.dt_neural_network import *
+from Neural_Networks.Hexagonal.Simple_Conv_Network import Simple_Conv_Network
+from Neural_Networks.Hexagonal.ResNet import ResNet
+from Neural_Networks.Hexagonal.dt_neural_network import *
 
 
-from SCS.SCS_Game import SCS_Game
-#from SCS.SCS_Game_hex import SCS_Game
+#from SCS.SCS_Game import SCS_Game
+from SCS.SCS_Game_hex import SCS_Game
 from SCS.SCS_Renderer import SCS_Renderer
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
@@ -118,7 +118,7 @@ def main():
 
         case 6: # Debug Value
 
-            game_class = SCS_Game().__class__
+            game_class = SCS_Game
             game_args = [5, 5, 7, [1,0],[0,0], True]
             game = game_class(*game_args)
 
@@ -151,27 +151,36 @@ def main():
 
             ray.get(end)
             
-        case 7: # Debug tester
-            print("\n\n TESTER! \n")
-            ray.init(address="auto", log_to_driver=True)
-
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+        case 7: # Watch Random Game
+            game_class = SCS_Game
+            game_args = [5, 5, 7, [3,1],[3,1], True]
             game = game_class(*game_args)
+            
+            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
+            model = MLP_Network(features)
 
-            model = dt_net_2d(game, 128)
-            nn = Torch_NN(model, recurrent=True)
+            nn = Torch_NN(game, model, recurrent=False)
 
             search_config = Search_config()
             search_config.load("Configs/Config_files/test_search_config.ini")
 
             tester = Tester(print=True)
-        
-            winner, stats = tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
+            #tester.set_slow_duration(5)
+            
+            #tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
+            tester.random_vs_random(game)
 
-            print_stats(stats)
+            time.sleep(2)
+            print("\n\nanalisis\n")
 
-        case 8: # Debug Gamer
+            renderer = SCS_Renderer.remote()
+            end = renderer.analyse.remote(game)
+
+
+            ray.get(end) # wait for the rendering to end
+            pass
+
+        case 8:
             print("\n\n GAMER! \n")
             ray.init(address="auto", log_to_driver=True)
 
@@ -202,90 +211,22 @@ def main():
             game = game_class(*game_args)
             
         case 10:
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2]]
-
-            model = ResNet(game_class(*game_args), num_blocks=2, num_filters=128)
-
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_SCS_config()
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-            Alpha_Zero.run()
+            pass
 
         case 11:
             pass
         
         case 12:
-            game_class = tic_tac_toe().__class__
-            game_args = []
-            game = game_class(*game_args)
+            pass
 
-            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
-            
-            model = MLP_Network(features)
-
-
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-
-            Alpha_Zero.run()
-        
         case 13:
-            game_class = tic_tac_toe().__class__
-            game_args = []
-            
-            model = Simple_Conv_Network(game_class(*game_args), kernel_size=(2,2), num_filters=64)
-
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_tic_tac_toe_config()
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-        
-            Alpha_Zero.run()
+            pass
 
         case 14:
-            game_class = tic_tac_toe().__class__
-            game_args = []
-            
-            num_blocks = 2
-            kernel_size = (3,3)
-            num_filters = 64
-
-            model = ResNet(game_class(*game_args), num_blocks=num_blocks, kernel_size=kernel_size, num_filters=num_filters)
-
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_tic_tac_toe_config()
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, False, game_class, game_args, alpha_config, network_name=net_name)
-        
-            Alpha_Zero.run()
+            pass
 
         case 15:
-
-            game_class = tic_tac_toe().__class__
-            game_args = []
-            game = game_class(*game_args)
-
-            model = dt_net_2d(game, 64)
-
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_tic_tac_toe_config()
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
-        
-            Alpha_Zero.run()
-            return
+            pass
 
         case 16:
             game_class = tic_tac_toe().__class__
@@ -351,7 +292,10 @@ def main():
             ray.get(end) # wait for the rendering to end
 
         case 20:
-            play_loop(1000)
+            game_class = SCS_Game
+            game_args = [5, 5, 7, [3,1],[3,1], True]
+
+            play_loop(1000, game_class, game_args)
             
         case 21:
             pass
@@ -407,10 +351,7 @@ def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
 # -- STUFF --
 # -----------
 
-def play_loop(num_games):
-
-    game_class = SCS_Game().__class__
-    game_args = [[1,0],[0,0], True]
+def play_loop(num_games, game_class, game_args):
 
     tester = Tester()
 

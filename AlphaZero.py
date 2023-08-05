@@ -901,8 +901,10 @@ class AlphaZero():
 		
 		if test_mode == "policy":
 			args_list = [player_choice, None, self.latest_network, None, test_iterations]
+			game_index = 1
 		elif test_mode == "mcts":
 			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations]
+			game_index = 2
 
 		
 
@@ -918,7 +920,7 @@ class AlphaZero():
 
 			for g in range(games_to_play):
 				game = self.game_class(*self.game_args)
-				args_list[1] = game
+				args_list[game_index] = game
 				if test_mode == "policy":
 					actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
 				elif test_mode == "mcts":

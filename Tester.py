@@ -81,8 +81,10 @@ class Tester():
         elif player_choice == "1":
             AI_player = 1
             p1_nn = nn1
+            p2_nn = None
         elif player_choice == "2":
             AI_player = 2
+            p1_nn = None
             p2_nn = nn1
         else:
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
