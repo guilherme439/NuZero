@@ -86,8 +86,9 @@ def main():
             policy_channels = game.get_action_space_shape()[0]
 
             model = dt_net_recall_2d(in_channels, policy_channels, 128)
-            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
+            
 
             alpha_zero = AlphaZero(game_class, game_args, model=model)
             alpha_zero.run()
@@ -166,9 +167,8 @@ def main():
 
             tester = Tester(print=True)
             #tester.set_slow_duration(5)
-            
-            #tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
-            tester.random_vs_random(game)
+            tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
+            #tester.random_vs_random(game)
 
             time.sleep(2)
             print("\n\nanalisis\n")

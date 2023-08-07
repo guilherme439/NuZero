@@ -133,60 +133,48 @@ class Explorer():
     def evaluate(self, node, game, state_dict):
         node.to_play = game.get_current_player()
 
-        '''
-        # During testing we always use network predictions
-        if self.training:
-            use_terminal = self.config.simulation["use_terminal"]
-        else:
-            use_terminal = False
-        '''
-        use_terminal = self.config.simulation["use_terminal"]
-
-        if use_terminal and game.is_terminal():
+        if game.is_terminal():
             node.terminal_value = game.get_terminal_value()
             return node.terminal_value
         
+        else:
+            state = game.generate_state_image()
+            if state_dict is not None:
+                state_key = tuple(state.numpy().flatten())
+                result = state_dict.get(state_key)
+                
+                if result:
+                    (action_probs, predicted_value) = result
+                else:
+                    action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
+                    state_dict[state_key] = (action_probs, predicted_value)
+                    
 
-        state = game.generate_state_image()
-        if state_dict is not None:
-            state_key = tuple(state.numpy().flatten())
-            result = state_dict.get(state_key)
-            
-            if result:
-                (action_probs, predicted_value) = result
             else:
                 action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
-                state_dict[state_key] = (action_probs, predicted_value)
                 
 
-        else:
-            action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
 
-
-        value = predicted_value.item()
-        
-        if not game.is_terminal():
+            value = predicted_value.item()
 
             # Expand the node.
             valid_actions_mask = game.possible_actions().flatten()
             action_probs = action_probs.cpu()[0].numpy().flatten()
-            
+    
             
             probs = action_probs * valid_actions_mask # Use mask to get only valid moves
             total = np.sum(probs)
 
+            if total == 0:
+                probs += valid_actions_mask
+                total = np.sum(probs)
+                
 
             for i in range(game.get_num_actions()):
                 if valid_actions_mask[i]:
                     node.children[i] = Node(probs[i]/total)
-
-        else:
-            # This line will only be reached if use_terminal=False and the game is terminal
-            node.terminal_value = game.get_terminal_value()
-            # the node's terminal value is set so that the mcts knows this is a terminal node,
-            # but it is not used during search, since the returned value is the one given by the neural network
-
-        return value 
+            
+            return value 
 
     def max_action(self, visit_counts):
         max_pair = max(visit_counts, key=lambda visit_action_pair: visit_action_pair[0])

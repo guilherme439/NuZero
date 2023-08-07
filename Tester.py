@@ -70,22 +70,18 @@ class Tester():
         else:
             state_dict = None
 
+        # Both players use the first neural network unless a second (nn2) is given
+        p1_nn = nn1
+        p2_nn = nn1
         if player_choice == "both":
             AI_player = 0
-            p1_nn = nn1
             if nn2:
                 p2_nn = nn2
-            else:
-                p2_nn = nn1
 
         elif player_choice == "1":
             AI_player = 1
-            p1_nn = nn1
-            p2_nn = None
         elif player_choice == "2":
             AI_player = 2
-            p1_nn = None
-            p2_nn = nn1
         else:
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()
@@ -113,6 +109,7 @@ class Tester():
                 subtree_root = Node(0)
 
             player = game.current_player
+            print
             if player == 1:
                 net_to_use = p1_nn
             else:
@@ -180,20 +177,18 @@ class Tester():
             self.renderer.render.remote()
             time.sleep(3)
 
+        # Both players use the first neural network unless a second (nn2) is given
+        p1_nn = nn1
+        p2_nn = nn1
         if player_choice == "both":
             AI_player = 0
-            p1_nn = nn1
             if nn2:
                 p2_nn = nn2
-            else:
-                p2_nn = nn1
 
         elif player_choice == "1":
             AI_player = 1
-            p1_nn = nn1
         elif player_choice == "2":
             AI_player = 2
-            p2_nn = nn1
         else:
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()

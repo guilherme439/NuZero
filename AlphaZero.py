@@ -436,7 +436,6 @@ class AlphaZero():
 					plt.savefig(self.plots_path + self.network_name + '_weight_average.png')
 					plt.clf()
 
-
 				if self.plot_wr:
 
 					plt.plot(range(len(self.p1_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
@@ -453,7 +452,6 @@ class AlphaZero():
 					plt.legend()
 					plt.savefig(self.plots_path + self.network_name + '_p2_wr.png')
 					plt.clf()
-
 
 				if self.plot_loss:
 

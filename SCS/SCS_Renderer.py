@@ -129,9 +129,9 @@ class SCS_Renderer():
             # Fill the background with white
 
             screen.fill(Color.WHITE.rgb())
-    
-            self.render_board(screen, render_game)
 
+            self.render_board_hexagons(screen, render_game)
+            #self.render_board_squares(screen, render_game)
 
             action_text = "SCS Analisis board!"
             if len(render_game.action_history) > 0:

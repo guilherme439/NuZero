@@ -10,7 +10,6 @@ class Search_config(Config):
         (
         mcts_simulations = 800,	# Not recomended to use a number os mcts simulations N such that sqrt(N) <= N/average_possible_actions. Because... decision criteria during MCTS.
         keep_sub_tree = True,	# Recommended to set as False for simpler games in order to make tunning and optimization easier
-        use_terminal = False 	# Wheter to use the actual game's results at terminal nodes during the mcts for stronger "signals" during early policy training.
         )
 			
 		

@@ -22,7 +22,7 @@
 ## Tester
 
 ## SCS Game
-- Convert board representation to hexagons [hard, high]
+- Implement stacking
 
 ## Graphs
 
