@@ -34,8 +34,8 @@ class DTNet(nn.Module):
         if recall:
             recur_layers.append(conv_recall)
 
-        for i in range(len(num_blocks)):
-            recur_layers.append(self._make_layer(block, width, num_blocks[i], stride=1))
+        for b in num_blocks:
+            recur_layers.append(block(self.width, self.width, stride=1))
 
         
         self.projection = nn.Sequential(proj_conv, nn.ReLU())
@@ -50,8 +50,6 @@ class DTNet(nn.Module):
             hexagdly.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=1, stride=1, bias=False),
             nn.ReLU(),
             hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False),
-            nn.Flatten(), # there is no softmax function for a 3D policy in pytorch (that I am aware), so we need to flatten the policy to apply softmax
-            nn.Softmax(dim=1)
         )
 
 
@@ -68,14 +66,6 @@ class DTNet(nn.Module):
             nn.Tanh()
         )
 
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
-        layers = []
-        for strd in strides:
-            layers.append(block(self.width, planes, strd))
-            self.width = planes * block.expansion
-        return nn.Sequential(*layers)
-
     def forward(self, x, iters_to_do, interim_thought=None, **kwargs):
         initial_thought = self.projection(x)
 
@@ -87,14 +77,16 @@ class DTNet(nn.Module):
             if self.recall:
                 interim_thought = torch.cat([interim_thought, x], 1)
             interim_thought = self.recur_block(interim_thought)
+
             policy_out = self.policy_head(interim_thought)
             value_out = self.value_head(interim_thought)
             out = (policy_out, value_out)
             #all_outputs.append(out)
-
+        
         #if self.training:
             #return out, interim_thought
-
+        
+        
         return out
 
 

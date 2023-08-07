@@ -485,6 +485,7 @@ class AlphaZero():
 							plt.clf()
 
 					num_points = len(self.train_global_value_loss)
+
 					if num_points > 1:
 						x = range(num_points)
 						plt.plot(x, self.train_global_value_loss, label = "Training")
@@ -557,6 +558,9 @@ class AlphaZero():
 	
 	def test_set_loss(self, batch, batch_size, iterations):
 
+		normalize_loss = self.alpha_config.learning["normalize_loss"]
+		cross_entropy = nn.CrossEntropyLoss()
+
 		combined_loss = 0.0
 		policy_loss = 0.0
 		value_loss = 0.0
@@ -567,10 +571,10 @@ class AlphaZero():
 			target_policy = torch.tensor(target_policy).to(self.latest_network.device)
 			target_value = torch.tensor(target_value).to(self.latest_network.device)
 
-			
-			#policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
-			policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
-			#Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
+			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+				sample_loss /= math.log(len(target_policy))
+			policy_loss += sample_loss
 
 			value_loss += ((target_value - predicted_value) ** 2)
 			#value_loss += torch.abs(target_value - predicted_value)
@@ -584,6 +588,9 @@ class AlphaZero():
 
 	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations):
 
+		normalize_loss = self.alpha_config.learning["normalize_loss"]
+		cross_entropy = nn.CrossEntropyLoss()
+		
 		self.latest_network.get_model().train()
 		optimizer.zero_grad()
 
@@ -605,13 +612,16 @@ class AlphaZero():
 
 			predicted_value = predicted_values[i]
 			predicted_policy = predicted_policies[i]
-			
-			policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
-			#policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
-			#Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
 
+			
+			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
+			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+				sample_loss /= math.log(len(target_policy))
+			policy_loss += sample_loss
+			
 			value_loss += ((target_value - predicted_value) ** 2)
 			#value_loss += torch.abs(target_value - predicted_value)
+			
 			
 		value_loss /= batch_size
 		policy_loss /= batch_size
@@ -623,6 +633,7 @@ class AlphaZero():
 		loss.backward()
 		optimizer.step()
 		scheduler.step()
+		
 
 		return value_loss.item(), policy_loss.item(), loss.item()
 
@@ -795,16 +806,15 @@ class AlphaZero():
 					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True, p=probs)
 				
 				batch = [replay_buffer[i] for i in batch_indexes]
-
 				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
-
+	
 				average_value_loss += value_loss
 				average_policy_loss += policy_loss
 				average_combined_loss += combined_loss
 
 				bar.next()
 
-			bar.finish
+			bar.finish()
 
 			self.train_global_value_loss.append(average_value_loss/num_samples)
 			self.train_global_policy_loss.append(average_policy_loss/num_samples)

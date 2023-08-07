@@ -57,8 +57,6 @@ class ResNet(nn.Module):
             nn.BatchNorm2d(num_features=policy_filters),
             nn.ReLU(),
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=policy_filters, out_channels=policy_channels),
-            nn.Flatten(),
-            nn.Softmax(dim=1)
         )
 
 

@@ -2,6 +2,8 @@ import time
 import math
 import numpy as np
 
+import torch
+
 from scipy.special import softmax
 
 from Node import Node
@@ -56,11 +58,8 @@ class Explorer():
                 scratch_game.step_function(action_coords)
                 search_path.append(node)
         
-            if node.is_terminal():
-                value = node.value()
-            else:
-                value = self.evaluate(node, scratch_game, state_dict)
             
+            value = self.evaluate(node, scratch_game, state_dict)
             self.backpropagate(search_path, value)
         
 
@@ -147,25 +146,27 @@ class Explorer():
                     (action_probs, predicted_value) = result
                 else:
                     action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
+                    action_probs = softmax(action_probs)
                     state_dict[state_key] = (action_probs, predicted_value)
                     
 
             else:
                 action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
+                action_probs = softmax(action_probs)
                 
-
 
             value = predicted_value.item()
 
             # Expand the node.
             valid_actions_mask = game.possible_actions().flatten()
-            action_probs = action_probs.cpu()[0].numpy().flatten()
+            action_probs = action_probs.flatten()
     
             
             probs = action_probs * valid_actions_mask # Use mask to get only valid moves
             total = np.sum(probs)
 
             if total == 0:
+                # Network predicted zero valid actions. Workaround needed.
                 probs += valid_actions_mask
                 total = np.sum(probs)
                 

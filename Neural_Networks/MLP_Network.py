@@ -40,7 +40,6 @@ class MLP_Network(nn.Module):
             nn.Linear(in_features=32, out_features=16),
             nn.SiLU(),
             nn.Linear(in_features=16, out_features=out_features),
-            nn.Softmax(dim=1)
         )
         
 

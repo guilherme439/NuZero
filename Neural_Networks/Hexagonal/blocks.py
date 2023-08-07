@@ -13,7 +13,7 @@ class BasicBlock2D(nn.Module):
 
     expansion = 1
 
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(self, in_channels, out_channels, stride = 1):
         super().__init__()
         
         self.conv1 = hexagdly.Conv2d(in_channels = in_channels, out_channels = out_channels,
@@ -21,9 +21,14 @@ class BasicBlock2D(nn.Module):
 
         self.conv2 = hexagdly.Conv2d(in_channels = in_channels, out_channels = out_channels,
                                         kernel_size = 1, stride = 1, bias=False)
+        
+        self.shortcut = nn.Sequential()
+
 
 
     def forward(self, x):
-        x = self.conv1(x) 
-        out = self.conv2(x)
+        x = F.relu(self.conv1(x))
+        x = self.conv2(x)
+        x += self.shortcut(x)
+        out = F.relu(x)
         return out

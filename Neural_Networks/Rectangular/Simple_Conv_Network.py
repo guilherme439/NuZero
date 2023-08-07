@@ -42,8 +42,6 @@ class Simple_Conv_Network(nn.Module):
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=self.num_filters, out_channels=policy_filters),
             nn.SiLU(),
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=policy_filters, out_channels=policy_channels),
-            nn.Flatten(),
-            nn.Softmax(dim=1)
         )
         
 

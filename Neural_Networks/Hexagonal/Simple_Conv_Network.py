@@ -43,8 +43,6 @@ class Simple_Conv_Network(nn.Module):
             hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=self.num_filters, out_channels=policy_filters, bias=False),
             nn.SiLU(),
             hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=policy_filters, out_channels=policy_channels, bias=False),
-            nn.Flatten(),
-            nn.Softmax(dim=1)
         )
         
 

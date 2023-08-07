@@ -2,6 +2,8 @@ import math
 import time
 import ray
 
+from scipy.special import softmax
+
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
@@ -16,6 +18,7 @@ from SCS.SCS_Game import SCS_Game
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Neural_Networks.Torch_NN import Torch_NN
+
 
 
 
@@ -214,7 +217,8 @@ class Tester():
 
                 state = game.generate_state_image()
                 action_probs, value_pred = net_to_use.inference(state, False, recurrent_iterations)
-                probs = action_probs.cpu()[0].numpy().flatten()
+                action_probs = softmax(action_probs)
+                probs = action_probs.flatten()
 
 
                 raw_action = np.argmax(probs)
@@ -288,8 +292,8 @@ class Tester():
 
                 state = game.generate_state_image()
                 action_probs, value_pred = nn.inference(state, False, recurrent_iterations)
-                probs = action_probs[0].cpu().numpy()
-                probs = probs.flatten()                    
+                action_probs = softmax(action_probs)
+                probs = action_probs.flatten()                    
 
                 raw_action = np.argmax(probs)
                 if not valid_actions_mask[raw_action]:

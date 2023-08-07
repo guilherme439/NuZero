@@ -49,8 +49,6 @@ class DTNet(nn.Module):
             nn.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=3, padding=1, stride=1, bias=False),
             nn.ReLU(),
             nn.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=3, padding=1, stride=1, bias=False),
-            nn.Flatten(), # there is no softmax function for a 3D policy in pytorch (that I am aware), so we need to flatten the policy to apply softmax
-            nn.Softmax(dim=1)
         )
 
 

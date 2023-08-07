@@ -43,7 +43,6 @@ class Torch_NN():
             else:
                 p,v = self.model(state.to(self.device), iters_to_do)
 
-        p = torch.unflatten(p, 1, self.game.get_action_space_shape())
         return p,v
     
     
