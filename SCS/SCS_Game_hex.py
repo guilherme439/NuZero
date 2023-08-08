@@ -3,6 +3,8 @@ import math
 import numpy as np
 import torch
 import time
+import yaml
+import io
 
 from copy import copy, deepcopy
 
@@ -32,6 +34,7 @@ from hexagonal to ortogonal representation:
 
 
 '''
+
 
 
 class SCS_Game():
@@ -70,7 +73,7 @@ class SCS_Game():
                                 #
 
         self.turns = turns
-
+    
         self.board = []
         self.current_player = 1
         self.current_phase = 0
@@ -1093,7 +1096,30 @@ class SCS_Game():
 
         target = (value_target, policy_target)
         return target
-    
+
+    def load_config(self, filename):
+        # Read YAML file
+        with open(filename, 'r') as stream:
+            data_loaded = yaml.safe_load(stream)
+
+        rows = 0
+        columns = 0
+        for section_name, values in data_loaded.items():
+            if section_name == "Board_dimensions":
+                rows = values["rows"]
+                columns = values["columns"]
+
+            if section_name == "Turns":
+                turns = values
+                
+
+            if section_name == "Units":
+                for unit, properties in values.items():
+                    print()
+                    print(unit)
+                    print(properties)
+
+                    
 ##########################################################################
 # -------------------------                   -------------------------- #
 # ------------------------  UTILITY FUNCTIONS  ------------------------- #

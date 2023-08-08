@@ -4,6 +4,7 @@
 
 
 ## Configs
+- Consider changing configs to YAML. [medium, low]
 
 ## Improve algorithm
 - Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, high] (Might not be possible because of object lifetimes)

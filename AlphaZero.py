@@ -186,8 +186,8 @@ class AlphaZero():
 		print("\n\n--------------------------------\n")
 		runtime_env=RuntimeEnv \
 					(
-					conda="tese",
 					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					conda="tese",
 					env_vars=
 							{
 							"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
@@ -616,6 +616,7 @@ class AlphaZero():
 			
 			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
 			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+				print("Oi")
 				sample_loss /= math.log(len(target_policy))
 			policy_loss += sample_loss
 			
@@ -628,8 +629,7 @@ class AlphaZero():
 
 		loss = policy_loss + value_loss
 
-		# In PyThorch SGD optimizer already applies L2 weight regularization
-		
+		# If you use pythorch's SGD optimizer, it already applies L2 weight regularization
 		loss.backward()
 		optimizer.step()
 		scheduler.step()

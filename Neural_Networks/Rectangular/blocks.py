@@ -20,9 +20,13 @@ class BasicBlock2D(nn.Module):
 
         self.conv2 = nn.Conv2d(in_channels = in_channels, out_channels = out_channels,
                                         kernel_size = 3, padding=1, stride = 1, bias=False)
+        
+        self.shortcut = nn.Sequential()
 
 
     def forward(self, x):
-        x = self.conv1(x) 
-        out = self.conv2(x)
+        x = F.relu(self.conv1(x))
+        x = self.conv2(x)
+        x += self.shortcut(x)
+        out = F.relu(x)
         return out

@@ -30,6 +30,7 @@ from Neural_Networks.Hexagonal.dt_neural_network import *
 from SCS.SCS_Game_hex import SCS_Game
 from SCS.SCS_Renderer import SCS_Renderer
 
+
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Configs.AlphaZero_config import AlphaZero_config
@@ -79,7 +80,7 @@ def main():
 
         case 3: # Start Training
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [3,1], True]
+            game_args = [5, 5, 7, [1,0], [0,0], True]
             game = game_class(*game_args)
 
             in_channels = game.state_shape()[0]
@@ -206,9 +207,10 @@ def main():
             
 
         case 9:
-            game_class = SCS_Game().__class__
-            game_args = [5, 5, 7, [3,1],[1,2], True]
+            game_class = SCS_Game
+            game_args = [5, 5, 7, [3,1], [3,1], True]
             game = game_class(*game_args)
+            game.load_config("SCS/Game_configs/simple_config.yml")
             
         case 10:
             pass
