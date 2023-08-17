@@ -35,6 +35,17 @@ class Replay_Buffer():
     def get_slice(self, start_index, last_index):
         return self.buffer[start_index:last_index]
     
+    def get_sample(self, batch_size, replace, probs):
+        if probs == []:
+            args = [len(self.buffer), batch_size, replace]
+        else:
+            args = [len(self.buffer), batch_size, replace, probs]
+        
+        batch_indexes = np.random.choice(*args)
+        batch = [self.buffer[i] for i in batch_indexes]
+
+        return batch
+    
     def get_buffer(self):
         return self.buffer
 

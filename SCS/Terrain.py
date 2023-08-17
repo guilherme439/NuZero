@@ -7,7 +7,7 @@ class Terrain():
     name = ""
 
     # Combat modifiers
-    atack_modifier = 1      # Affects who atacks FROM the tile
+    attack_modifier = 1      # Affects who atacks FROM the tile
     defense_modifier = 1    # Affects who defends FROM the tile   
 
     # Movement costs
@@ -15,10 +15,10 @@ class Terrain():
 
     image_path = "SCS/Images/dirt.jpg"
     
-    def __init__(self, atack_modifier, defense_modifier, cost, name="", image_path=""):
+    def __init__(self, attack_modifier, defense_modifier, cost, name="", image_path=""):
         
         self.name=name
-        self.atack_modifier=atack_modifier
+        self.attack_modifier=attack_modifier
         self.defense_modifier=defense_modifier
         self.cost=cost
 

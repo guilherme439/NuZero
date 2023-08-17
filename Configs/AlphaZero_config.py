@@ -58,7 +58,8 @@ class AlphaZero_config(Config):
         shared_storage_size = 5,
         replay_window_size = int(2000),
         learning_method = "epochs",     # epochs | samples
-        normalize_loss = False          # Policy loss normalization
+        normalize_loss = False,         # Policy loss normalization
+        batch_extraction = 'local'      # local | remote 
         )
 
 

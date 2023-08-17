@@ -96,7 +96,7 @@ class tic_tac_toe():
 
 ##########################################################################
 # ----------------------------              ---------------------------- #
-# --------------------------  CORE FUNCTIONS  -------------------------- #
+# --------------------------  PUBLIC METHODS  -------------------------- #
 # ----------------------------              ---------------------------- #
 ##########################################################################
 
@@ -157,12 +157,41 @@ class tic_tac_toe():
     def step_function(self, action_coords):
         self.play_action(action_coords)
         self.length += 1
-        _, done = self.check_victory()
+        _, done = self.check_terminal()
         self.current_player = (self.length%2) + 1
 
         return done
 
-    def check_victory(self):
+    def get_winner(self):
+        # overcomplicated one-liner to calculate the winner of the game
+        return ((1 - self.terminal_value) + (self.terminal_value * (self.terminal_value > 0))) * self.terminal_value * self.terminal_value
+
+    def get_rewards_and_game_env(self):
+        # not needed in this game (check victory does everything) maybe change it later
+        return
+
+    def store_search_statistics(self, node):
+        sum_visits = sum(child.visit_count for child in node.children.values())
+        self.child_policy.append([
+            node.children[a].visit_count / sum_visits if a in node.children else 0
+            for a in range(self.num_actions)
+        ])
+
+    def make_target(self, i):
+
+        value_target = self.terminal_value
+        policy_target = self.child_policy[i]
+
+        target = (value_target, policy_target)
+        return target
+
+##########################################################################
+# --------------------------                 --------------------------- #
+# -------------------------  UTILITY METHODS  -------------------------- #
+# --------------------------                 --------------------------- #
+##########################################################################
+
+    def check_terminal(self):
         size = self.HEIGHT
 
         rewards = [0, 0]
@@ -228,35 +257,6 @@ class tic_tac_toe():
 
         return rewards, done
 
-    def check_winner(self):
-        #funny and overcomplicated way of calculating the winner of the game
-        return ((1 - self.terminal_value) + (self.terminal_value * (self.terminal_value > 0))) * self.terminal_value * self.terminal_value
-
-    def get_rewards_and_game_env(self):
-        # not needed in this game (check victory does everything) maybe change it later
-        return
-
-    def store_search_statistics(self, node):
-        sum_visits = sum(child.visit_count for child in node.children.values())
-        self.child_policy.append([
-            node.children[a].visit_count / sum_visits if a in node.children else 0
-            for a in range(self.num_actions)
-        ])
-
-    def make_target(self, i):
-
-        value_target = self.terminal_value
-        policy_target = self.child_policy[i]
-
-        target = (value_target, policy_target)
-        return target
-
-##########################################################################
-# -------------------------                   -------------------------- #
-# ------------------------  UTILITY FUNCTIONS  ------------------------- #
-# -------------------------                   -------------------------- #
-##########################################################################
-
     def clone(self):
         return copy.deepcopy(self)
     
@@ -267,7 +267,6 @@ class tic_tac_toe():
         game_clone.length = copy.deepcopy(self.length)
 
         return game_clone
-
 
     def string_representation(self):
         string = ""

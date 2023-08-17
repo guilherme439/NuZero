@@ -1,8 +1,9 @@
-
 import math
 import numpy as np
 import torch
 import time
+import yaml
+import io
 
 from copy import copy, deepcopy
 
@@ -10,109 +11,102 @@ from enum import Enum
 from collections import Counter
 from termcolor import colored
 
+
+from .Unit import Unit
 from .Tile import Tile
-from .Soldier import Soldier
-from .Tank import Tank
 from .Terrain import Terrain
 
+'''
+From the hexagly source code, this is how the board is converted
+from hexagonal to ortogonal representation:
 
+
+ __    __                                 __ __ __ __
+/11\__/31\__  . . .                      |11|21|31|41| . . .
+\__/21\__/41\                            |__|__|__|__| 
+/12\__/32\__/ . . .        _______|\     |12|22|32|42| . . .
+\__/22\__/42\             |         \    |__|__|__|__| 
+   \__/  \__/             |_______  /                           
+ .  .  .  .  .                    |/       .  .  .  .  .
+ .  .  .  .    .                           .  .  .  .    .
+ .  .  .  .      .                         .  .  .  .      .
+
+
+'''
+
+'''
+This is how rows and collumns are defined for SCS Games.
+This definition might be different from the examples in the hexagdly repository,
+but I believe it makes more sense this way.
+
+
+#   This is a row:
+#    __    __                    __ __ __ __
+#   /11\__/13\__     ----->     |11|12|13|14|       - Rows are horizontal
+#   \__/12\__/14\               |__|__|__|__|
+#      \__/  \__/
+#
+
+#   And this is a column:
+#    __                          __
+#   /11\                        |11|
+#   \__/        ----->          |__|                - Columns are vertical
+#   /21\                        |21|
+#   \__/                        |__|
+#
+
+'''
 
 class SCS_Game():
 
-    PHASES = 3          # Placement, Movement, Fighting
-    STAGES = 6          # P1 Placement, P2 Placement, P1 Movement, P1 Fighting, P2 Movement, P2 Fighting
+    PHASES = 3              # Placement, Movement, Fighting
+    STAGES = 6              # P1 Placement, P2 Placement, P1 Movement, P1 Fighting, P2 Movement, P2 Fighting
 
     N_PLAYERS = 2
 
-    N_VP = 1            # Number of victory points
-    N_UNIT_TYPES = 2
-    N_UNIT_STATUSES = 3
+    N_UNIT_STATUSES = 3     # Available, Moved, Attacked
+    N_UNIT_STATS = 3        # Attack , Defense, Movement
     
 
 
-
-    def __init__(self, height, width, turns, r1=[1,1], r2=[1,1], use_terrain=True, prepare=True):
-
-        # ------------------------------------------------------------ #
-        # ---------------------- INITIALIZATION ---------------------- #
-        # ------------------------------------------------------------ #
+    def __init__(self, game_config_path=""):
         
-        self.height = height
-        self.width = width
-        self.turns = turns
+        # ------------------------------------------------------------ #
+        # --------------------- INITIALIZATION  ---------------------- #
+        # ------------------------------------------------------------ #
+        self.turns = 0
+
+        self.rows = 0
+        self.columns = 0
 
         self.board = []
         self.current_player = 1
         self.current_phase = 0
         self.current_stage = 0   
         self.current_turn = 1
-        self.reinforcements = [[],[]]
+        
         self.available_units = [[],[]]
         self.moved_units = [[],[]]
         self.atacked_units = [[],[]]
 
-        self.use_terrain = use_terrain
-        self.terrain_types = []
+        self.p1_last_index = 0
+        self.p2_first_index = self.columns - 1
 
-        self.victory_p1 = [ [-1,-1] for _ in range(self.N_VP) ]
-        self.victory_p2 = [ [-1,-1] for _ in range(self.N_VP) ]
+        self.victory_p1 = []
+        self.victory_p2 = []
+        self.n_vp = [0, 0]
 
-        self.reinforcements_by_type = [[],[]]
-        self.reinforcements_by_type[0] = r1 # number of soldiers , number of tanks... etc
-        self.reinforcements_by_type[1] = r2
-
-        self.reinforcements_as_list = [[],[]]
-
-        for p in range(self.N_PLAYERS):
-            self.reinforcements_as_list[p] = np.concatenate(
-            [
-            np.repeat(i+1, self.reinforcements_by_type[p][i])
-            for i in range(len(self.reinforcements_by_type[p]))
-            ]
-            ).tolist()
+        self.all_reinforcements = {0:[], 1:[]}
+        self.current_reinforcements = {0:[], 1:[]}
+        self.max_reinforcements = 0
 
         self.length = 0
         self.terminal_value = 0
         self.terminal = False
         
-
-        # ------------------------------------------------------------ #
-        # ------------- SPACE AND ACTION REPRESENTATION -------------- #
-        # ------------------------------------------------------------ #
-
-        ## ACTION REPRESENTATION
-
-        # Number of planes per type
-        self.placement_planes = self.N_UNIT_TYPES 
-        self.movement_planes = 4 # {N, S, E, 0} directions
-        self.fight_planes = 4 # {N, S, E, 0} directions
-        self.no_move_planes = 1
-        self.no_fight_planes = 1
-
-        self.total_action_planes = \
-        self.placement_planes + \
-        self.movement_planes + \
-        self.fight_planes + \
-        self.no_move_planes + \
-        self.no_fight_planes
-        
-        self.action_space_shape = (self.total_action_planes , self.height , self.width)
-        self.num_actions     =     self.total_action_planes * self.height * self.width
-
-
-        ## STATE REPRESENTATION
-        n_vic_dims = self.N_PLAYERS
-        n_reinforcement_dims = self.N_PLAYERS * self.N_UNIT_TYPES
-        n_unit_dims = self.N_PLAYERS * self.N_UNIT_TYPES * self.N_UNIT_STATUSES
-        n_feature_dims = 3 # turn, phase and player
-        total_dims = n_vic_dims + n_reinforcement_dims + n_unit_dims + n_feature_dims
-
-        n_terrain_dims = 3 # atack, defense, movement
-        if self.use_terrain:
-            total_dims += n_terrain_dims
-
-        self.game_state_shape = (total_dims, self.height, self.width)
-
+        if game_config_path != "":
+            self.load_from_config(game_config_path)
+            self.update_game_env()
 
         # ------------------------------------------------------ #
         # --------------- MCTS RELATED ATRIBUTES --------------- #
@@ -123,12 +117,42 @@ class SCS_Game():
         self.player_history = []
         self.action_history = []
 
-        # ------------------------------------------------------ #
-        # ----------------- INITIAL GAME SETUP ----------------- #
-        # ------------------------------------------------------ #
+        # ------------------------------------------------------------ #
+        # ------------- SPACE AND ACTION REPRESENTATION -------------- #
+        # ------------------------------------------------------------ #
 
-        if prepare:
-            self.prepare_game()
+        ## ACTION REPRESENTATION
+
+        # Number of planes per type
+        self.placement_planes = 1
+        self.movement_planes = 6 # The 6 sizes of the hexagon 
+        self.fight_planes = 6 # The 6 sizes of the hexagon 
+        self.no_move_planes = 1
+        self.no_fight_planes = 1
+
+        self.total_action_planes = \
+        self.placement_planes + \
+        self.movement_planes + \
+        self.fight_planes + \
+        self.no_move_planes + \
+        self.no_fight_planes
+        
+        self.action_space_shape = (self.total_action_planes , self.rows , self.columns)
+        self.num_actions     =     self.total_action_planes * self.rows * self.columns
+
+
+        ## STATE REPRESENTATION
+        self.n_reinforcement_turns = 3  # Number of turns for which the reinforcement are represented.
+                                        # If this is 1, only the current turn is represented. 
+
+        n_vic_dims = self.N_PLAYERS
+        n_unit_dims = self.N_UNIT_STATS * self.N_UNIT_STATUSES * self.N_PLAYERS
+        n_reinforcement_dims = self.n_reinforcement_turns * self.N_UNIT_STATS * self.N_PLAYERS
+        n_feature_dims = 3 # turn, phase and player
+        n_terrain_dims = 3 # atack, defense, movement
+        total_dims = n_vic_dims + n_reinforcement_dims + n_unit_dims + n_feature_dims + n_terrain_dims
+
+        self.game_state_shape = (total_dims, self.rows, self.columns)
 
         return
     
@@ -141,11 +165,11 @@ class SCS_Game():
     def get_board(self):
         return self.board
     
-    def getBoardWidth(self):
-        return self.width
+    def getBoardColumns(self):
+        return self.columns
 
-    def getBoardHeight(self):
-        return self.height    
+    def getBoardRows(self):
+        return self.rows    
 
     def get_action_space_shape(self):
         return self.action_space_shape
@@ -184,167 +208,59 @@ class SCS_Game():
 
     def get_name(self):
         return "SCS"
-    
+          
 ##########################################################################
 # ----------------------------              ---------------------------- #
-# --------------------------  CORE FUNCTIONS  -------------------------- #
+# ---------------------------   GAME LOGIC   --------------------------- #
 # ----------------------------              ---------------------------- #
 ##########################################################################
 
-    def prepare_game(self, map_choice=1, random_seed=None):
+    def step_function(self, action_coords):
+        self.store_action(action_coords)
+        self.play_action(action_coords)
+        self.length += 1
+        done = self.update_game_env()
+        return done
 
-        ## TILES AND TERRAIN
-        if not self.use_terrain:
+    # ----------------- ACTIONS ----------------- #
 
-            for i in range(self.height):
-                self.board.append([])
-                for j in range(self.width):
-                    self.board[i].append(Tile(i,j))
-
-        else:
-            if map_choice == 1:
-            # Distribution based map
-
-                mountain = Terrain(atack_modifier=1, defense_modifier=2, cost=2, name="Mountain", image_path="SCS/Images/mountain.jpg")
-                plains = Terrain(atack_modifier=1, defense_modifier=1, cost=1, name="Plains", image_path="SCS/Images/plains.jpg")
-                bush = Terrain(atack_modifier=2, defense_modifier=1/2, cost=1, name="Bush", image_path="SCS/Images/plains_with_bush.jpg")
-                swamp = Terrain(atack_modifier=1/2, defense_modifier=1/2, cost=2, name="Swamp", image_path="SCS/Images/swamp.jpg")
-
-                self.terrain_types = [mountain, plains, bush, swamp]
-                probs = [0.1, 0.65, 0.15, 0.1]
-
-                for i in range(self.height):
-                    self.board.append([])
-                    for j in range(self.width): 
-                        terrain = np.random.choice(self.terrain_types, p=probs)
-                        self.board[i].append(Tile(i,j,terrain))
-
-
-        ## VICTORY POINTS
-
-        # p1 victory points will be on the left side and p2 victory points on the right side
-        if self.width % 2 != 0:
-            middle_index = math.floor(self.width/2)
-            self.p1_last_index = middle_index-1
-            self.p2_first_index = middle_index+1
-        else:
-            # if number of rows is even there are two middle collumns one on the right and one on the left
-            mid = int(self.width/2)
-            left_side_collumn = mid
-            right_side_collumn = mid + 1
-            left_index = left_side_collumn - 1
-            right_index = right_side_collumn - 1
-            
-            # so that victory points are not adjacent, we separate them by one more collumn
-            self.p1_last_index = max(0, left_index-1)
-            self.p2_first_index = min(self.width-1, right_index+1)
-
-        x_coords_p1 = np.random.choice(range(self.height), size=self.N_VP, replace=False)
-        y_coords_p1 = np.random.choice(range(self.p1_last_index+1), size=self.N_VP, replace=False)
-
-        for i in range(len(self.victory_p1)):
-            self.victory_p1[i][0]=x_coords_p1[i]
-            self.victory_p1[i][1]=y_coords_p1[i]
-                
-        x_coords_p2 = np.random.choice(range(self.height), size=self.N_VP, replace=False)
-        y_coords_p2 = np.random.choice(range(self.p2_first_index, self.width), size=self.N_VP, replace=False)        
-
-        for i in range(len(self.victory_p2)):
-            self.victory_p2[i][0]=x_coords_p2[i]
-            self.victory_p2[i][1]=y_coords_p2[i]
-    
-        for point in self.victory_p1:
-            self.board[point[0]][point[1]].victory = 1
-
-        for point in self.victory_p2:
-            self.board[point[0]][point[1]].victory = 2
-
-
-        ## INITIAL REINFORCEMENTS
-        for p in range(self.N_PLAYERS):
-            self.reinforcements[p] = copy(self.reinforcements_as_list[p])
-
-        self.update_game_env()
-
-    def reset_env(self):
-
-        self.current_player = 1  
-        self.current_phase = 0   
-        self.current_stage = 0   
-        self.current_turn = 1
-
-        self.length = 0
-        self.terminal_value = 0
-        self.terminal = False
-
-        for p in [0,1]:
-            self.available_units[p].clear()
-            self.moved_units[p].clear()
-            self.atacked_units[p].clear()
-            self.reinforcements[p].clear()
-            self.reinforcements[p] = copy(self.reinforcements_as_list[p])
-
-        
-        for i in range(self.height):
-            for j in range(self.width):
-                self.board[i][j].reset() # reset each tile    
-
-        
-        # MCTS RELATED ATRIBUTES 
-        self.child_policy.clear()
-        self.state_history.clear()
-        self.player_history.clear()
-        self.action_history.clear()
-
-        return
-    
     def possible_actions(self):
         player = self.current_player
         phase = self.current_phase
-        size = self.height * self.width
+        size = self.rows * self.columns
         
-        placement_planes = []
-        movement_planes = np.zeros((4, self.height, self.width), dtype=np.int32)
-        fight_planes = np.zeros((4, self.height, self.width), dtype=np.int32)
-        no_move_plane = np.zeros((1, self.height, self.width), dtype=np.int32)
-        no_fight_plane = np.zeros((1, self.height, self.width), dtype=np.int32)
+        placement_plane = np.zeros((1, self.rows, self.columns), dtype=np.int32)
+        movement_planes = np.zeros((self.movement_planes, self.rows, self.columns), dtype=np.int32)
+        fight_planes = np.zeros((self.fight_planes, self.rows, self.columns), dtype=np.int32)
+        no_move_plane = np.zeros((1, self.rows, self.columns), dtype=np.int32)
+        no_fight_plane = np.zeros((1, self.rows, self.columns), dtype=np.int32)
         
-        #print(phase)
         if (phase == 0):
-            available_types = set(self.reinforcements[player-1])
-            for t in range(self.N_UNIT_TYPES):
-                if t+1 in available_types:
-                    available_collumns = self.p1_last_index + 1 # number of columns on my side of the board
-                    my_half = np.ones((self.height, available_collumns), dtype=np.int32)
-                    rest_of_columns = self.width - available_collumns
-                    enemy_half = np.zeros((self.height, rest_of_columns), dtype=np.int32)
-                        
-                    if player == 1:
-                        u_plane = np.concatenate((my_half, enemy_half), axis=1)
-                    else:
-                        u_plane = np.concatenate((enemy_half, my_half), axis=1)
-                else:
-                    u_plane = np.zeros((self.height, self.width), dtype=np.int32)
-
-
-                placement_planes.insert(t,u_plane)
-            
+            # Currently reinforcements can be placed on each player's side of the board
+            available_columns = self.p1_last_index + 1 # number of columns on my side of the board
+            my_half = np.ones((self.rows, available_columns), dtype=np.int32)
+            rest_of_columns = self.columns - available_columns
+            enemy_half = np.zeros((self.rows, rest_of_columns), dtype=np.int32)
+                
+            if player == 1:
+                placement_plane = np.concatenate((my_half, enemy_half), axis=1)
+            else:
+                placement_plane = np.concatenate((enemy_half, my_half), axis=1)            
 
             for p in [0,1]:
                 for unit in self.available_units[p]:
-                    x = unit.tile_x
-                    y = unit.tile_y
-                    for t in range(self.N_UNIT_TYPES):
-                        placement_planes[t][x][y] = 0
+                    x = unit.row
+                    y = unit.col
+                    placement_plane[x][y] = 0
             # can not place on top of other units
+
+            placement_plane = np.expand_dims(placement_plane, 0)
             
         
-        if (phase == 1):
-            placement_planes = np.zeros((self.N_UNIT_TYPES, self.height, self.width), dtype=np.int32)
-            
+        if (phase == 1):            
             for unit in self.available_units[player-1]:
-                x = unit.tile_x
-                y = unit.tile_y
+                x = unit.row
+                y = unit.col
 
                 no_move_plane[0][x][y] = 1 # no move action
 
@@ -358,39 +274,33 @@ class SCS_Game():
                             movement_planes[i][x][y] = 1
                  
         if (phase == 2):
-            placement_planes = np.zeros((self.N_UNIT_TYPES, self.height, self.width), dtype=np.int32)
-
             for unit in self.moved_units[player-1]:
-                pos_x = unit.tile_x
-                pos_y = unit.tile_y
+                row = unit.row
+                col = unit.col
                 
-                no_fight_plane[0][pos_x][pos_y] = 1 # no fight action
+                no_fight_plane[0][row][col] = 1 # no fight action
 
                 enemy_player = (not(player-1)) + 1 
                 _ , enemy_dir = self.check_adjacent_units(unit, enemy_player)
 
                 for direction in enemy_dir:
-                    fight_planes[direction][pos_x][pos_y] = 1
+                    fight_planes[direction][row][col] = 1
 
 
-        planes_list = [placement_planes, movement_planes, fight_planes, no_move_plane, no_fight_plane]
+        planes_list = [placement_plane, movement_planes, fight_planes, no_move_plane, no_fight_plane]
         valid_actions_mask = np.concatenate(planes_list)
         return valid_actions_mask
-
+                      
     def parse_action(self, action_coords):
         act = None           # Represents the type of action
-        unit_type = None
         start = (None, None) # Starting point of the action
         dest = (None, None)  # Destination point for the action
-
-        board_size = self.height * self.width
 
         current_plane = action_coords[0]
 
         # PLACEMENT PLANES
         if current_plane < self.placement_planes:
             act = 0
-            unit_type = action_coords[0] + 1  # 1 -> soldier | 2 -> tank
             start = (action_coords[1], action_coords[2])
 
         # MOVEMENT PLANES
@@ -400,16 +310,26 @@ class SCS_Game():
             y = action_coords[2]
             start = (x, y)
 
+            odd_col = y % 2
             plane_index = current_plane-self.placement_planes
-            # UP(0) DOWN(1) RIGHT(2) LEFT(3)
-            if plane_index == 0:
-                dest= (x-1,y)
-            elif plane_index == 1:
-                dest= (x+1,y)
-            elif plane_index == 2:
-                dest= (x,y+1)
-            elif plane_index == 3:
-                dest= (x,y-1)
+            # n, ne, se, s, sw, nw
+            if plane_index == 0:    # N
+                dest = self.get_n_coords(start)
+
+            elif plane_index == 1:  # NE
+                dest = self.get_ne_coords(start)
+
+            elif plane_index == 2:  # SE
+                dest = self.get_se_coords(start)
+
+            elif plane_index == 3:  # S
+                dest = self.get_s_coords(start)
+
+            elif plane_index == 4:  # SW
+                dest = self.get_sw_coords(start)
+
+            elif plane_index == 5:  # NW
+                dest = self.get_nw_coords(start)
             else:
                 print("Problem parsing action...Exiting")
                 exit()
@@ -421,17 +341,26 @@ class SCS_Game():
             y = action_coords[2]
             start = (x, y)
 
+            odd_col = y % 2
             plane_index = current_plane - (self.placement_planes + self.movement_planes)
+            # n, ne, se, s, sw, nw
+            if plane_index == 0:    # N
+                dest = self.get_n_coords(start)
 
-            # UP(0) DOWN(1) RIGHT(2) LEFT(3)
-            if plane_index == 0:
-                dest= (x-1,y)
-            elif plane_index == 1:
-                dest= (x+1,y)
-            elif plane_index == 2:
-                dest= (x,y+1)
-            elif plane_index == 3:
-                dest= (x,y-1)
+            elif plane_index == 1:  # NE
+                dest = self.get_ne_coords(start)
+
+            elif plane_index == 2:  # SE
+                dest = self.get_se_coords(start)
+
+            elif plane_index == 3:  # S
+                dest = self.get_s_coords(start)
+
+            elif plane_index == 4:  # SW
+                dest = self.get_sw_coords(start)
+
+            elif plane_index == 5:  # NW
+                dest = self.get_nw_coords(start)
             else:
                 print("Problem parsing action...Exiting")
                 exit()
@@ -450,24 +379,20 @@ class SCS_Game():
             print("Problem parsing action...Exiting")
             exit()
 
-        return (act, unit_type, start, dest)
+        return (act, start, dest)
 
     def play_action(self, action_coords):
-        (act, unit_type, start, dest) = self.parse_action(action_coords)
+        (act, start, dest) = self.parse_action(action_coords)
 
         if (act == 0): # placement
-            if unit_type == 1: 
-                new_unit = Soldier(self.current_player,start[0],start[1])
-                self.reinforcements[self.current_player-1].remove(1)
-            elif unit_type == 2:
-                new_unit = Tank(self.current_player,start[0],start[1])
-                self.reinforcements[self.current_player-1].remove(2)
-            else:
-                print("Error playing action")
-                exit()
-            
+            player = self.current_player
+            turn = self.current_turn
+            new_unit = self.current_reinforcements[player-1][turn-1].pop(0)
+
+            new_unit.move_to(*start, 0)
             self.available_units[self.current_player-1].append(new_unit)
             self.board[start[0]][start[1]].place_unit(new_unit)
+            #print(self.available_units)
 
         elif (act == 1): # movement
             unit = self.board[start[0]][start[1]].unit
@@ -475,13 +400,10 @@ class SCS_Game():
             if start != dest:
                 start_tile = self.board[start[0]][start[1]]
                 dest_tile = self.board[dest[0]][dest[1]]
-
-                cost = 1
-                if self.use_terrain:
-                    terrain = dest_tile.get_terrain()
-                    cost = terrain.cost
-
                 
+                terrain = dest_tile.get_terrain()
+                cost = terrain.cost
+
                 unit.move_to(dest[0],dest[1], cost)
                 start_tile.unit = None
                 dest_tile.place_unit(unit)
@@ -492,7 +414,9 @@ class SCS_Game():
                     self.end_movement(unit)
             
             else:
-                print("Bug in possible_actions(). Exiting")
+                print("Problem playing action.\n \
+                      Probably there is a bug in possible_actions().\n \
+                      Exiting")
                 exit()
 
         elif (act == 2): # fighting
@@ -514,24 +438,39 @@ class SCS_Game():
 
         return
 
-    def end_movement(self, unit):
-        player = unit.player
-        enemy = (not(player-1)) + 1
+    # --------------- ENVIRONMENT --------------- #
 
-        # End movement
-        self.moved_units[unit.player-1].append(unit)
-        self.available_units[unit.player-1].remove(unit)
+    def reset_env(self):
+        self.current_player = 1  
+        self.current_phase = 0   
+        self.current_stage = 0   
+        self.current_turn = 1
 
-        # Marks units without adjancent enemies as done fighting
-        # to reduce the total number of decisions that need to be taken
-        _, enemy_directions = self.check_adjacent_units(unit, enemy)
-        if len(enemy_directions) == 0:
-            self.end_fighting(unit)
+        self.length = 0
+        self.terminal_value = 0
+        self.terminal = False
 
-    def end_fighting(self, unit):
-        self.atacked_units[unit.player-1].append(unit)
-        self.moved_units[unit.player-1].remove(unit)
+        for p in [0,1]:
+            self.available_units[p].clear()
+            self.moved_units[p].clear()
+            self.atacked_units[p].clear()
+        
+        self.current_reinforcements = copy(self.all_reinforcements)
 
+        
+        for i in range(self.rows):
+            for j in range(self.columns):
+                self.board[i][j].reset() # reset each tile    
+
+        
+        # MCTS RELATED ATRIBUTES 
+        self.child_policy.clear()
+        self.state_history.clear()
+        self.player_history.clear()
+        self.action_history.clear()
+
+        return
+    
     def update_game_env(self):
         
         # Two players: 1 and 2
@@ -544,10 +483,10 @@ class SCS_Game():
         stage = previous_stage
         
         while True:
-            if stage == 0 and self.reinforcements[0] == []:     # first player used all his reinforcements
+            if stage == 0 and self.current_reinforcements[0][self.current_turn-1] == []:     # first player used all his reinforcements
                 stage+=1
                 continue
-            if stage == 1 and self.reinforcements[1] == []:     # second player used all his reinforcements
+            if stage == 1 and self.current_reinforcements[1][self.current_turn-1] == []:     # second player used all his reinforcements
                 stage+=1
                 continue
             if stage == 2 and self.available_units[0] == []:    # first player moved all his units
@@ -571,7 +510,7 @@ class SCS_Game():
             break
         
         if(done):
-            self.terminal_value = self.check_final_result()
+            self.terminal_value = self.check_terminal()
     
         # ------------------------------------    
 
@@ -607,80 +546,45 @@ class SCS_Game():
 
         return  
 
-    def step_function(self, action_coords):
-        self.store_action(action_coords)
-        self.play_action(action_coords)
-        self.length += 1
-        done = self.update_game_env()
-        return done
-    
-    def check_tiles(self, coords):
-        
-        (x,y) = coords
+    def check_terminal(self):
+        p1_captured_points = 0
+        p2_captured_points = 0
+        for point in self.victory_p1:
+            vic_p1 = self.board[point[0]][point[1]]
+            if vic_p1.unit:
+                if(vic_p1.unit.player==2):
+                    p2_captured_points +=1
+        for point in self.victory_p2:
+            vic_p2 = self.board[point[0]][point[1]]
+            if vic_p2.unit:
+                if(vic_p2.unit.player==1):
+                    p1_captured_points +=1
 
-        if (x-1) == -1:
-            up = None
+        p1_percentage_captured = p1_captured_points / self.n_vp[1]
+        p2_percentage_captured = p2_captured_points / self.n_vp[0]
+
+        if p1_percentage_captured > p2_percentage_captured:
+            final_value = 1     # p1 victory
+        elif p1_percentage_captured < p2_percentage_captured:
+            final_value = -1    # p2 victory
         else:
-            up = self.board[x-1][y]
-
-        if (x+1) == self.height:
-            down = None
-        else:
-            down = self.board[x+1][y]
-
-        if (y+1) == self.width:
-            right = None
-        else:
-            right = self.board[x][y+1]
+            final_value = 0     # draw
         
-        if (y-1) == -1:
-            left = None
+        return final_value
+
+    def get_winner(self):
+        terminal_value = self.get_terminal_value()
+
+        if terminal_value < 0:
+            winner = 2
+        elif terminal_value > 0:
+            winner = 1
         else:
-            left = self.board[x][y-1]
+            winner = 0
 
-        return up, down, right, left
+        return winner
 
-    def check_mobility(self, unit, consider_other_units=False):
-        x = unit.tile_x
-        y = unit.tile_y
-        
-        tiles = self.check_tiles((x,y))
-
-        can_move = [False, False, False, False]
-
-        for i in range(len(tiles)):
-            tile = tiles[i]
-            if tile:
-                cost = 1
-                if self.use_terrain:
-                    cost = tile.get_terrain().cost
-                dif = unit.mov_points - cost
-                if dif >= 0:
-                    can_move[i] = True
-                    if consider_other_units and tile.unit:
-                        can_move[i] = False
-
-        return can_move
-    
-    def check_adjacent_units(self, unit, enemy):
-        x = unit.tile_x
-        y = unit.tile_y
-        
-        tiles = self.check_tiles((x,y))
-            
-        adjacent_units = []
-        enemy_directions = []
-
-        for i in range(len(tiles)):
-            tile = tiles[i]
-            if tile:
-                unit = tile.unit
-                if unit:
-                    if (unit.player==enemy):
-                        adjacent_units.append(unit)
-                        enemy_directions.append(i)
-
-        return adjacent_units , enemy_directions
+    # ------------------ OTHER ------------------ #
 
     def resolve_combat(self, atacker_tile, defender_tile):
         atacker_unit = atacker_tile.unit
@@ -688,22 +592,18 @@ class SCS_Game():
         atacking_player = atacker_unit.player
         defending_player = defender_unit.player
 
-        defender_x = defender_unit.tile_x
-        defender_y = defender_unit.tile_y
+        defender_x = defender_unit.row
+        defender_y = defender_unit.col
         
         if atacking_player == defending_player:
-            print("\n\nSomething wrong with the atack. Player atacking itself!\nExiting")
+            print("\n\nSomething wrong with the attack. Player atacking itself!\nExiting")
             exit()
 
-        if self.use_terrain:
-            defense_modifier = defender_tile.get_terrain().defense_modifier
-            atack_modifier = atacker_tile.get_terrain().atack_modifier
-        else:
-            defense_modifier = 1
-            atack_modifier = 1
-
-        remaining_atacker_defense = atacker_unit.defense - (defender_unit.atack*defense_modifier)
-        remaining_defender_defense = defender_unit.defense - (atacker_unit.atack*atack_modifier)
+        defense_modifier = defender_tile.get_terrain().defense_modifier
+        attack_modifier = atacker_tile.get_terrain().attack_modifier
+        
+        remaining_atacker_defense = atacker_unit.defense - (defender_unit.attack*defense_modifier)
+        remaining_defender_defense = defender_unit.defense - (atacker_unit.attack*attack_modifier)
         
 
         if remaining_defender_defense <= 0:     # Defender died
@@ -748,136 +648,260 @@ class SCS_Game():
                 self.end_fighting(atacker_unit)
         
         return
-            
-    def check_final_result(self):
 
-        p1_captured_points = 0
-        p2_captured_points = 0
-        for point in self.victory_p1:
-            vic_p1 = self.board[point[0]][point[1]]
-            if vic_p1.unit:
-                if(vic_p1.unit.player==2):
-                    p2_captured_points +=1
-        for point in self.victory_p2:
-            vic_p2 = self.board[point[0]][point[1]]
-            if vic_p2.unit:
-                if(vic_p2.unit.player==1):
-                    p1_captured_points +=1
+    def check_tiles(self, coords):
+        # Clock-wise rotation order
 
-        point_diff = p1_captured_points - p2_captured_points
-        p1_advantage = point_diff/self.N_VP
+        ''' 
+             n
+        nw   __   ne
+            /  \ 
+            \__/ 
+        sw        se
+              s
+        '''
+        (row, col) = coords
 
-        if p1_advantage > 0:
-            final_value = 1     # p1 victory
-        elif p1_advantage < 0:
-            final_value = -1    # p2 victory
-        else:
-            final_value = 0     # draw
+        n = None
+        ne = None
+        se = None
+        s = None
+        sw = None
+        nw = None
+
+
+        if (row-1) != -1:
+            (x, y) = self.get_n_coords(coords)
+            n = self.board[x][y]
+
+        if (row+1) != self.rows:
+            (x, y) = self.get_s_coords(coords)
+            s = self.board[x][y]
+
+        if not ((col == 0) or (row == 0 and col % 2 == 0)):
+            (x, y) = self.get_nw_coords(coords)
+            nw = self.board[x][y]
+
+        if not ((col == 0) or (row == self.rows-1 and col % 2 != 0)):
+            (x, y) = self.get_sw_coords(coords)
+            sw = self.board[x][y]
+
+        if not ((col == self.columns-1) or (row == 0 and col % 2 == 0)):
+            (x, y) = self.get_ne_coords(coords)
+            ne = self.board[x][y]
+
+        if not ((col == self.columns-1) or (row == self.rows-1 and col % 2 != 0)):
+            (x, y) = self.get_se_coords(coords)
+            se = self.board[x][y]
         
-        return final_value
+
+        return n, ne, se, s, sw, nw
+
+    def check_mobility(self, unit, consider_other_units=False):
+        x = unit.row
+        y = unit.col
+        
+        tiles = self.check_tiles((x,y))
+
+        can_move = [False for i in range(len(tiles))]
+
+        for i in range(len(tiles)):
+            tile = tiles[i]
+            if tile:
+                cost = tile.get_terrain().cost
+                dif = unit.mov_points - cost
+                if dif >= 0:
+                    can_move[i] = True
+                    if consider_other_units and tile.unit:
+                        can_move[i] = False
+
+        return can_move
     
-    def check_victory(self, show=False):
-        print("Warning: check victory was not updated and might be incorrect")
-
-        winner = 0
-        p1_captured_points = 0
-        p2_captured_points = 0
-        for point in self.victory_p1:
-            vic_p1 = self.board[point[0]][point[1]]
-            if vic_p1.unit:
-                if(vic_p1.unit.player==2):
-                    p2_captured_points +=1
-        for point in self.victory_p2:
-            vic_p2 = self.board[point[0]][point[1]]
-            if vic_p2.unit:
-                if(vic_p2.unit.player==1):
-                    p1_captured_points +=1
-        if p1_captured_points > p2_captured_points:
-            if(show):
-                print("PLAYER 1 WINS!")
-            winner=1
-        elif p2_captured_points > p1_captured_points:
-            if(show):
-                print("PLAYER 2 WINS!")
-            winner=2
-        elif p1_captured_points == 0:
-            if(show):
-                print("GAME DRAWN! :(")
-        else:
-            if(show):
-                print("GAME DRAWN! :)")
+    def check_adjacent_units(self, unit, enemy):
+        x = unit.row
+        y = unit.col
+        
+        tiles = self.check_tiles((x,y))
             
-        return winner
+        adjacent_units = []
+        enemy_directions = []
 
-    def check_winner(self):
-        terminal_value = self.get_terminal_value()
+        for i in range(len(tiles)):
+            tile = tiles[i]
+            if tile:
+                unit = tile.unit
+                if unit:
+                    if (unit.player==enemy):
+                        adjacent_units.append(unit)
+                        enemy_directions.append(i)
 
-        if terminal_value < 0:
-            winner = 2
-        elif terminal_value > 0:
-            winner = 1
+        return adjacent_units , enemy_directions
+
+    def end_movement(self, unit):
+        player = unit.player
+        enemy = (not(player-1)) + 1
+
+        # End movement
+        self.moved_units[unit.player-1].append(unit)
+        self.available_units[unit.player-1].remove(unit)
+
+        # Marks units without adjancent enemies as done fighting
+        # to reduce the total number of decisions that need to be taken
+        _, enemy_directions = self.check_adjacent_units(unit, enemy)
+        if len(enemy_directions) == 0:
+            self.end_fighting(unit)
+
+    def end_fighting(self, unit):
+        self.atacked_units[unit.player-1].append(unit)
+        self.moved_units[unit.player-1].remove(unit)
+    
+##########################################################################
+# -------------------------                   -------------------------- #
+# ------------------------   UTILITY METHODS   ------------------------- #
+# -------------------------                   -------------------------- #
+##########################################################################
+
+    def get_n_coords(self, coords):
+        (row, col) = coords
+        n = (row-1, col)
+        return n
+    
+    def get_ne_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            ne = (row-1, col+1)
         else:
-            winner = 0
+            ne = (row, col+1)
 
-        return winner
+        return ne
+    
+    def get_se_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            se = (row, col+1)
+        else:
+            se = (row+1, col+1)
+    
+        return se
+    
+    def get_s_coords(self, coords):
+        (row, col) = coords
+        s = (row+1, col)
+        return s
+
+    def get_sw_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            sw = (row, col-1)
+        else:
+            sw = (row+1, col-1)
+
+        return sw
+    
+    def get_nw_coords(self, coords):
+        (row, col) = coords
+        if col % 2 == 0:
+            nw = (row-1, col-1)
+        else:
+            nw = (row, col-1)
+
+        return nw
+
+    def define_board_sides(self):
+
+        # Calculate the indexes that define each side of the board
+        if self.columns % 2 != 0:
+            middle_index = math.floor(self.columns/2)
+            self.p1_last_index = middle_index-1
+            self.p2_first_index = middle_index+1
+        else:
+            # if number of rows is even there are two middle collumns one on the right and one on the left
+            mid = int(self.columns/2)
+            left_side_collumn = mid
+            right_side_collumn = mid + 1
+            left_index = left_side_collumn - 1
+            right_index = right_side_collumn - 1
+            
+            # For boards with even columns we separate the center by one more column
+            self.p1_last_index = max(0, left_index-1)
+            self.p2_first_index = min(self.columns-1, right_index+1)
+
+##########################################################################
+# -------------------------                   -------------------------- #
+# ------------------------  ALPHAZERO SUPPORT  ------------------------- #
+# -------------------------                   -------------------------- #
+##########################################################################
 
     def generate_state_image(self):
-        
-        # Initialization
-        p1_victory = np.zeros((self.height, self.width), dtype=np.int32)
-        p2_victory = np.zeros((self.height, self.width), dtype=np.int32)
+        # Terrain Channels #
+        atack_modifiers = torch.ones((self.rows, self.columns))
+        defense_modifiers = torch.ones((self.rows, self.columns))
+        movement_costs = torch.ones((self.rows, self.columns))
 
-        p_units = [[],[]]
+        for i in range(self.rows):
+            for j in range(self.columns):
+                tile = self.board[i][j]
+                terrain = tile.get_terrain()
+                a = terrain.attack_modifier
+                d = terrain.defense_modifier
+                m = terrain.cost
+                atack_modifiers[i][j] = a
+                defense_modifiers[i][j] = d
+                movement_costs[i][j] = m
 
-        p1_reinforcements = [[] for u in range(self.N_UNIT_TYPES)]
-        p2_reinforcements = [[] for u in range(self.N_UNIT_TYPES)]
-
-        p1_reinforcement_counts = list(Counter(self.reinforcements[0]).values())
-        p2_reinforcement_counts = list(Counter(self.reinforcements[1]).values())
-
-        
-        # Terrain Channels
-        if self.use_terrain:
-            atack_modifiers = torch.ones((self.height, self.width))
-            defense_modifiers = torch.ones((self.height, self.width))
-            movement_costs = torch.ones((self.height, self.width))
-
-            for i in range(self.height):
-                for j in range(self.width):
-                    tile = self.board[i][j]
-                    terrain = tile.get_terrain()
-                    a = terrain.atack_modifier
-                    d = terrain.defense_modifier
-                    m = terrain.cost
-                    atack_modifiers[i][j] = a
-                    defense_modifiers[i][j] = d
-                    movement_costs[i][j] = m
-
-            atack_modifiers = torch.unsqueeze(atack_modifiers, 0)
-            defense_modifiers = torch.unsqueeze(defense_modifiers, 0)
-            movement_costs = torch.unsqueeze(movement_costs, 0)
+        atack_modifiers = torch.unsqueeze(atack_modifiers, 0)
+        defense_modifiers = torch.unsqueeze(defense_modifiers, 0)
+        movement_costs = torch.unsqueeze(movement_costs, 0)
 
 
+        # Reinforcements Channels #
+        player_reinforcements = [None, None]
 
-        # Reinforcements Channels
-        for u in range(self.N_UNIT_TYPES):
-            p1_value = 0
-            p2_value = 0
-            if u < len(p1_reinforcement_counts):
-                p1_value = p1_reinforcement_counts[u]
-            if u < len(p2_reinforcement_counts):
-                p2_value = p2_reinforcement_counts[u]
+        for player, reinforcements in self.current_reinforcements.items():
+            for turn in range(self.n_reinforcement_turns):
+                if (self.current_turn + turn) < self.turns:
+                    turn_index = (self.current_turn + turn)-1
+                    turn_reinforcements = reinforcements[turn_index]
+                else:
+                    turn_reinforcements = []
 
-            p1_reinforcements[u] = torch.full((self.height, self.width), p1_value, dtype=torch.float32)
-            p2_reinforcements[u] = torch.full((self.height, self.width), p2_value, dtype=torch.float32)
+                for r in range(self.max_reinforcements):
+                    if r < len(turn_reinforcements):
+                        unit = turn_reinforcements[r]
+                        unit_stats = [unit.attack, unit.defense, unit.mov_points]
+                        unit_planes = None
+                        for stat in unit_stats:
+                            # Currently reinforcements can be placed on each player's side of the board
+                            available_columns = self.p1_last_index + 1 # number of columns on my side of the board
+                            my_half = torch.full((self.rows, available_columns), stat)
+                            rest_of_columns = self.columns - available_columns
+                            enemy_half = torch.zeros((self.rows, rest_of_columns))       
+                            if player == 1:
+                                stat_plane = torch.unsqueeze(torch.cat((my_half, enemy_half), axis=1), 0)
+                            else:
+                                stat_plane = torch.unsqueeze(torch.cat((enemy_half, my_half), axis=1), 0)
 
-            
-            for s in range(self.N_UNIT_STATUSES):
-                p_units[0].append(np.zeros((self.height, self.width), dtype=np.int32))
-                p_units[1].append(np.zeros((self.height, self.width), dtype=np.int32))
+                            if unit_planes is None:
+                                unit_planes = stat_plane
+                            else:
+                                unit_planes = torch.cat((unit_planes, stat_plane), dim=0)
+                    else:
+                        unit_planes = torch.zeros((self.N_UNIT_STATS, self.rows, self.columns))
 
+                    if player_reinforcements[player] is None:
+                        player_reinforcements[player] = unit_planes
+                    else:
+                        player_reinforcements[player] = torch.cat((player_reinforcements[player], unit_planes))
+                    
 
-        # Victory Points Channels
+        p1_reinforcements = player_reinforcements[0]
+        p2_reinforcements = player_reinforcements[1]
+                    
+
+        # Victory Points Channels #
+        p1_victory = np.zeros((self.rows, self.columns), dtype=np.int32)
+        p2_victory = np.zeros((self.rows, self.columns), dtype=np.int32)
+
         for v in self.victory_p1:
             x = v[0]
             y = v[1]
@@ -888,78 +912,56 @@ class SCS_Game():
             y = v[1]
             p2_victory[x][y] = 1
 
+        p1_victory = torch.unsqueeze(torch.as_tensor(p1_victory, dtype=torch.float32), 0)
+        p2_victory = torch.unsqueeze(torch.as_tensor(p2_victory, dtype=torch.float32), 0)
 
-        # Unit Representation Channels
+
+        # Unit Representation Channels #
+        p1_units = torch.zeros(self.N_UNIT_STATS * self.N_UNIT_STATUSES, self.rows, self.columns)
+        p2_units = torch.zeros(self.N_UNIT_STATS * self.N_UNIT_STATUSES, self.rows, self.columns)
+        p_units = [p1_units, p2_units]
         for p in [0,1]: 
             # for each player check each unit status
-            for unit in self.available_units[p]:
-                x = unit.tile_x
-                y = unit.tile_y
-
-                u_type = unit.unit_type()
-                status = 0
-                type_i = (u_type-1)*self.N_UNIT_STATUSES
-
-                p_units[p][type_i + status][x][y] = 1  
+            statuses_list = [self.available_units[p], self.moved_units[p], self.atacked_units[p]]
+            for status_index in range(len(statuses_list)):
+                unit_list = statuses_list[status_index]
+                for unit in unit_list:
+                    first_index = status_index * self.N_UNIT_STATS
+                    row = unit.row
+                    col = unit.col
+                    p_units[p][first_index + 0][row][col] = unit.attack
+                    p_units[p][first_index + 1][row][col] = unit.defense
+                    p_units[p][first_index + 2][row][col] = unit.mov_points
             
-            for unit in self.moved_units[p]:
-                x = unit.tile_x
-                y = unit.tile_y
 
-                u_type = unit.unit_type()
-                status = 1
-                type_i = (u_type-1)*self.N_UNIT_STATUSES
-                
-                p_units[p][type_i + status][x][y] = 1
-            
-            for unit in self.atacked_units[p]:
-                x = unit.tile_x
-                y = unit.tile_y
-
-                u_type = unit.unit_type()
-                status = 2
-                type_i = (u_type-1)*self.N_UNIT_STATUSES
-                
-                p_units[p][type_i + status][x][y] = 1
-
-        # Player Channel
-        player_plane = np.ones((self.height,self.width), dtype=np.int32)
+        # Player Channel #
+        player_plane = np.ones((self.rows,self.columns), dtype=np.int32)
         if self.current_player == 2:
             player_plane.fill(-1)
 
         player_plane = torch.unsqueeze(torch.as_tensor(player_plane,dtype=torch.float32), 0)
 
-        # Phase Channel
+        # Phase Channel #
         phase = self.current_phase
-        state_phase = torch.full((self.height, self.width), phase, dtype=torch.float32)
-        state_phase = torch.unsqueeze(state_phase, 0)
+        phase_plane = torch.full((self.rows, self.columns), phase, dtype=torch.float32)
+        phase_plane = torch.unsqueeze(phase_plane, 0)
 
-        # Turn Channel
+        # Turn Channel #
         turn_percent = self.current_turn/self.turns
-        state_turn = torch.full((self.height, self.width), turn_percent, dtype=torch.float32)
-        state_turn = torch.unsqueeze(state_turn, 0)
+        turn_plane = torch.full((self.rows, self.columns), turn_percent, dtype=torch.float32)
+        turn_plane = torch.unsqueeze(turn_plane, 0)
 
-        # Final operations
-        p1_victory = torch.unsqueeze(torch.as_tensor(p1_victory, dtype=torch.float32), 0)
-        p2_victory = torch.unsqueeze(torch.as_tensor(p2_victory, dtype=torch.float32), 0)
-
-        p1_reinforcements = torch.stack(p1_reinforcements, dim=0)
-        p2_reinforcements = torch.stack(p2_reinforcements, dim=0)
-
-        p1_units = torch.as_tensor(np.array(p_units[0]), dtype=torch.float32)
-        p2_units = torch.as_tensor(np.array(p_units[1]), dtype=torch.float32)
-
-
+        # Final operations #
         stack_list = []
-        if self.use_terrain:
-            terrain_list = [atack_modifiers, defense_modifiers, movement_costs]
-            stack_list.extend(terrain_list)
+
+        terrain_list = [atack_modifiers, defense_modifiers, movement_costs]
+        stack_list.extend(terrain_list)
     
-        core_list = [p1_victory, p2_victory, p1_units, p2_units, p1_reinforcements, p2_reinforcements, state_phase, state_turn, player_plane]
+        core_list = [p1_victory, p2_victory, p1_units, p2_units, p1_reinforcements, p2_reinforcements, phase_plane, turn_plane, player_plane]
         stack_list.extend(core_list)
         new_state = torch.concat(stack_list, dim=0)
 
-        state_image = torch.unsqueeze(new_state, 0)# add batch size to the dimensions
+        state_image = torch.unsqueeze(new_state, 0) # add batch size to the dimensions
 
         #print(state_image)
         return state_image
@@ -971,26 +973,209 @@ class SCS_Game():
             for a in range(self.num_actions) ])
 
     def make_target(self, i):
-
         value_target = self.terminal_value
         policy_target = self.child_policy[i]
 
         target = (value_target, policy_target)
         return target
-    
+
+    def debug_state_image(self, state_image):
+        for channel in state_image[0]:
+            print(channel)
+
 ##########################################################################
-# -------------------------                   -------------------------- #
-# ------------------------  UTILITY FUNCTIONS  ------------------------- #
-# -------------------------                   -------------------------- #
+# -------------------------                    ------------------------- #
+# ------------------------   INSTANCE METHODS   ------------------------ #
+# -------------------------                    ------------------------- #
 ##########################################################################
+
+    def load_from_config(self, filename):
+        # Read YAML file
+        with open(filename, 'r') as stream:
+            data_loaded = yaml.safe_load(stream)
+
+        units_by_id = {}
+        terrain_by_id = {}
+        all_reinforcements = {}
+        
+        for section_name, values in data_loaded.items():
+            match section_name:
+                case "Board_dimensions":
+                    self.rows = values["rows"]
+                    self.columns = values["columns"]
+                    self.define_board_sides()
+
+                case "Turns":
+                    self.turns = values
+
+                case "Units":
+                    for unit_name, properties in values.items():
+                        id = properties["id"]
+                        properties.pop("id")
+                        units_by_id[id] = {}
+                        units_by_id[id]["name"] = unit_name
+                        units_by_id[id].update(properties)
+            
+                case "Reinforcements":
+                    max_reinforcements = 0
+                    for p, reinforcements in values.items():
+                        player_index = int(p[-1]) - 1
+
+                        all_reinforcements[player_index] = []
+                        for turn_idx in range(len(reinforcements)):
+                            turn_units = reinforcements[turn_idx]
+                            n_units = len(turn_units)
+                            if n_units > max_reinforcements:
+                                max_reinforcements = n_units
+
+                            all_reinforcements[player_index].append([])
+                            for id in turn_units:
+                                player = player_index + 1
+                                name = units_by_id[id]["name"]
+                                attack = units_by_id[id]["attack"]
+                                defense = units_by_id[id]["defense"]
+                                mov_allowance = units_by_id[id]["movement"]
+                                image_path = units_by_id[id]["image_path"]
+                                all_reinforcements[player_index][turn_idx].append(Unit(name, attack, defense, mov_allowance, player, image_path))
+
+                    self.all_reinforcements = all_reinforcements
+                    self.current_reinforcements = self.all_reinforcements.copy()
+                    self.max_reinforcements = max_reinforcements
+
+                case "Terrain":
+                    for terrain_name, properties in values.items():
+                        id = properties["id"]
+                        properties.pop("id")
+                        terrain_by_id[id] = {}
+                        terrain_by_id[id]["name"] = terrain_name
+                        terrain_by_id[id].update(properties)
+
+                case "Map":
+                    self.terrain_types = []
+                    for id, properties in terrain_by_id.items():
+                        instance =  Terrain(
+                            attack_modifier=properties["attack_modifier"],
+                            defense_modifier=properties["defense_modifier"],
+                            cost=properties["cost"], 
+                            name=properties["name"],
+                            image_path=properties["image_path"])
+                        
+                        properties["instance"] = instance
+                        self.terrain_types.append(instance)
+
+                    method = values["creation_method"]
+                    if method == "Randomized":
+                        if values.get("distribution"):
+                            distribution = values["distribution"]
+                        else:
+                            num_terrains = len(terrain_by_id)
+                            distribution = [1/num_terrains for _ in range(num_terrains)]
+
+                        for i in range(self.rows):
+                            self.board.append([])
+                            for j in range(self.columns): 
+                                terrain = np.random.choice(self.terrain_types, p=distribution)
+                                self.board[i].append(Tile(i,j,terrain))
+
+                    elif method == "Detailed":
+                        map_configuration = values["map_configuration"]
+                        map_shape = np.shape(map_configuration)
+                        if map_shape != (self.rows, self.columns):
+                            print("Wrong shape for map configuration. Exiting")
+                            exit()
+                        else:
+                            for i in range(self.rows):
+                                self.board.append([])
+                                for j in range(self.columns):
+                                    terrain_id = map_configuration[i][j]
+                                    terrain = terrain_by_id[terrain_id]["instance"]
+                                    self.board[i].append(Tile(i,j,terrain))
+                    else:
+                        print("Unrecognized map creation method. Exiting")
+                        exit()
+
+                case "Victory_points":
+                    method = values["creation_method"]
+
+                    if method == "Randomized":
+                        p1_vp = values["number_vp"]["p1"]
+                        p2_vp = values["number_vp"]["p2"]
+                        self.victory_p1 = []        
+                        self.victory_p2 = []
+
+                        p1_available_tiles = self.rows * self.p1_last_index+1
+                        p2_available_tiles = self.rows * self.p1_last_index+1
+                        if p1_vp > p1_available_tiles:
+                            print("Game config has too many victory points for p1.")
+                            exit()
+                        if p2_vp > p2_available_tiles:
+                            print("Game config has too many victory points for p2.")
+                            exit()
+
+                        for _ in range(p1_vp):
+                            row = np.random.choice(range(self.rows))
+                            col = np.random.choice(range(self.p1_last_index+1))
+                            point = (row, col)
+                            while point in self.victory_p1:
+                                row = np.random.choice(range(self.rows))
+                                col = np.random.choice(range(self.p1_last_index+1))
+                                point = (row, col)
+
+                            self.victory_p1.append(point)
+                        
+                        for _ in range(p2_vp):
+                            row = np.random.choice(range(self.rows))
+                            col = np.random.choice(range(self.p2_first_index, self.columns))
+                            point = (row, col)
+                            while point in self.victory_p2:
+                                row = np.random.choice(range(self.rows))
+                                col = np.random.choice(range(self.p2_first_index, self.columns))
+                                point = (row, col)
+
+                            self.victory_p2.append(point)
+
+
+                    elif method == "Detailed":
+                        p1_vp = values["vp_locations"]["p1"]
+                        p2_vp = values["vp_locations"]["p2"]
+                        self.victory_p1 = []        
+                        self.victory_p2 = []
+
+                        loaded_vps = [p1_vp, p2_vp]
+                        game_vps = [self.victory_p1, self.victory_p2]
+                        for player in loaded_vps:
+                            loaded_list = loaded_vps[player]
+                            game_list = game_vps[player]
+                            for point in loaded_list:
+                                if len(point) != 2:
+                                    print(str(point) + " --> Points must have two coordenates.")
+                                    exit()
+                                elif point in game_list:
+                                    print(str(point) + " --> Repeated point. Cannot have two points with the same coordenates.")
+                                    exit()
+                                else:
+                                    vp_tuple = (point[0], point[1])
+                                    game_list.append(vp_tuple)        
+
+                    else:
+                        print("Unrecognized victory points creation method. Exiting")
+                        exit()
+
+                    self.n_vp = [0, 0]
+                    for point in self.victory_p1:
+                        self.board[point[0]][point[1]].victory = 1
+                        self.n_vp[0] += 1
+
+                    for point in self.victory_p2:
+                        self.board[point[0]][point[1]].victory = 2
+                        self.n_vp[1] += 1
 
     def clone(self):
         return deepcopy(self)
     
     def shallow_clone(self):
         ignore_list = ["child_policy", "state_history", "player_history", "action_history"]
-        game_args = [self.height, self.width, self.turns, self.reinforcements_by_type[0].copy(), self.reinforcements_by_type[1].copy(), self.use_terrain, False]
-        new_game = SCS_Game(*game_args)
+        new_game = SCS_Game()
 
         memo = {} # memo dict for deepcopy so that it knows what objects it has already copied before
         attributes = self.__dict__.items()
@@ -1000,22 +1185,29 @@ class SCS_Game():
                 setattr(new_game, name, value_copy)
                 
         return new_game
-    
+
+##########################################################################
+# ----------------------                         ----------------------- #
+# ----------------------  REPRESENTATION METHODS  ---------------------- #
+# ----------------------                         ----------------------- #
+##########################################################################
+
     def string_representation(self):
-        
+        print("string representation for squared boards")
+
         string = "\n   "
-        for k in range(self.width):
+        for k in range(self.columns):
             string += (" " + format(k+1, '02') + " ")
         
         string += "\n  |"
-        for k in range(self.width-1):
+        for k in range(self.columns-1):
             string += "---|"
 
         string += "---|\n"
 
-        for i in range(self.height):
+        for i in range(self.rows):
             string += format(i+1, '02') + "| "
-            for j in range(self.width):
+            for j in range(self.columns):
                 mark = " "
                 if self.board[i][j].victory == 1:
                     mark = colored("V", "cyan")
@@ -1024,34 +1216,27 @@ class SCS_Game():
 
                 unit = self.board[i][j].unit
                 if unit:    
-                    type = unit.unit_type()
-                    if type==1:
-                        if unit.player == 1:
-                            mark=colored("S", "green")
-                        else:
-                            mark=colored("S", "red")
-                    elif type==2:
-                        if unit.player == 1:
-                            mark=colored("T", "blue")
-                        else:
-                            mark=colored("T", "red")
+                    if unit.player == 1:
+                        mark=colored("U", "blue")
+                    else:
+                        mark=colored("U", "red")
 
                 string += mark + ' | '
             string += "\n"
 
-            if(i<self.height-1):
+            if(i<self.rows-1):
                 string += "  |"
-                for k in range(self.width-1):
+                for k in range(self.columns-1):
                     string += "---|"
                 string += "---|\n"
             else:
                 string += "   "
-                for k in range(self.width-1):
+                for k in range(self.columns-1):
                     string += "--- "
                 string += "--- \n"
 
         string += "=="
-        for k in range(self.width):
+        for k in range(self.columns):
             string += "===="
         string += "==\n"
 
@@ -1062,20 +1247,13 @@ class SCS_Game():
         parsed_action = self.parse_action(action_coords)
 
         act = parsed_action[0]
-        unit_type = parsed_action[1]
         start = parsed_action[2]
         dest = parsed_action[3]
 
         string = ""
         if (act == 0): # placement
-            string = "Unit placement phase: Placing a "
-            if unit_type == 1: 
-                string += "Soldier "
-            elif unit_type == 2:
-                string += "Tank "
-            else:
-                string += "Weird Unknown Unit "
-            
+            string = "Unit placement phase: Placing a Unit "
+        
             string = string + "at (" + str(start[0]+1) + "," + str(start[1]+1) + ")"
 
         elif (act == 1): # movement
@@ -1095,189 +1273,3 @@ class SCS_Game():
 
         #print(string)
         return string
-    
-##########################################################################
-# ------------------------                     ------------------------- #
-# -----------------------  USER PLAY FUNCTIONS  ------------------------ #
-# ------------------------                     ------------------------- #
-##########################################################################
-
-    def user_p1_position_units(self):
-        
-        tmp_list = self.reinforcements[0].copy() #iterating over mutable object leads to bugs
-        for unit in tmp_list:
-            if unit == 1:
-                unit_name = "Soldier"
-            elif unit == 2:
-                unit_name = "Tank"
-            while(True):
-                x = int(input("P1: You have a " + unit_name + " to place.\nPlease choose the row where you want to place it:"))
-                while x<1 or x>self.height:
-                    x = int(input("You must choose a row inside the board:"))
-                y = int(input("And the collumn:"))
-                while y> math.floor(self.width/2) or y<0:
-                    y = int(input("You must choose a collumn on your side of the board:"))
-            
-                if (self.board[x-1][y-1].unit):
-                    print("There is a unit there already, try again.")
-                    continue
-                else:
-                    break
-
-            if unit==1:
-                new_unit = Soldier(1,x-1,y-1)
-                self.reinforcements[0].remove(1)
-            elif unit==2:
-                new_unit = Tank(1,x-1,y-1)
-                self.reinforcements[0].remove(2)
-
-            self.available_units[0].append(new_unit)
-            self.board[x-1][y-1].place_unit(new_unit)
-            self.print_board()
-        
-        print("P1 Positioning done.")
-        print("")
-        return
-
-    def user_p2_position_units(self):
-        
-        tmp_list = self.reinforcements[1].copy() #iterating over mutable object leads to bugs
-
-        for unit in tmp_list:
-            if unit == 1:
-                unit_name = "Soldier"
-            elif unit == 2:
-                unit_name = "Tank"
-            while(True):
-                x = int(input("P2: You have a " + unit_name + " to place.\nPlease choose the row where you want to place it:"))
-                while x<1 or x>self.height:
-                    x = int(input("You must choose a row inside the board:"))
-                y = int(input("And the collumn:"))
-                while (y<= math.ceil(self.width/2) or y>self.width):
-                    y = int(input("You must choose a collumn on your side of the board:"))
-
-                if (self.board[x-1][y-1].unit):
-                    print("There is a unit there already, try again.")
-                    continue
-                else:
-                    break
-
-
-            if unit==1:
-                new_unit = Soldier(2,x-1,y-1)
-                self.reinforcements[1].remove(1)
-            elif unit==2:
-                new_unit = Tank(2,x-1,y-1)
-                self.reinforcements[1].remove(2)
-                
-            self.available_units[1].append(new_unit)
-            self.board[x-1][y-1].place_unit(new_unit)
-            self.print_board()
-
-        print("P2 Positioning done.")
-        print("")
-        return
-
-    def move_units(self, player):
-        print("P" + str(player) + ": Movement phase.")
-        
-
-        tmp_list = self.available_units[player-1].copy() #iterating over mutable object leads to bugs
-        for unit in tmp_list:
-            pos_x = unit.tile_x
-            pos_y = unit.tile_y
-            mov = unit.mov_points
-            invalid = 1
-            while(invalid):
-                x = int(input("P" + str(player) + ": You have a " + unit.unit_name() + " at (" + str(pos_x + 1) + "," + str(pos_y + 1) + ")"
-                + " with " + str(mov) + " movement points.\nPlease choose the row you want to move it to:"))
-                y = int(input("And the collumn:"))
-                if ((abs(x-(pos_x+1)))+(abs(y-(pos_y+1)))<=mov and x>=1 and y>=1 and x<=self.height and y <=self.width and
-                    (((pos_x == (x-1)) and (pos_y == (y-1))) or self.board[x-1][y-1].unit is None)):
-                    invalid=0
-                else:
-                    print("Invalid movement.Try again.")
-
-            self.available_units[player-1].remove(unit)
-
-            if (pos_x != (x-1)) or (pos_y != (y-1)):
-                self.board[pos_x][pos_y].unit = None
-                unit.move_to(x-1,y-1)
-                self.board[x-1][y-1].unit = unit
-
-            self.moved_units[player-1].append(unit)
-
-            self.print_board()
-
-        print("P" + str(player) + " Movement done.")
-        print("")  
-        return
-
-    def fight(self, player):
-        
-        enemy_player = (not(player-1)) + 1
-
-        print("P" + str(player) + ": Fight phase.")
-        tmp_list = self.moved_units[player-1].copy() #iterating over mutable object leads to bugs
-        for unit in tmp_list:
-            atacked = False
-            adjacent_units, _ = self.check_adjacent_units(unit, enemy_player)
-            for enemy in adjacent_units:
-                enemy_type = enemy.unit_type()
-                self.print_board()
-                
-                answer = input("Your "  + unit.unit_name() + " at (" + str(unit.tile_x+1) + "," + str(unit.tile_y+1) +  ") " +  "has an enemy "
-                + enemy.unit_name() + " nearby, at (" + str(enemy.tile_x+1) + "," + str(enemy.tile_y+1) + ").\nDo you want to fight it?(y/n)")
-                if answer == "y":
-                    self.resolve_combat(unit, enemy)
-                    atacked = True
-                    self.print_board()
-                    break
-                elif answer == "n":
-                    continue
-                else:
-                    print("Bad answer.Exiting")
-                    exit()
-            if not atacked:
-                self.moved_units[player-1].remove(unit)
-                self.atacked_units[player-1].append(unit)
-            
-        print("P" + str(player) + " Combat done.")
-        print("")
-                
-        return
-
-    def play_user_vs_user(self):
-        # WARNING: These funtions are not being maintained
-        print("\n\nWARNING: This function is not being mantained and might be broken.\n")
-
-        self.reset_env()
-
-        self.print_board()
-
-        self.user_p1_position_units()
-        self.user_p2_position_units()
-
-        while(self.current_turn<=self.turns):
-            print("\nTurn: " + str(self.current_turn))
-            
-            self.move_units(1)
-            self.fight(1)
-
-            self.move_units(2)
-            self.fight(2)
-
-            print("End of turn")
-            exit = input("Do you wish to continue playing?(y/n)\n")
-            if exit == "n":
-                break
-
-            self.current_turn+=1
-            self.new_turn()
-
-        self.check_victory(show=True)
-
-        return
-    
-
-

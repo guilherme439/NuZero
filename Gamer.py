@@ -66,7 +66,6 @@ class Gamer():
 
 
             action_coords = np.unravel_index(action_i, game.get_action_space_shape())
-            #game.store_action(action_coords)
             game.step_function(action_coords)
 
             game.store_search_statistics(subtree_root)

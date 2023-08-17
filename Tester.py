@@ -14,11 +14,9 @@ import torch
 from Node import Node
 from Explorer import Explorer
 
-from SCS.SCS_Game import SCS_Game
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Neural_Networks.Torch_NN import Torch_NN
-
 
 
 
@@ -49,7 +47,9 @@ class Tester():
 # ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
-    def Test_AI_with_mcts(self, player_choice, search_config, game, nn1, nn2=None, use_state_cache=True, recurrent_iterations=1):
+    def Test_AI_with_mcts(self, player_choice, search_config, game, nn1, nn2=None, use_state_cache=True, recurrent_iterations=1, keep_state_history=False):
+
+        # --- Initialization --- #
         stats = \
         {
         "number_of_moves" : 0,
@@ -59,9 +59,10 @@ class Tester():
         "average_bias_value" : 0,
         "final_bias_value" : 0,
         }
-
+        keep_sub_tree = search_config.simulation["keep_sub_tree"]
         explorer = Explorer(search_config, False, recurrent_iterations)
 
+        # --- State cache verfication --- #
         if not isinstance(use_state_cache, bool):
             print("\"use_state_cache\" is not a boolean.")
             print("\"use_state_cache\" should be a boolean, representing whether or not to use a state dictionary as cache during this test.")
@@ -73,6 +74,7 @@ class Tester():
         else:
             state_dict = None
 
+        # --- Neural network setup --- #
         # Both players use the first neural network unless a second (nn2) is given
         p1_nn = nn1
         p2_nn = nn1
@@ -89,8 +91,7 @@ class Tester():
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()
         
-        keep_sub_tree = search_config.simulation["keep_sub_tree"]
-        
+        # --- Printing and rendering preparations --- #
         if self.print:
             print("\n")
 
@@ -99,6 +100,7 @@ class Tester():
             self.renderer.render.remote()
             time.sleep(3)
 
+        # --- Main test loop --- #
         subtree_root = Node(0)
         while True:
             
@@ -112,17 +114,16 @@ class Tester():
                 subtree_root = Node(0)
 
             player = game.current_player
-            print
             if player == 1:
                 net_to_use = p1_nn
             else:
                 net_to_use = p2_nn
 
+            # Use neural network or random choice according to the player #
             if (AI_player == 0) or (player == AI_player):
                 action_i, chosen_child, root_bias = explorer.run_mcts(net_to_use, game, subtree_root, state_dict=state_dict)
 
             else:
-                # The other player chooses randomly 
                 probs = valid_actions_mask/n_valids
                 action_i = np.random.choice(game.get_num_actions(), p=probs)
                 if keep_sub_tree:    
@@ -138,9 +139,15 @@ class Tester():
             if self.slow:
                 time.sleep(self.slow_duration)
 
+            if keep_state_history:
+                state = game.generate_state_image()
+                game.store_state(state)
+
+            # Step function #
             action_coords = np.unravel_index(action_i, game.action_space_shape)
             done = game.step_function(action_coords)
 
+            # Update stats #
             stats["average_children"] += node_children
             stats["average_tree_size"] += tree_size
             stats["final_tree_size"] = tree_size
@@ -157,7 +164,7 @@ class Tester():
             if (done):
                 if self.print:
                     print(game.string_representation())
-                winner = game.check_winner()
+                winner = game.get_winner()
                 break
 
 
@@ -170,8 +177,9 @@ class Tester():
 
         return winner, stats
 
-    def Test_AI_with_policy(self, player_choice, game, nn1, nn2=None, recurrent_iterations=1):
+    def Test_AI_with_policy(self, player_choice, game, nn1, nn2=None, recurrent_iterations=1, keep_state_history=False):
         
+        # --- Printing and rendering preparations --- #
         if self.print:
             print("\n")
 
@@ -180,6 +188,7 @@ class Tester():
             self.renderer.render.remote()
             time.sleep(3)
 
+        # --- Neural network setup --- #
         # Both players use the first neural network unless a second (nn2) is given
         p1_nn = nn1
         p2_nn = nn1
@@ -196,7 +205,7 @@ class Tester():
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()
         
-
+        # --- Main test loop --- #
         while True:
             
             valid_actions_mask = game.possible_actions()
@@ -213,13 +222,12 @@ class Tester():
             else:
                 net_to_use = p2_nn
             
+            # Use neural network or random choice according to the player #
             if (AI_player == 0) or (player == AI_player):
-
                 state = game.generate_state_image()
                 action_probs, value_pred = net_to_use.inference(state, False, recurrent_iterations)
                 action_probs = softmax(action_probs)
                 probs = action_probs.flatten()
-
 
                 raw_action = np.argmax(probs)
                 if not valid_actions_mask[raw_action]:
@@ -231,7 +239,6 @@ class Tester():
                     total = np.sum(probs)
 
                     if (total != 0): # happens if the network gave 0 probablity to all valid actions and high probability to invalid actions
-
                         probs /= total
 
                         max_action = np.argmax(probs)
@@ -242,7 +249,6 @@ class Tester():
                         # Problem during learning... using random action instead
                         probs = probs + valid_actions_mask
                         probs /= n_valids
-
                         action_i = np.random.choice(game.num_actions, p=probs)
                 
                 else:
@@ -261,6 +267,10 @@ class Tester():
 
             if self.slow:
                 time.sleep(self.slow_duration)
+            
+            if keep_state_history:
+                state = game.generate_state_image()
+                game.store_state(state)
 
             done = game.step_function(action_coords)
 
@@ -268,10 +278,57 @@ class Tester():
                 ray.get(self.remote_storage.set_item.remote(game))
 
             if (done):
-                winner = game.check_winner()
+                winner = game.get_winner()
                 break
             
         return winner, {}
+
+    def random_vs_random(self, game, keep_state_history=False):
+        
+        # --- Printing and rendering preparations --- #
+        if self.print:
+            print("\n")
+
+        if self.render:
+            ray.get(self.remote_storage.set_item.remote(game))
+            self.renderer.render.remote()
+            time.sleep(5)
+
+        # --- Main test loop --- #
+        while True:
+            
+            valid_actions_mask = game.possible_actions()
+            valid_actions_mask = valid_actions_mask.flatten()
+            n_valids = np.sum(valid_actions_mask)
+            if (n_valids == 0):
+                print("Zero valid actions!")
+                exit()
+                
+
+            probs = valid_actions_mask/n_valids
+            action_i = np.random.choice(game.num_actions, p=probs)
+
+            if self.print:
+                print(game.string_representation())
+
+            if self.slow:
+                time.sleep(self.slow_duration)
+
+            if keep_state_history:
+                state = game.generate_state_image()
+                game.store_state(state)
+
+            action_coords = np.unravel_index(action_i, game.action_space_shape)
+            done = game.step_function(action_coords)
+
+            if self.render:
+                ray.get(self.remote_storage.set_item.remote(game))
+
+            if (done):
+                winner = game.get_winner()
+                break
+
+        return winner
 
     def ttt_vs_AI_with_policy(self, AI_player, nn, recurrent_iterations=1):
 
@@ -339,64 +396,13 @@ class Tester():
             
 
             if (done):
-                winner = game.check_winner()
+                winner = game.get_winner()
                 print(game.string_representation())
                 break
 
             
             return winner
-
-    def random_vs_random(self, game):
-        
-        if self.print:
-            print("\n")
-
-        if self.render:
-            ray.get(self.remote_storage.set_item.remote(game))
-            self.renderer.render.remote()
-            time.sleep(5)
-
-        while True:
-            
-            valid_actions_mask = game.possible_actions()
-            valid_actions_mask = valid_actions_mask.flatten()
-            n_valids = np.sum(valid_actions_mask)
-            if (n_valids == 0):
-                print("Zero valid actions!")
-                exit()
-                
-            '''
-            print("\n||||||||||||||||||||||||||||||||||||||||")
-            for i in range(len(valid_actions_mask)):
-                if valid_actions_mask[i] == 1:
-                    coords = np.unravel_index(i, game.action_space_shape)
-                    print()
-                    print(game.string_action(coords))
-
-            print("\n||||||||||||||||||||||||||||||||||||||||\n\n")     
-            '''
-
-            probs = valid_actions_mask/n_valids
-            action_i = np.random.choice(game.num_actions, p=probs)
-
-            if self.print:
-                print(game.string_representation())
-
-            if self.slow:
-                time.sleep(self.slow_duration)
-
-            action_coords = np.unravel_index(action_i, game.action_space_shape)
-            done = game.step_function(action_coords)
-
-            if self.render:
-                ray.get(self.remote_storage.set_item.remote(game))
-
-            if (done):
-                winner = game.check_winner()
-                break
-
-        return winner
-
+    
     def test_game(self, game_class, game_args): #TODO: Very incomplete
         
         # Plays games at random and displays stats about what terminal states it found, who won, etc...

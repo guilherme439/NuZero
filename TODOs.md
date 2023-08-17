@@ -7,7 +7,7 @@
 - Consider changing configs to YAML. [medium, low]
 
 ## Improve algorithm
-- Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, high] (Might not be possible because of object lifetimes)
+- Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, low] (Might not be possible because of object lifetimes)
 
 ## Improve ability to define custom game
 - Find a way for people to import their own maps and their own specific rules such as: specific initial unit placement locations. [hard, high]

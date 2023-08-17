@@ -81,12 +81,11 @@ class AlphaZero():
 					self.model = pickle.load(file)
 
 				model_paths = glob.glob(self.model_folder_path + "*_model")
-				model_paths.sort()
-				latest_model_path = model_paths[-1]
+				
+				# finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
+				self.starting_iteration = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
+				latest_model_path = self.model_folder_path + self.network_name + "_" + str(self.starting_iteration) + "_model"
 				self.model.load_state_dict(torch.load(latest_model_path))
-
-				# Uses RegExp to find all the numbers in the string, converts them to int and puts them in a list.
-				self.starting_iteration = list(map(int, re.findall(r'\d+', latest_model_path)))[-1] # The last number is the iteration number.
 
 				configs_answer = input("\nContinue with the same configs?(y/n)")
 				if configs_answer == "y":
@@ -293,7 +292,7 @@ class AlphaZero():
 			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay = weight_decay)
 		else:
 			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
-			print("Bad optimizer config.\nUsing Adam optimizer...")
+			print("Bad optimizer config.\nUsing default optimizer (Adam)...")
 
 		scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
@@ -384,7 +383,7 @@ class AlphaZero():
 				print("\ntest buffer:")
 				print(ray.get(self.test_buffer.played_games.remote()))
 			
-			
+
 
 			print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
 			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set)
@@ -440,7 +439,7 @@ class AlphaZero():
 
 					plt.plot(range(len(self.p1_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
 					plt.plot(range(len(self.p1_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
-					plt.title("Win rates as P1")
+					plt.title("Win rates as Player 1")
 					plt.legend()
 					plt.savefig(self.plots_path + self.network_name + '_p1_wr.png')
 					plt.clf()
@@ -448,7 +447,7 @@ class AlphaZero():
 
 					plt.plot(range(len(self.p2_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
 					plt.plot(range(len(self.p2_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
-					plt.title("Win rates as P2")
+					plt.title("Win rates as Player 2")
 					plt.legend()
 					plt.savefig(self.plots_path + self.network_name + '_p2_wr.png')
 					plt.clf()
@@ -616,7 +615,6 @@ class AlphaZero():
 			
 			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
 			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-				print("Oi")
 				sample_loss /= math.log(len(target_policy))
 			policy_loss += sample_loss
 			
@@ -641,7 +639,9 @@ class AlphaZero():
 		print()
 		start = time.time()
 
+		replace = True
 		train_iterations = self.alpha_config.recurrent_networks["num_train_iterations"]
+		batch_extraction = self.alpha_config.learning["batch_extraction"]
 
 		replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
 		n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=120)
@@ -693,7 +693,9 @@ class AlphaZero():
 				if test_set:
 					future_test_shuffle = self.test_buffer.shuffle.remote()
 
-				future_replay_buffer = self.replay_buffer.get_buffer.remote()
+				if batch_extraction == 'local':
+					future_replay_buffer = self.replay_buffer.get_buffer.remote()
+
 				if test_set:
 					future_test_buffer = self.test_buffer.get_buffer.remote()
 
@@ -707,13 +709,20 @@ class AlphaZero():
 					t_epoch_combined_loss = 0.0
 
 				spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
-				# We get entire buffer and slice locally to avoid a lot of remote calls (buffer.get_slice could also be used)
-				replay_buffer = ray.get(future_replay_buffer, timeout=300) 
+				if batch_extraction == 'local':
+					print("Getting buffer...")
+					# We get entire buffer and slice locally to avoid a lot of remote calls (buffer.get_slice could also be used)
+					replay_buffer = ray.get(future_replay_buffer, timeout=300) 
+
 				for b in range(number_of_batches):		
 					start_index = b*batch_size
 					next_index = (b+1)*batch_size
 
-					batch = replay_buffer[start_index:next_index] # the slice does not take the last element
+					if batch_extraction == 'local':
+						batch = replay_buffer[start_index:next_index]
+					else:
+						batch = ray.get(self.replay_buffer.get_slice.remote(start_index, next_index))
+					
 				
 					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
 
@@ -774,7 +783,8 @@ class AlphaZero():
 			num_samples = self.alpha_config.samples["num_samples"]
 			late_heavy = self.alpha_config.samples["late_heavy"]
 
-			future_buffer = self.replay_buffer.get_buffer.remote()
+			if batch_extraction == 'local':
+				future_buffer = self.replay_buffer.get_buffer.remote()
 			batch = []
 			probs = []
 			if late_heavy:
@@ -798,14 +808,24 @@ class AlphaZero():
 
 			print("\nTotal number of updates: " + str(num_samples) + "\n")
 			bar = ChargingBar('Training ', max=num_samples)
-			replay_buffer = ray.get(future_buffer, timeout=300)
+
+			
+			if batch_extraction == 'local':
+				print("Getting buffer...")
+				replay_buffer = ray.get(future_buffer, timeout=300)
+
 			for _ in range(num_samples):
-				if probs == []:
-					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True)
+				if batch_extraction == 'local':
+					if probs == []:
+						args = [len(replay_buffer), batch_size, replace]
+					else:
+						args = [len(replay_buffer), batch_size, replace, probs]
+					
+					batch_indexes = np.random.choice(*args)
+					batch = [replay_buffer[i] for i in batch_indexes]
 				else:
-					batch_indexes = np.random.choice(len(replay_buffer), size=batch_size, replace=True, p=probs)
-				
-				batch = [replay_buffer[i] for i in batch_indexes]
+					batch = ray.get(self.replay_buffer.get_sample.remote(batch_size, replace, probs))
+
 				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
 	
 				average_value_loss += value_loss
@@ -908,10 +928,10 @@ class AlphaZero():
 			use_state_cache = True
 		
 		if test_mode == "policy":
-			args_list = [player_choice, None, self.latest_network, None, test_iterations]
+			args_list = [player_choice, None, self.latest_network, None, test_iterations, False]
 			game_index = 1
 		elif test_mode == "mcts":
-			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations]
+			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations, False]
 			game_index = 2
 
 		
@@ -986,11 +1006,4 @@ class AlphaZero():
 
 
 	
-
-
-
-
-
-
-
 

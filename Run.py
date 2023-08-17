@@ -26,10 +26,8 @@ from Neural_Networks.Hexagonal.ResNet import ResNet
 from Neural_Networks.Hexagonal.dt_neural_network import *
 
 
-#from SCS.SCS_Game import SCS_Game
-from SCS.SCS_Game_hex import SCS_Game
+from SCS.SCS_Game import SCS_Game
 from SCS.SCS_Renderer import SCS_Renderer
-
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
@@ -80,7 +78,7 @@ def main():
 
         case 3: # Start Training
             game_class = SCS_Game
-            game_args = [5, 5, 7, [1,0], [0,0], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
 
             in_channels = game.state_shape()[0]
@@ -91,20 +89,20 @@ def main():
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
             
 
-            alpha_zero = AlphaZero(game_class, game_args, model=model)
+            alpha_zero = AlphaZero(game_class, game_args, model=model, default_alpha_config="Configs/Config_files/test_alpha_config.ini", default_search_config="Configs/Config_files/test_search_config.ini")
             alpha_zero.run()
             
 
         case 4:  # Continue Training
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [3,1], True]
+            game_args = [5, 5, 7, [0,1], [3,0], True]
 
             alpha_zero = AlphaZero(game_class, game_args)
             alpha_zero.run()
 
         case 5: # Test trained network
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [3,1], True]
+            game_args = [5, 5, 7, [0,1], [3,0], True]
             game = game_class(*game_args)
 
             net_name = input("\nName of the network: ")
@@ -121,7 +119,7 @@ def main():
         case 6: # Debug Value
 
             game_class = SCS_Game
-            game_args = [5, 5, 7, [1,0],[0,0], True]
+            game_args = [5, 5, 7, [0,1],[3,0], True]
             game = game_class(*game_args)
 
             recurrent = False
@@ -155,7 +153,7 @@ def main():
             
         case 7: # Watch Random Game
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1],[3,1], True]
+            game_args = [5, 7, 7, [3,1],[3,1], True]
             game = game_class(*game_args)
             
             features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
@@ -208,9 +206,17 @@ def main():
 
         case 9:
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1], [3,1], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
-            game.load_config("SCS/Game_configs/simple_config.yml")
+
+            tester = Tester(print=True)
+            tester.random_vs_random(game, keep_state_history=True)
+
+            random_index = np.random.choice(range(len(game.state_history)))
+            state_image = game.state_history[random_index]
+            game.debug_state_image(state_image)
+
+            #play_loop(100000, game_class, game_args)
             
         case 10:
             pass
@@ -295,7 +301,7 @@ def main():
 
         case 20:
             game_class = SCS_Game
-            game_args = [5, 5, 7, [3,1],[3,1], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
 
             play_loop(1000, game_class, game_args)
             

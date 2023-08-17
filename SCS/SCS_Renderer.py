@@ -4,7 +4,6 @@ import ray
 import math
 
 from enum import Enum
-from .Soldier import Soldier
 
 import sys
 sys.path.append("..")
