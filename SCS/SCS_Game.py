@@ -147,7 +147,7 @@ class SCS_Game():
 
         n_vic_dims = self.N_PLAYERS
         n_unit_dims = self.N_UNIT_STATS * self.N_UNIT_STATUSES * self.N_PLAYERS
-        n_reinforcement_dims = self.n_reinforcement_turns * self.N_UNIT_STATS * self.N_PLAYERS
+        n_reinforcement_dims = self.n_reinforcement_turns * self.N_UNIT_STATS * self.max_reinforcements * self.N_PLAYERS
         n_feature_dims = 3 # turn, phase and player
         n_terrain_dims = 3 # atack, defense, movement
         total_dims = n_vic_dims + n_reinforcement_dims + n_unit_dims + n_feature_dims + n_terrain_dims
@@ -980,8 +980,11 @@ class SCS_Game():
         return target
 
     def debug_state_image(self, state_image):
-        for channel in state_image[0]:
-            print(channel)
+        state = state_image[0]
+        for channel_idx in range(len(state)):
+            channel = state[channel_idx]
+            if channel_idx < 2:
+                print("Oi")
 
 ##########################################################################
 # -------------------------                    ------------------------- #

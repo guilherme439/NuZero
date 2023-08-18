@@ -173,7 +173,6 @@ class AlphaZero():
 		self.weight_size_average = []
 		
 
-
 	def run(self):
 		pid = os.getpid()
 		process = psutil.Process(pid)

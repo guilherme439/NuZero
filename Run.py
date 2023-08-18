@@ -89,7 +89,9 @@ def main():
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
             
 
-            alpha_zero = AlphaZero(game_class, game_args, model=model, default_alpha_config="Configs/Config_files/test_alpha_config.ini", default_search_config="Configs/Config_files/test_search_config.ini")
+            alpha_zero = AlphaZero(game_class, game_args, model=model, 
+                                   default_alpha_config="Configs/Config_files/test_alpha_config.ini", 
+                                   default_search_config="Configs/Config_files/test_search_config.ini")
             alpha_zero.run()
             
 
