@@ -90,8 +90,8 @@ def main():
             
 
             alpha_zero = AlphaZero(game_class, game_args, model=model, 
-                                   default_alpha_config="Configs/Config_files/test_alpha_config.ini", 
-                                   default_search_config="Configs/Config_files/test_search_config.ini")
+                                   default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", 
+                                   default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
             
 
