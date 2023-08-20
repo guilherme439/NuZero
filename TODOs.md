@@ -10,7 +10,7 @@
 - Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, low] (Might not be possible because of object lifetimes)
 
 ## Improve ability to define custom game
-- Find a way for people to import their own maps and their own specific rules such as: specific initial unit placement locations. [hard, high]
+- Custom placement locations for reinforcements
 
 ## Implement Ray's features
 - Use Ray's destributed training. [easy, low]

@@ -84,7 +84,7 @@ def main():
             in_channels = game.state_shape()[0]
             policy_channels = game.get_action_space_shape()[0]
 
-            model = dt_net_2d(in_channels, policy_channels, 128)
+            model = dt_net_2d(in_channels, policy_channels, 256)
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
             
@@ -97,7 +97,8 @@ def main():
 
         case 4:  # Continue Training
             game_class = SCS_Game
-            game_args = [5, 5, 7, [0,1], [3,0], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game = game_class(*game_args)
 
             alpha_zero = AlphaZero(game_class, game_args)
             alpha_zero.run()
