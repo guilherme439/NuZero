@@ -80,7 +80,7 @@ def main():
 
         case 3: # Start Training
             	
-            context = start_ray_local()
+            context = start_ray()
             
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/randomized_config.yml"]
