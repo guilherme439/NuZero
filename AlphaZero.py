@@ -1,5 +1,3 @@
-import math
-import numpy as np
 import os
 import psutil
 import gc
@@ -12,6 +10,11 @@ import ray
 import glob
 import re
 import torch
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+
+from copy import deepcopy
 
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network
@@ -24,29 +27,21 @@ from Neural_Networks.Rectangular.dt_neural_network import *
 #from Neural_Networks.Hexagonal.ResNet import ResNet
 #from Neural_Networks.Hexagonal.dt_neural_network import *
 
+from Neural_Networks.Torch_NN import Torch_NN
+
 from Configs.AlphaZero_config import AlphaZero_config
 from Configs.Search_config import Search_config
-
-from stats_utilities import *
-
-from copy import deepcopy
 
 from Gamer import Gamer
 from Replay_Buffer import Replay_Buffer
 from Shared_network_storage import Shared_network_storage
 
-import matplotlib.pyplot as plt
-
-from progress.bar import ChargingBar
-from progress.spinner import PieSpinner
-from termcolor import colored
-
-
-from Neural_Networks.Torch_NN import Torch_NN
-
 from RemoteTester import RemoteTester
 
-from ray.runtime_env import RuntimeEnv
+from stats_utilities import *
+from progress.bar import ChargingBar
+from progress.spinner import PieSpinner
+
 
 class AlphaZero():
 
@@ -182,17 +177,6 @@ class AlphaZero():
         # ------------------------------------------------------ #
 
 		print("\n\n--------------------------------\n")
-		runtime_env=RuntimeEnv \
-					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-					conda="tese",
-					env_vars=
-							{
-							"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
-							}
-					)
-		
-		context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)
 
 		# ------------------------------------------------------ #
         # ------------------ RUNTIME CONFIGS ------------------- #
@@ -553,86 +537,159 @@ class AlphaZero():
 			
 		
 		return
+			
+	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
+		start = time.time()
+		print("\n")
+
+		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
+
+		num_actors = self.alpha_config.actors["num_actors"]
+		chunk_size = self.alpha_config.actors["chunk_size"]
+
+		if test_set:
+			buffer_to_use = self.test_buffer
+		else:
+			buffer_to_use = self.replay_buffer
+
+		num_chunks = num_games_per_batch // chunk_size
+		rest = num_games_per_batch % chunk_size
+
+		stats_list = []
+		args_list = []
+		bar = ChargingBar(text, max=num_games_per_batch)
+		bar.next(0)
+		for c in range(num_chunks+1):
+			games_to_play = chunk_size
+			if c == num_chunks:
+				games_to_play = rest
+
+			actor_list= [Gamer.remote
+		 				(
+						buffer_to_use,
+						self.network_storage,
+						self.game_class,
+						self.game_args,
+						self.search_config,
+						pred_iterations,
+						state_cache
+						)
+		 				for a in range(num_actors)]
+			
+			actor_pool = ray.util.ActorPool(actor_list)
+
+			for g in range(games_to_play):
+				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
+
+			
+			for g in range(games_to_play):
+				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				stats_list.append(stats)
+				bar.next()
 	
-	def test_set_loss(self, batch, batch_size, iterations):
+		bar.finish()
+		print_stats_list(stats_list)
 
-		normalize_loss = self.alpha_config.learning["normalize_loss"]
-		cross_entropy = nn.CrossEntropyLoss()
+		end = time.time()
+		total_time = end-start
+		print("\n\nTotal time(m): " + format(total_time/60, '.4'))
+		print("Average time per game(s): " + format(total_time/num_games_per_batch, '.4'))
 
-		combined_loss = 0.0
-		policy_loss = 0.0
-		value_loss = 0.0
-		for (state, (target_value, target_policy)) in batch:
-			
-			predicted_policy, predicted_value = self.latest_network.inference(state, False, iterations)
+		return
+	
+	def run_tests(self, player_choice, num_games, state_cache, show_results=True, text="Testing"):	
+		start = time.time()
+		print("\n")
 
-			target_policy = torch.tensor(target_policy).to(self.latest_network.device)
-			target_value = torch.tensor(target_value).to(self.latest_network.device)
+		test_mode = self.alpha_config.running["testing_mode"]
+		test_iterations = self.alpha_config.recurrent_networks["num_test_iterations"]
+		num_actors = self.alpha_config.actors["num_actors"]
+		chunk_size = self.alpha_config.actors["chunk_size"]
 
-			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
-			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-				sample_loss /= math.log(len(target_policy))
-			policy_loss += sample_loss
+		stats_list = []
+		wins = [0,0]
+		num_chunks = num_games // chunk_size
+		rest = num_games % chunk_size
 
-			value_loss += ((target_value - predicted_value) ** 2)
-			#value_loss += torch.abs(target_value - predicted_value)
-			
-		value_loss /= batch_size
-		policy_loss /= batch_size
-
-		combined_loss = policy_loss + value_loss
-
-		return value_loss.item(), policy_loss.item(), combined_loss.item()
-
-	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations):
-
-		normalize_loss = self.alpha_config.learning["normalize_loss"]
-		cross_entropy = nn.CrossEntropyLoss()
+		use_state_cache = False
+		if state_cache != "disabled":
+			use_state_cache = True
 		
-		self.latest_network.get_model().train()
-		optimizer.zero_grad()
+		if test_mode == "policy":
+			args_list = [player_choice, None, self.latest_network, None, test_iterations, False]
+			game_index = 1
+		elif test_mode == "mcts":
+			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations, False]
+			game_index = 2
 
-		loss = 0.0
-		policy_loss = 0.0
-		value_loss = 0.0
-
-		states, targets = list(zip(*batch))
-		values, policies = list(zip(*targets))
-
-		batch_input = torch.cat(states, 0)
-
-		predicted_policies, predicted_values = self.latest_network.inference(batch_input, True, train_iterations)
-
-		for i in range(batch_size):
-			
-			target_policy = torch.tensor(policies[i]).to(self.latest_network.device)
-			target_value = torch.tensor(values[i]).to(self.latest_network.device)
-
-			predicted_value = predicted_values[i]
-			predicted_policy = predicted_policies[i]
-
-			
-			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
-			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-				sample_loss /= math.log(len(target_policy))
-			policy_loss += sample_loss
-			
-			value_loss += ((target_value - predicted_value) ** 2)
-			#value_loss += torch.abs(target_value - predicted_value)
-			
-			
-		value_loss /= batch_size
-		policy_loss /= batch_size
-
-		loss = policy_loss + value_loss
-
-		# If you use pythorch's SGD optimizer, it already applies L2 weight regularization
-		loss.backward()
-		optimizer.step()
-		scheduler.step()
 		
 
-		return value_loss.item(), policy_loss.item(), loss.item()
+		bar = ChargingBar(text, max=num_games)
+		bar.next(0)
+		for c in range(num_chunks+1):
+			games_to_play = chunk_size
+			if c == num_chunks:
+				games_to_play = rest
+
+			actor_list = [RemoteTester.remote() for a in range(num_actors)]
+			actor_pool = ray.util.ActorPool(actor_list)
+
+			for g in range(games_to_play):
+				game = self.game_class(*self.game_args)
+				args_list[game_index] = game
+				if test_mode == "policy":
+					actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
+				elif test_mode == "mcts":
+					actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
+
+				
+			
+			for g in range(games_to_play):
+				winner, stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+				stats_list.append(stats)
+				if winner != 0:
+					wins[winner-1] +=1
+				bar.next()
+			
+		bar.finish()
+
+		if test_mode == "mcts":
+			print_stats_list(stats_list)
+		
+		# STATISTICS
+		cmp_winrate_1 = 0.0
+		cmp_winrate_2 = 0.0
+		draws = num_games - wins[0] - wins[1]
+		p1_winrate = wins[0]/num_games
+		p2_winrate = wins[1]/num_games
+		draw_percentage = draws/num_games
+		cmp_2_string = "inf"
+		cmp_1_string = "inf"
+
+		if wins[0] > 0:
+			cmp_winrate_2 = wins[1]/wins[0]
+			cmp_2_string = format(cmp_winrate_2, '.4')
+		if wins[1] > 0:  
+			cmp_winrate_1 = wins[0]/wins[1]
+			cmp_1_string = format(cmp_winrate_1, '.4')
+
+
+		if show_results:
+			print("\n\nAI playing as p" + player_choice + "\n")
+
+			print("P1 Win ratio: " + format(p1_winrate, '.4'))
+			print("P2 Win ratio: " + format(p2_winrate, '.4'))
+			print("Draw percentage: " + format(draw_percentage, '.4'))
+			print("Comparative Win ratio(p1/p2): " + cmp_1_string)
+			print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+
+
+		end = time.time()
+		total_time = end-start
+		print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
+		print("Average time per game(s): " + format(total_time/num_games, '.4'))
+
+		return p1_winrate, p2_winrate, draw_percentage
 
 	def train_network(self, optimizer, scheduler, batch_size, learning_method, test_set):
 		print()
@@ -826,7 +883,7 @@ class AlphaZero():
 					batch = ray.get(self.replay_buffer.get_sample.remote(batch_size, replace, probs))
 
 				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
-	
+
 				average_value_loss += value_loss
 				average_policy_loss += policy_loss
 				average_combined_loss += combined_loss
@@ -847,161 +904,88 @@ class AlphaZero():
 		end = time.time()
 		total_time = end-start
 		print("\n\nTraining time(s): " + format(total_time, '.4') + "\n")
-		return
-			
-	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
-		start = time.time()
-		print("\n")
 
-		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
-
-		num_actors = self.alpha_config.actors["num_actors"]
-		chunk_size = self.alpha_config.actors["chunk_size"]
-
-		if test_set:
-			buffer_to_use = self.test_buffer
-		else:
-			buffer_to_use = self.replay_buffer
-
-		num_chunks = num_games_per_batch // chunk_size
-		rest = num_games_per_batch % chunk_size
-
-		stats_list = []
-		args_list = []
-		bar = ChargingBar(text, max=num_games_per_batch)
-		bar.next(0)
-		for c in range(num_chunks+1):
-			games_to_play = chunk_size
-			if c == num_chunks:
-				games_to_play = rest
-
-			actor_list= [Gamer.remote
-		 				(
-						buffer_to_use,
-						self.network_storage,
-						self.game_class,
-						self.game_args,
-						self.search_config,
-						pred_iterations,
-						state_cache
-						)
-		 				for a in range(num_actors)]
-			
-			actor_pool = ray.util.ActorPool(actor_list)
-
-			for g in range(games_to_play):
-				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
-
-			
-			for g in range(games_to_play):
-				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
-				stats_list.append(stats)
-				bar.next()
+		return	
 	
-		bar.finish()
-		print_stats_list(stats_list)
+	def test_set_loss(self, batch, batch_size, iterations):
 
-		end = time.time()
-		total_time = end-start
-		print("\n\nTotal time(m): " + format(total_time/60, '.4'))
-		print("Average time per game(s): " + format(total_time/num_games_per_batch, '.4'))
+		normalize_loss = self.alpha_config.learning["normalize_loss"]
+		cross_entropy = nn.CrossEntropyLoss()
 
-		return
-	
-	def run_tests(self, player_choice, num_games, state_cache, show_results=True, text="Testing"):	
-		start = time.time()
-		print("\n")
-
-		test_mode = self.alpha_config.running["testing_mode"]
-		test_iterations = self.alpha_config.recurrent_networks["num_test_iterations"]
-		num_actors = self.alpha_config.actors["num_actors"]
-		chunk_size = self.alpha_config.actors["chunk_size"]
-
-		stats_list = []
-		wins = [0,0]
-		num_chunks = num_games // chunk_size
-		rest = num_games % chunk_size
-
-		use_state_cache = False
-		if state_cache != "disabled":
-			use_state_cache = True
-		
-		if test_mode == "policy":
-			args_list = [player_choice, None, self.latest_network, None, test_iterations, False]
-			game_index = 1
-		elif test_mode == "mcts":
-			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations, False]
-			game_index = 2
-
-		
-
-		bar = ChargingBar(text, max=num_games)
-		bar.next(0)
-		for c in range(num_chunks+1):
-			games_to_play = chunk_size
-			if c == num_chunks:
-				games_to_play = rest
-
-			actor_list = [RemoteTester.remote() for a in range(num_actors)]
-			actor_pool = ray.util.ActorPool(actor_list)
-
-			for g in range(games_to_play):
-				game = self.game_class(*self.game_args)
-				args_list[game_index] = game
-				if test_mode == "policy":
-					actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
-				elif test_mode == "mcts":
-					actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
-
-				
+		combined_loss = 0.0
+		policy_loss = 0.0
+		value_loss = 0.0
+		for (state, (target_value, target_policy)) in batch:
 			
-			for g in range(games_to_play):
-				winner, stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
-				stats_list.append(stats)
-				if winner != 0:
-					wins[winner-1] +=1
-				bar.next()
+			predicted_policy, predicted_value = self.latest_network.inference(state, False, iterations)
+
+			target_policy = torch.tensor(target_policy).to(self.latest_network.device)
+			target_value = torch.tensor(target_value).to(self.latest_network.device)
+
+			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
+			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+				sample_loss /= math.log(len(target_policy))
+			policy_loss += sample_loss
+
+			value_loss += ((target_value - predicted_value) ** 2)
+			#value_loss += torch.abs(target_value - predicted_value)
 			
-		bar.finish()
+		value_loss /= batch_size
+		policy_loss /= batch_size
 
-		if test_mode == "mcts":
-			print_stats_list(stats_list)
+		combined_loss = policy_loss + value_loss
+
+		return value_loss.item(), policy_loss.item(), combined_loss.item()
+
+	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations):
+
+		normalize_loss = self.alpha_config.learning["normalize_loss"]
+		cross_entropy = nn.CrossEntropyLoss()
 		
-		# STATISTICS
-		cmp_winrate_1 = 0.0
-		cmp_winrate_2 = 0.0
-		draws = num_games - wins[0] - wins[1]
-		p1_winrate = wins[0]/num_games
-		p2_winrate = wins[1]/num_games
-		draw_percentage = draws/num_games
-		cmp_2_string = "inf"
-		cmp_1_string = "inf"
+		self.latest_network.get_model().train()
+		optimizer.zero_grad()
 
-		if wins[0] > 0:
-			cmp_winrate_2 = wins[1]/wins[0]
-			cmp_2_string = format(cmp_winrate_2, '.4')
-		if wins[1] > 0:  
-			cmp_winrate_1 = wins[0]/wins[1]
-			cmp_1_string = format(cmp_winrate_1, '.4')
+		loss = 0.0
+		policy_loss = 0.0
+		value_loss = 0.0
 
+		states, targets = list(zip(*batch))
+		values, policies = list(zip(*targets))
 
-		if show_results:
-			print("\n\nAI playing as p" + player_choice + "\n")
+		batch_input = torch.cat(states, 0)
 
-			print("P1 Win ratio: " + format(p1_winrate, '.4'))
-			print("P2 Win ratio: " + format(p2_winrate, '.4'))
-			print("Draw percentage: " + format(draw_percentage, '.4'))
-			print("Comparative Win ratio(p1/p2): " + cmp_1_string)
-			print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+		predicted_policies, predicted_values = self.latest_network.inference(batch_input, True, train_iterations)
 
+		for i in range(batch_size):
+			
+			target_policy = torch.tensor(policies[i]).to(self.latest_network.device)
+			target_value = torch.tensor(values[i]).to(self.latest_network.device)
 
-		end = time.time()
-		total_time = end-start
-		print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
-		print("Average time per game(s): " + format(total_time/num_games, '.4'))
+			predicted_value = predicted_values[i]
+			predicted_policy = predicted_policies[i]
 
-		return p1_winrate, p2_winrate, draw_percentage
+			
+			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
+			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+				sample_loss /= math.log(len(target_policy))
+			policy_loss += sample_loss
+			
+			value_loss += ((target_value - predicted_value) ** 2)
+			#value_loss += torch.abs(target_value - predicted_value)
+			
+			
+		value_loss /= batch_size
+		policy_loss /= batch_size
 
+		loss = policy_loss + value_loss
+
+		# If you use pythorch's SGD optimizer, it already applies L2 weight regularization
+		loss.backward()
+		optimizer.step()
+		scheduler.step()
+		
+
+		return value_loss.item(), policy_loss.item(), loss.item()
 
 
 	

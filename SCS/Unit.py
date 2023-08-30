@@ -3,6 +3,16 @@ import math
 import numpy as np
 import sys
 
+'''
+from enum import Enum
+class Unit_Status(Enum):
+    PLACED = 0
+    MOVED = 1
+    ATTACKED = 2
+
+    def index(self):
+        return self.value
+'''
 
 class Unit(object):
     player = -1
@@ -19,13 +29,13 @@ class Unit(object):
         self.attack = attack
         self.defense = defense
         self.mov_allowance = mov_allowance
-
         self.player=player
 
         if image_path != "":
             self.image_path = image_path
         
         self.mov_points = self.mov_allowance
+        self.status = 0
     
     def unit_name(self):
         return self.name
@@ -33,33 +43,29 @@ class Unit(object):
     def get_image_path(self):
         return self.image_path
     
+    def set_status(self, new_status):
+        self.status = new_status
+    
     def reset_mov(self):
         self.mov_points = self.mov_allowance
         
-    def move_to(self, row, col, cost):
+    def move_to(self, position, cost):
         self.mov_points -= cost
-        self.row=row
-        self.col=col
+        self.position = position
     
-    # Deal damage function
     def edit_defense(self, new_defense):
         self.defense = new_defense
 
     def __str__(self):
-        string = self.name
-        if hasattr(self, 'row') and hasattr(self, 'col'):
-            string += self.name + " at " + "(" + str(self.row) + ", " + str(self.col) + ")"
+        string = "P" + str(self.player) + " " + self.name
+        if hasattr(self, 'position'):
+            string += " at " + "(" + str(self.position[0] + 1) + "," + str(self.position[1] + 1) + ")"
         else:
             string += " not placed yet"
         return string
     
     def __repr__(self):
-        string = self.name
-        if hasattr(self, 'row') and hasattr(self, 'col'):
-            string += self.name + " at " + "(" + str(self.row) + ", " + str(self.col) + ")"
-        else:
-            string += " not placed yet"
-        return string
+        return self.__str__()
 
 
 

@@ -9,6 +9,11 @@ Board_dimensions:
 ###
 Turns: 7
 
+
+###
+Stacking_limit: 2
+
+
 ###
 Units:
   Soldier:
@@ -27,9 +32,9 @@ Units:
 
 ###
 Reinforcements:
-  p1: [[1,1,1], [], [], [], [], [], []]
+  p1: [[1,1,1], [], [], [], [], [], [], []]
 
-  p2: [[2], [], [], [], [], [], []]
+  p2: [[2], [], [], [], [], [], [], []]
 
 ###
 Terrain:
@@ -59,7 +64,7 @@ Terrain:
     attack_modifier: 2
     defense_modifier: 1
     cost: 1
-    image_path: SCS/Images/bush.jpg
+    image_path: SCS/Images/plains_with_bush.jpg
 
 ###
 Map:

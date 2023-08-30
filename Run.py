@@ -44,6 +44,8 @@ from Gamer import Gamer
 from Replay_Buffer import Replay_Buffer
 from Shared_network_storage import Shared_network_storage
 
+from ray.runtime_env import RuntimeEnv
+
 
 def main():
     pid = os.getpid()
@@ -77,6 +79,9 @@ def main():
             alpha_config.save(filepath)
 
         case 3: # Start Training
+            	
+            context = start_ray_local()
+            
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
@@ -90,12 +95,14 @@ def main():
             
 
             alpha_zero = AlphaZero(game_class, game_args, model=model, 
-                                   default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", 
+                                   default_alpha_config="Configs/Config_files/fast_alpha_config.ini", 
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
             
 
         case 4:  # Continue Training
+            context = start_ray()
+
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
@@ -105,7 +112,7 @@ def main():
 
         case 5: # Test trained network
             game_class = SCS_Game
-            game_args = [5, 5, 7, [0,1], [3,0], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
 
             net_name = input("\nName of the network: ")
@@ -118,7 +125,6 @@ def main():
 
             test_trained_network(game, net_name, recurrent, model_iteration, AI_player)
             
-
         case 6: # Debug Value
 
             game_class = SCS_Game
@@ -156,7 +162,7 @@ def main():
             
         case 7: # Watch Random Game
             game_class = SCS_Game
-            game_args = [5, 7, 7, [3,1],[3,1], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
             
             features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
@@ -172,11 +178,10 @@ def main():
             tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
             #tester.random_vs_random(game)
 
-            time.sleep(2)
-            print("\n\nanalisis\n")
+            time.sleep(1)
 
             renderer = SCS_Renderer.remote()
-            end = renderer.analyse.remote(game)
+            end = renderer.analyse.remote(game, True)
 
 
             ray.get(end) # wait for the rendering to end
@@ -184,10 +189,10 @@ def main():
 
         case 8:
             print("\n\n GAMER! \n")
-            ray.init(address="auto", log_to_driver=True)
+            start_ray()
 
             game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
 
             model = dt_net_2d(game, 128)
@@ -206,20 +211,19 @@ def main():
 
             print_stats(stats)
             
-
         case 9:
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
 
-            tester = Tester(print=True)
-            tester.random_vs_random(game, keep_state_history=True)
+            tester = Tester(print=False)
 
-            random_index = np.random.choice(range(len(game.state_history)))
-            state_image = game.state_history[random_index]
-            game.debug_state_image(state_image)
+            #tester.random_vs_random(game, keep_state_history=True)
+            #random_index = np.random.choice(range(len(game.state_history)))
+            #state_image = game.state_history[random_index]
+            #game.debug_state_image(state_image)
 
-            #play_loop(100000, game_class, game_args)
+            play_loop(10000, game_class, game_args, tester)
             
         case 10:
             pass
@@ -323,6 +327,28 @@ def main():
 ##########################################################################
 
 
+def start_ray():
+    print("\n")
+
+    runtime_env=RuntimeEnv \
+					(
+					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					conda="tese",
+					env_vars=
+							{
+							"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
+							}
+					)
+		
+    context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)
+    return context
+
+def start_ray_local():
+    print("\n")
+		
+    context = ray.init(address="auto", log_to_driver=True)
+    return context
+
 def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
 
     game_folder = game.get_name() + "/"
@@ -354,17 +380,13 @@ def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
     ray.get(end) # wait for the rendering to end
 
     return
-
-
-    
+   
 
 # -----------
 # -- STUFF --
 # -----------
 
-def play_loop(num_games, game_class, game_args):
-
-    tester = Tester()
+def play_loop(num_games, game_class, game_args, tester):
 
     wins = [0,0]
     total_length = 0
