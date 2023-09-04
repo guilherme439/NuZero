@@ -59,8 +59,9 @@ but I believe it makes more sense this way.
 
 class SCS_Game():
 
-    PHASES = 2
-    STAGES = 10             # Check 'update_game_env()'    
+    PHASES = 2              # Check 'update_game_env()' 
+    SUB_PHASES = 4
+    STAGES = 10                
 
     N_PLAYERS = 2
 
@@ -77,13 +78,15 @@ class SCS_Game():
 
         self.rows = 0
         self.columns = 0
-
         self.board = []
+
         self.current_player = 1
         self.current_phase = 0
+        self.current_sub_phase = 0
         self.current_stage = -2   
         self.current_turn = 0
-        
+
+
         self.available_units = [[],[]]      # Units that have not move yet
         self.moved_units = [[],[]]          # Units that moved but didn't attack
         self.attacked_units = [[],[]]       # Units that already attacked
@@ -97,7 +100,6 @@ class SCS_Game():
 
         self.all_reinforcements = {0:[], 1:[]}
         self.current_reinforcements = {0:[], 1:[]}
-        self.max_reinforcements = 0
 
         self.p1_last_index = 0
         self.p2_first_index = 0
@@ -158,20 +160,28 @@ class SCS_Game():
         # Units
         self.n_unit_representation_channels = self.N_UNIT_STATS * self.stacking_limit * self.N_UNIT_STATUSES * self.N_PLAYERS
         # Reinforcements
-        self.n_reinforcement_turns = 3  # Number of turns for which the reinforcements are represented.
-                                        # If this is 1, only the current turn is represented. 
-        self.n_reinforcement_channels = self.n_reinforcement_turns * self.N_UNIT_STATS * self.max_reinforcements * self.N_PLAYERS
+        self.n_reinforcements = 3  # Number of reinforcements that are represented per player
+        self.n_reinforcement_channels = self.n_reinforcements * self.N_UNIT_STATS
+        # For each unit there will be 2 sets of planes:
+        # the first representing the unit itself and
+        # the second representing how many turns until that unit arrives
+        self.n_duration_channels = self.n_reinforcement_channels
+        self.n_total_reinforcement_channels = (self.n_reinforcement_channels + self.n_duration_channels) * self.N_PLAYERS
+
         # Attack
         self.n_target_tile_channels = 1
         self.n_attacker_channels = self.stacking_limit
         self.n_attack_channels = self.n_target_tile_channels + self.n_attacker_channels
         # Features
-        self.n_feature_channels = 2 # turn and player
+        self.n_sub_phase_channels = self.SUB_PHASES
+        self.n_turn_channels = 1
+        self.n_player_channels = 1
+        self.n_feature_channels = self.n_sub_phase_channels + self.n_turn_channels + self.n_player_channels
 
         self.total_dims = \
         self.n_vp_channels + \
         self.n_unit_representation_channels + \
-        self.n_reinforcement_channels + \
+        self.n_total_reinforcement_channels + \
         self.n_feature_channels + \
         self.n_terrain_channels + \
         self.n_attack_channels
@@ -262,33 +272,20 @@ class SCS_Game():
         
         
         # PLACING REINFORCEMENTS
-        reinforcement_stages = (-2,-1,0,4)
-        if self.current_stage in reinforcement_stages:
-            # Currently reinforcements can be placed on each player's side of the board
-            available_columns = self.p1_last_index + 1 # number of columns on my side of the board
-            my_half = np.ones((self.rows, available_columns), dtype=np.int32)
-            rest_of_columns = self.columns - available_columns
-            enemy_half = np.zeros((self.rows, rest_of_columns), dtype=np.int32)
-                
-            if player == 1:
-                placement_planes = np.concatenate((my_half, enemy_half), axis=1)
-            else:
-                placement_planes = np.concatenate((enemy_half, my_half), axis=1)            
+        if self.current_sub_phase == 0:
+            # In this sub_phase the player places his reinforcements
 
-            for i in range(self.rows):
-                for j in range(self.columns):
-                    tile = self.board[i][j]
-                    if (tile.player == self.opponent(player)) or (tile.stacking_number() == self.stacking_limit):
-                        # can not place on tiles controlled by the other player or that are already full.
-                        placement_planes[i][j] = 0
-            
-            placement_planes = np.expand_dims(placement_planes, 0)
-                
+            next_reinforcement = self.current_reinforcements[self.current_player-1][self.current_turn][0]
+            arraival_locations = next_reinforcement.get_arraival_locations()
+            for (row, col) in arraival_locations:
+                tile = self.board[row][col]
+                # can not place on tiles controlled by the other player or that are already full.
+                if not ( (tile.player == self.opponent(player)) or (tile.stacking_number() == self.stacking_limit) ):
+                    placement_planes[0][row][col] = 1       
         
         # MOVING
-        movement_stages = (1,5)
-        if self.current_stage in movement_stages:
-            # In these stages player can either choose a unit to move or end it's movement
+        elif self.current_sub_phase == 1:
+            # In this sub_phase the player can either choose a unit to move or end it's movement
 
             for unit in self.available_units[player-1]:
                 (x, y) = unit.position
@@ -308,10 +305,8 @@ class SCS_Game():
                             movement_planes[plane_index][x][y] = 1
 
         # ATTACKING
-        choosing_target_stages = (2,6)
-        choosing_attackers_stages = (3,7)
-        if self.current_stage in choosing_target_stages:
-            # In these stages players can either choose a target or select a unit as done attacking
+        elif self.current_sub_phase == 2:
+            # In this sub_phase the player can either choose a target or select a unit as done attacking
             
             for unit in self.moved_units[player-1]:
                 (x, y) = unit.position
@@ -326,11 +321,10 @@ class SCS_Game():
                     (row, col) = enemy_unit.position
                     choose_target_planes[0][row][col] = 1 # select target action
 
-        elif self.current_stage in choosing_attackers_stages:
-            # In these stages players can either select a unit to atack with or confirm the atack
+        elif self.current_sub_phase == 3:
+            # In this sub_phase the player can either select a unit to atack with or confirm the attack
 
             selectable_units = self.check_adjacent_units(self.target_tile.position, player)
-
             for unit in selectable_units.copy():
                 if (unit in self.attackers) or (unit in self.attacked_units[player-1]):
                     selectable_units.remove(unit)
@@ -346,6 +340,9 @@ class SCS_Game():
                 (x,y) = self.target_tile.position
                 confirm_attack_planes[0][x][y] = 1 # confirm attack action
         
+        else:
+            print("Error in possible_actions! Exiting")
+            exit()
 
         planes_list = [placement_planes, movement_planes, choose_target_planes, choose_attackers_planes, confirm_attack_planes, no_move_planes, no_fight_planes]
         valid_actions_mask = np.concatenate(planes_list)
@@ -519,6 +516,7 @@ class SCS_Game():
     def reset_env(self):
         self.current_player = 1  
         self.current_phase = 0   
+        self.current_sub_phase = 0
         self.current_stage = -2 
         self.current_turn = 0
 
@@ -533,7 +531,7 @@ class SCS_Game():
             self.available_units[p].clear()
             self.moved_units[p].clear()
             self.attacked_units[p].clear()
-        
+
         self.current_reinforcements = deepcopy(self.all_reinforcements)
         
         for i in range(self.rows):
@@ -547,16 +545,24 @@ class SCS_Game():
         self.player_history.clear()
         self.action_history.clear()
 
+
         return
 
     def update_game_env(self):
         # Two players: P1 and P2
         # Each player's turn has two phases: Movement, Fighting
-        # Each phase has 2 stages resulting in 4 stages for each player: Reinforcement, Movement, Choosing_target, Choosing_attackers
-        # Making it a total of 8 stages
+        # Each phase has 2 sub-phases:
+        # Movement sub-phases -> reinforcement | movement
+        # Fighting sub-phases -> choosing target | choosing attackers
+        # This results in 4 total sub-phases for each player.
 
         # Turn 0 happens before game start, and is where both player place their initial troops.
-        # Turn 0 only has 1 stage for each player (reinforcement)
+        # Turn 0 only has 1 sub-phase for each player (reinforcement)
+
+        # I call "stage" to each unique sub-phase of the game.
+        # There are a total of 10 stages:
+        # 2 stages in turn 0 (1 for each player's reinforcement sub-phase)
+        # 8 stages in other turns (4 for each player)
 
         done = False
         previous_player = self.current_player
@@ -585,7 +591,7 @@ class SCS_Game():
                         stage+=1
                         continue
                 
-                case 0:
+                case 0: # P1 reinforcements
                     if self.player_ended_reinforcements(1, self.current_turn):
                         stage+=1
                         continue
@@ -657,9 +663,28 @@ class SCS_Game():
             print("Error in function: \'update_game_env()\'.Exiting")
             exit()
 
-        if stage in (-2,-1,0,1,4,5):
+
+        reinforcement_stages = (-2,-1,0,4)
+        movement_stages = (1,5)
+        choosing_target_stages = (2,6)
+        choosing_attackers_stages = (3,7)
+
+        if stage in reinforcement_stages:
+            self.current_sub_phase = 0
+        elif stage in movement_stages:
+            self.current_sub_phase = 1
+        elif stage in choosing_target_stages:
+            self.current_sub_phase = 2
+        elif stage in choosing_attackers_stages:
+            self.current_sub_phase = 3
+        else:
+            print("Error in function: \'update_game_env()\'.Exiting")
+            exit()
+
+        
+        if self.current_sub_phase in (0,1):
             self.current_phase = 0
-        elif stage in (2,3,6,7):
+        elif self.current_sub_phase in (2,3):
             self.current_phase = 1
         else:
             print("Error in function: \'update_game_env()\'.Exiting")
@@ -925,7 +950,7 @@ class SCS_Game():
             self.p1_last_index = middle_index-1
             self.p2_first_index = middle_index+1
         else:
-            # if number of rows is even there are two middle collumns one on the right and one on the left
+            # if number of columns is even there are two middle columns: one on the right and one on the left
             mid = int(self.columns/2)
             left_side_collumn = mid
             right_side_collumn = mid + 1
@@ -1046,48 +1071,54 @@ class SCS_Game():
 
         # Reinforcements Channels #
         player_reinforcements = [None, None]
-
         for player, reinforcements in self.current_reinforcements.items():
-            for turn in range(self.n_reinforcement_turns):
-                if (self.current_turn + turn) < self.turns:
-                    turn_index = (self.current_turn + turn)-1
-                    turn_reinforcements = reinforcements[turn_index]
-                else:
-                    turn_reinforcements = []
+            represented_units = 0
+            for turn in range(len(reinforcements)):
+                turns_left = turn - self.current_turn
+                relative_importance = (self.turns + 1) - turns_left
+                normalized_importance = relative_importance / (self.turns + 1)
 
-                for r in range(self.max_reinforcements):
-                    if r < len(turn_reinforcements):
-                        unit = turn_reinforcements[r]
-                        unit_stats = [unit.attack, unit.defense, unit.mov_points]
-                        unit_planes = None
-                        for stat in unit_stats:
-                            # Currently reinforcements can be placed on each player's side of the board
-                            available_columns = self.p1_last_index + 1 # number of columns on my side of the board
-                            my_half = torch.full((self.rows, available_columns), stat)
-                            rest_of_columns = self.columns - available_columns
-                            enemy_half = torch.zeros((self.rows, rest_of_columns))       
-                            if player == 1:
-                                stat_plane = torch.unsqueeze(torch.cat((my_half, enemy_half), axis=1), 0)
-                            else:
-                                stat_plane = torch.unsqueeze(torch.cat((enemy_half, my_half), axis=1), 0)
-
-                            if unit_planes is None:
-                                unit_planes = stat_plane
-                            else:
-                                unit_planes = torch.cat((unit_planes, stat_plane), dim=0)
-                    else:
-                        unit_planes = torch.zeros((self.N_UNIT_STATS, self.rows, self.columns))
+                turn_reinforcements = reinforcements[turn]
+                for unit in turn_reinforcements:
+                    arraival_locations = unit.get_arraival_locations()
+                    attack_plane = torch.zeros((1, self.rows, self.columns))
+                    defense_plane = torch.zeros((1, self.rows, self.columns))
+                    movement_plane = torch.zeros((1, self.rows, self.columns))
+                    for (row, col) in arraival_locations:
+                        attack_plane[0][row][col] = unit.attack
+                        defense_plane[0][row][col] = unit.defense
+                        movement_plane[0][row][col] = unit.mov_points
+                    
+                    stats_planes = torch.cat((attack_plane, defense_plane, movement_plane))
+                    duration_planes = torch.full((self.N_UNIT_STATS, self.rows, self.columns), normalized_importance)
+                    unit_planes = torch.cat((stats_planes, duration_planes))
 
                     if player_reinforcements[player] is None:
                         player_reinforcements[player] = unit_planes
                     else:
                         player_reinforcements[player] = torch.cat((player_reinforcements[player], unit_planes))
-                    
+
+                    represented_units +=1
+                    if represented_units == self.n_reinforcements:
+                        break
+                if represented_units == self.n_reinforcements:
+                        break
+                
+            # If the loop ends without reaching a "break" it means we need to fill the rest with "empty" units 
+            else: # This else belongs to the "for" loop not the "if" statement
+                units_remaining = self.n_reinforcements - represented_units
+                for empty_unit in range(units_remaining):
+                    unit_planes = torch.zeros((self.N_UNIT_STATS * 2, self.rows, self.columns))
+                    if player_reinforcements[player] is None:
+                        player_reinforcements[player] = unit_planes
+                    else:
+                        player_reinforcements[player] = torch.cat((player_reinforcements[player], unit_planes))
+
 
         p1_reinforcements = player_reinforcements[0]
         p2_reinforcements = player_reinforcements[1]
-                    
 
+    
         # Victory Points Channels #
         p1_victory = torch.zeros((self.rows, self.columns))
         p2_victory = torch.zeros((self.rows, self.columns))
@@ -1140,6 +1171,17 @@ class SCS_Game():
             stacking_lvl = tile.get_stacking_level(unit)
             attackers[stacking_lvl][x][y] = 1
 
+        # Sub-Phase Channel #
+        sub_phase_index = self.current_sub_phase
+        sub_phase_planes = torch.zeros((self.SUB_PHASES, self.rows, self.columns))
+        active_sub_phase = torch.ones((self.rows, self.columns))
+        sub_phase_planes[sub_phase_index] = active_sub_phase
+        
+        # Turn Channel #
+        turn_percent = self.current_turn/self.turns
+        turn_plane = torch.full((self.rows, self.columns), turn_percent, dtype=torch.float32)
+        turn_plane = torch.unsqueeze(turn_plane, 0)
+
         # Player Channel #
         player_plane = np.ones((self.rows,self.columns), dtype=np.int32)
         if self.current_player == 2:
@@ -1147,28 +1189,14 @@ class SCS_Game():
 
         player_plane = torch.unsqueeze(torch.as_tensor(player_plane,dtype=torch.float32), 0)
 
-        # Turn Channel #
-        turn_percent = self.current_turn/self.turns
-        turn_plane = torch.full((self.rows, self.columns), turn_percent, dtype=torch.float32)
-        turn_plane = torch.unsqueeze(turn_plane, 0)
-
-        # Phase Channel #
-        phase = self.current_phase
-        phase_plane = torch.full((self.rows, self.columns), phase, dtype=torch.float32)
-        phase_plane = torch.unsqueeze(phase_plane, 0)
-
-        # Stage Channel #
-        stage = self.current_stage
-        stage_plane = torch.full((self.rows, self.columns), stage, dtype=torch.float32)
-        stage_plane = torch.unsqueeze(stage_plane, 0)
-
         # Final operations #
         stack_list = []
 
         terrain_list = [atack_modifiers, defense_modifiers, movement_costs]
         stack_list.extend(terrain_list)
     
-        core_list = [p1_victory, p2_victory, p1_reinforcements, p2_reinforcements, p1_units, p2_units, target_tile_plane, attackers, turn_plane, player_plane]
+        core_list = [p1_victory, p2_victory, p1_reinforcements, p2_reinforcements, p1_units, p2_units,
+                     target_tile_plane, attackers, sub_phase_planes, turn_plane, player_plane]
         stack_list.extend(core_list)
         new_state = torch.concat(stack_list, dim=0)
 
@@ -1197,9 +1225,11 @@ class SCS_Game():
 
         state = state_image[0]
 
-        section_names = ["TERRAIN", "VICTORY POINTS", "REINFORCEMENTS", "UNITS", "TARGET TILE", "ATTACKERS", "FEATURES"]
-        section_sizes = [self.n_terrain_channels, self.n_vp_channels, self.n_reinforcement_channels, self.n_unit_representation_channels, 
-                         self.n_target_tile_channels, self.n_attacker_channels, self.n_feature_channels]
+        section_names = ["TERRAIN", "VICTORY POINTS", "P1_REINFORCEMENTS", "P2_REINFORCEMENTS",
+                         "P1_UNITS", "P2_UNITS", "TARGET TILE", "ATTACKERS", "SUBPHASES", "TURN", "PLAYER"]
+        section_sizes = [self.n_terrain_channels, self.n_vp_channels, self.n_total_reinforcement_channels//2, self.n_total_reinforcement_channels//2, 
+                         self.n_unit_representation_channels//2, self.n_unit_representation_channels//2, self.n_target_tile_channels,
+                         self.n_attacker_channels, self.n_sub_phase_channels, 1, 1]
 
         limit = 0
         section_index = 0
@@ -1258,22 +1288,28 @@ class SCS_Game():
                         units_by_id[id].update(properties)
             
                 case "Reinforcements":
-                    max_reinforcements = 0
+                    # Currently reinforcements can be placed on each player's side of the board
+                    player_arraival_locations = [[], []]
+                    for i in range(self.rows):
+                        for j in range(self.columns):
+                            location = (i,j)
+                            if j <= self.p1_last_index:
+                                player_arraival_locations[0].append(location)
+                            elif j >= self.p2_first_index:
+                                player_arraival_locations[1].append(location)
+
+
                     for p, reinforcements in values.items():
                         if len(reinforcements) != (self.turns + 1):
                             print("\nError in config.\n \
                                   Reinforcement schedule should have \'turns + 1\' entries.\n \
-                                  In order to account for initial troop placement.")
+                                  In order to account for initial troop placement (turn 0).")
                             exit()
                         player_index = int(p[-1]) - 1
-
                         self.all_reinforcements[player_index] = []
                         self.current_reinforcements[player_index] = []
                         for turn_idx in range(len(reinforcements)):
                             turn_units = reinforcements[turn_idx]
-                            n_units = len(turn_units)
-                            if n_units > max_reinforcements:
-                                max_reinforcements = n_units
 
                             self.all_reinforcements[player_index].append([])
                             self.current_reinforcements[player_index].append([])
@@ -1284,12 +1320,12 @@ class SCS_Game():
                                 defense = units_by_id[id]["defense"]
                                 mov_allowance = units_by_id[id]["movement"]
                                 image_path = units_by_id[id]["image_path"]
-                                new_unit = Unit(name, attack, defense, mov_allowance, player, image_path)
-                                self.all_reinforcements[player_index][turn_idx].append(new_unit)
+                                # In the future, configs should allow definition of custom arraival locations
+                                unit_arraival_locations = player_arraival_locations[player_index]
+                                new_unit = Unit(name, attack, defense, mov_allowance, player, unit_arraival_locations, image_path)
                                 self.current_reinforcements[player_index][turn_idx].append(new_unit)
-                                # We will create two list with pointers to the same units. One will be modified the other won't.
 
-                    self.max_reinforcements = max_reinforcements
+                    self.all_reinforcements = deepcopy(self.current_reinforcements)
 
                 case "Terrain":
                     for terrain_name, properties in values.items():
@@ -1392,7 +1428,7 @@ class SCS_Game():
 
                         loaded_vps = [p1_vp, p2_vp]
                         game_vps = [self.victory_p1, self.victory_p2]
-                        for player in loaded_vps:
+                        for player in range(len(loaded_vps)):
                             loaded_list = loaded_vps[player]
                             game_list = game_vps[player]
                             for point in loaded_list:
@@ -1442,62 +1478,94 @@ class SCS_Game():
 ##########################################################################
 
     def string_representation(self):
-        print("hexagonal representation incomplete\n")
-
-        string = "\n   "
+        string = ""
+        # Horizontal line
+        string += "\n ====="
         for k in range(self.columns):
-            string += (" " + format(k+1, '02') + " ")
-        
-        string += "\n  |"
-        for k in range(self.columns-1):
-            string += "---|"
-
-        string += "---|\n"
-
-        for i in range(self.rows):
-            first_line = format(i+1, '02') + "/ "
-            second_line = "  \\"
-            for j in range(self.columns):
-                tile = self.board[i][j]
-                mark = " "
-                if tile.victory == 1:
-                    mark = colored("V", "cyan")
-                elif tile.victory == 2:
-                    mark = colored("V", "yellow")
-
-                for unit in tile.units:    
-                    if unit.player == 1:
-                        mark=colored("U", "blue")
-                    else:
-                        mark=colored("U", "red")
-
-                odd_col = j%2
-
-                if odd_col:
-                    first_line += mark + ' \\'
-                else:
-                    first_line += " \__/"
-
-            string += first_line + "\n"
-            string += second_line + "\n"
-
-            if(i<self.rows-1):
-                string += "  |"
-                for k in range(self.columns-1):
-                    string += "---|"
-                string += "---|\n"
-            else:
-                string += "   "
-                for k in range(self.columns-1):
-                    string += "--- "
-                string += "--- \n"
-
-        string += "=="
-        for k in range(self.columns):
-            string += "===="
+            string += "==="
         string += "==\n"
 
-        return self.string_squared_representation()
+        # Collumn numbers and top
+        first_line_numbers = "\n     "
+        top = "\n     "
+        for k in range(self.columns):
+            first_line_numbers += (format(k+1, '02') + " ")
+            odd_col = k%2
+            if odd_col:
+                top += "   "
+            else:
+                top += "__ "
+
+        string += first_line_numbers
+        string += (top + "\n")
+
+        for i in range(self.rows):
+            first_line = "    "
+            second_line = format(i+1, '02') + "  "
+            for j in range(self.columns):
+                tile = self.board[i][j]
+                mark = "  "
+                mark_text = "  "
+                mark_color = "white"
+                attributes=[]
+
+                if tile.victory == 1:
+                    mark_color = "cyan"
+                    mark_text = " *"
+                elif tile.victory == 2:
+                    mark_color = "yellow"
+                    mark_text = " *"
+
+                s = tile.stacking_number()
+                if s > 0:
+                    number = str(s)
+                    if s>9:
+                        number = "X"
+                    mark_text = "U" + number
+                    
+                    if tile.player == 1:
+                        if mark_color == "white":
+                            mark_color = "blue"
+                        elif mark_color == "yellow":
+                            mark_color = "green"
+                    else:
+                        if mark_color == "white":
+                            mark_color = "red"
+                        if mark_color == "cyan":
+                            mark_color = "magenta"
+                            attributes=["dark"]
+
+                mark = colored(mark_text, mark_color, attrs=attributes)
+
+                odd_col = j%2
+                if odd_col:
+                    first_line += '__'
+                    second_line += mark
+                else:
+                    first_line += "/" + mark + "\\"
+                    second_line += "\__/"
+
+            string += (first_line + "\n")
+            string += (second_line + "\n")
+
+        # Bottom
+        bottom = "     "
+        for k in range(self.columns):
+            odd_col = k%2
+            if odd_col:
+                bottom += "\__/"
+            else:
+                bottom += "  "
+
+        string += (bottom + "\n")
+
+        # Horizontal line
+        string += "\n ====="
+        for k in range(self.columns):
+            string += "==="
+        string += "==\n"
+
+        return string
 
     def string_action(self, action_coords):
 

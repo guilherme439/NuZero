@@ -173,14 +173,10 @@ class AlphaZero():
 		process = psutil.Process(pid)
 
 		# ------------------------------------------------------ #
-        # ----------------- RAY INITIALIZATION ----------------- #
+        # ------------------ RUNTIME CONFIGS ------------------- #
         # ------------------------------------------------------ #
 
 		print("\n\n--------------------------------\n")
-
-		# ------------------------------------------------------ #
-        # ------------------ RUNTIME CONFIGS ------------------- #
-        # ------------------------------------------------------ #
 
 		#NOTE: currently self-play uses the storage_network and testing uses the latest_network, they are only the same if storage_frequency=1
 
@@ -211,8 +207,6 @@ class AlphaZero():
 		# ------------------------------------------------------ #
         # ------------------- BACKUP FILES --------------------- #
         # ------------------------------------------------------ #
-
-		print("\n--------------------------------\n\n")
 		
 		# pickle the network class
 		file_name = self.model_folder_path + "base_model.pkl"

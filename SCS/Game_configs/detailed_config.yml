@@ -6,6 +6,7 @@ Board_dimensions:
   rows: 5
   columns: 5
 
+
 ###
 Turns: 7
 
@@ -21,7 +22,7 @@ Units:
     attack: 1
     defense: 1
     movement: 2
-    image_path: "SCS/Images/soldier.jpg"
+    image_path: "SCS/Images/soldier.png"
 
   Tank:
     id: 2
@@ -30,34 +31,36 @@ Units:
     movement: 4
     image_path: "SCS/Images/tank.jpg"
 
+
 ###
 Reinforcements:
-  p1: [[1,1,1], [], [], [], [], [], [], []]
+  p1: [[1], [], [], [], [], [], [], []]
 
-  p2: [[2], [], [], [], [], [], [], []]
+  p2: [[1,1], [], [], [], [], [], [], []]
+
 
 ###
 Terrain:
-  Swamp:
-    id: 1
-    attack_modifier: 0.5
-    defense_modifier: 1
-    cost: 2
-    image_path: SCS/Images/swap.jpg
-
-  Mountain:
-    id: 2
-    attack_modifier: 1
-    defense_modifier: 2
-    cost: 2
-    image_path: SCS/Images/mountain.jpg
-
   Plains:
-    id: 3
+    id: 1
     attack_modifier: 1
     defense_modifier: 1
     cost: 1
     image_path: SCS/Images/plains.jpg
+
+  Swamp:
+    id: 2
+    attack_modifier: 0.5
+    defense_modifier: 1
+    cost: 2
+    image_path: SCS/Images/swamp.jpg
+
+  Mountain:
+    id: 3
+    attack_modifier: 1
+    defense_modifier: 2
+    cost: 2
+    image_path: SCS/Images/mountain.jpg
 
   Bush:
     id: 4
@@ -66,14 +69,23 @@ Terrain:
     cost: 1
     image_path: SCS/Images/plains_with_bush.jpg
 
+
 ###
 Map:
   creation_method: Detailed # Detailed | Randomized
-  map_configuration : []
+  map_configuration : [ [1,3,4,1,1],
+                        [1,3,2,1,1],
+                        [1,3,1,1,1],
+                        [1,1,1,1,1],
+                        [1,1,1,1,1] ]
+
 
 ###
 Victory_points:
   creation_method: Detailed # Detailed | Randomized
-  vp_locations:
-    p1: [[1,1]]             # YAML safe_loader does not suport tuples,
-    p2: [[3,3]]             # define the points as list instead.
+  vp_locations:             
+    p1: [[1,0]]     # The point coordenates are given as indexes,        
+    p2: [[3,4]]     # Meaning that [0,0] will be the top left corner of the map
+
+  # YAML safe_loader does not suport tuples,
+  # define the points as two element lists instead.

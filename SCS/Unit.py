@@ -24,24 +24,28 @@ class Unit(object):
     image_path = "SCS/Images/default_unit.webp"
 
 
-    def __init__(self, name, attack, defense, mov_allowance, player, image_path):
+    def __init__(self, name, attack, defense, mov_allowance, player, arraival_locations, image_path):
         self.name = name
         self.attack = attack
         self.defense = defense
         self.mov_allowance = mov_allowance
         self.player=player
+        self.arraival_locations = arraival_locations
 
         if image_path != "":
             self.image_path = image_path
         
-        self.mov_points = self.mov_allowance
+        self.mov_points = mov_allowance
         self.status = 0
     
-    def unit_name(self):
+    def get_name(self):
         return self.name
     
     def get_image_path(self):
         return self.image_path
+    
+    def get_arraival_locations(self):
+        return self.arraival_locations
     
     def set_status(self, new_status):
         self.status = new_status

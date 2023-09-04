@@ -83,7 +83,7 @@ def main():
             context = start_ray()
             
             game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game_args = ["SCS/Game_configs/detailed_config.yml"]
             game = game_class(*game_args)
 
             in_channels = game.state_shape()[0]
@@ -95,7 +95,7 @@ def main():
             
 
             alpha_zero = AlphaZero(game_class, game_args, model=model, 
-                                   default_alpha_config="Configs/Config_files/fast_alpha_config.ini", 
+                                   default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", 
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
             
@@ -110,64 +110,35 @@ def main():
             alpha_zero = AlphaZero(game_class, game_args)
             alpha_zero.run()
 
-        case 5: # Test trained network
+        case 5: # test network
+            
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
 
-            net_name = input("\nName of the network: ")
-            recurrent = False
-            rec = input("\nRecurrent?(y/n):")
-            if rec == "y":
-                recurrent = True
-            model_iteration = int(input("\nModel iteration number: "))
-            AI_player = input("\nChose the AI player (\"1\", \"2\", \"both\"): ")
-
-            test_trained_network(game, net_name, recurrent, model_iteration, AI_player)
+            test_trained_network(game)
             
-        case 6: # Debug Value
-
+        case 6: # Watch trained game
+            
             game_class = SCS_Game
-            game_args = [5, 5, 7, [0,1],[3,0], True]
+            game_args = ["SCS/Game_configs/detailed_config.yml"]
             game = game_class(*game_args)
 
-            recurrent = False
-            net_name = input("\nName of the network: ")
-            model_iteration = int(input("\nModel iteration number: "))
-            move_num = int(input("\nMove number: "))
-            rec = input("\nRecurrent?(y/n):")
-            if rec == "y":
-                recurrent = True
-
-
-            game_folder = game.get_name() + "/"
-            model_folder = game_folder + "models/" + net_name + "/" 
-            pickle_path =  model_folder + "base_model.pkl"
-            search_config_path = model_folder + "search_config_copy.ini"
-
-            trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
-
-            with open(pickle_path, 'rb') as file:
-                model = pickle.load(file)
-            model.load_state_dict(torch.load(trained_model_path))
-
-            nn = Torch_NN(model, recurrent=recurrent)
-
+            test_trained_network(game)
+            time.sleep(0.5)
 
             renderer = SCS_Renderer.remote()
-            end = renderer.debug_value.remote(move_num, game, nn, 2)
+            end = renderer.analyse.remote(game, True)
 
-
-            ray.get(end)
+            ray.get(end) # wait for the rendering to end
             
         case 7: # Watch Random Game
             game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game_args = ["SCS/Game_configs/detailed_config.yml"]
             game = game_class(*game_args)
             
             features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
             model = MLP_Network(features)
-
             nn = Torch_NN(game, model, recurrent=False)
 
             search_config = Search_config()
@@ -175,17 +146,16 @@ def main():
 
             tester = Tester(print=True)
             #tester.set_slow_duration(5)
-            tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
-            #tester.random_vs_random(game)
-
-            time.sleep(1)
+            #tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
+            tester.random_vs_random(game)
+            
+            time.sleep(0.5)
 
             renderer = SCS_Renderer.remote()
             end = renderer.analyse.remote(game, True)
 
-
             ray.get(end) # wait for the rendering to end
-            pass
+            return
 
         case 8:
             print("\n\n GAMER! \n")
@@ -226,7 +196,30 @@ def main():
             play_loop(10000, game_class, game_args, tester)
             
         case 10:
-            pass
+            # reset_env tests
+
+            game_class = SCS_Game
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game = game_class(*game_args)
+            
+            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
+            model = MLP_Network(features)
+
+            nn = Torch_NN(game, model, recurrent=False)
+
+            search_config = Search_config()
+            search_config.load("Configs/Config_files/test_search_config.ini")
+
+            tester = Tester(print=True)
+            #tester.set_slow_duration(5)
+            #tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
+            tester.random_vs_random(game)
+
+            history_copy = copy.deepcopy(game.action_history)
+            game.reset_env()
+            for action in history_copy:
+                game.step_function(action)
+
 
         case 11:
             pass
@@ -328,7 +321,7 @@ def main():
 
 
 def start_ray():
-    print("\n")
+    print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
 					(
@@ -344,12 +337,22 @@ def start_ray():
     return context
 
 def start_ray_local():
-    print("\n")
+    print("\n\n--------------------------------\n\n")
 		
     context = ray.init(address="auto", log_to_driver=True)
     return context
 
-def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
+def test_trained_network(game):
+
+    net_name = input("\nName of the network: ")
+    recurrent = False
+    rec = input("\nRecurrent?(y/n):")
+    if rec == "y":
+        recurrent = True
+    model_iteration = int(input("\nModel iteration number: "))
+    AI_player = input("\nChose the AI player (\"1\", \"2\", \"both\"): ")
+
+    ####################
 
     game_folder = game.get_name() + "/"
     model_folder = game_folder + "models/" + net_name + "/" 
@@ -368,16 +371,10 @@ def test_trained_network(game, net_name, recurrent, model_iteration, AI_player):
     search_config.load(search_config_path)
 
     tester = Tester(print=True)
-    tester.Test_AI_with_mcts(AI_player, game, nn, search_config, use_state_cache=True, recurrent_iterations=2)
+    tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=True, recurrent_iterations=2)
     #tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=2)
 
     print("\n\nLength: " + str(game.length) + "\n")
-
-    renderer = SCS_Renderer.remote()
-    end = renderer.analyse.remote(game)
-
-
-    ray.get(end) # wait for the rendering to end
 
     return
    

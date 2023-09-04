@@ -131,10 +131,12 @@ class SCS_Renderer():
                         elif event.key == pygame.K_DOWN:
                             debug_state = True
 
+            # Uses the action_history to replay the game since it is deterministic
             render_game.reset_env()
             for i in range(action_index):
                 action = game.action_history[i]
                 render_game.step_function(action)
+            
 
             if debug_state:
                 state_image = render_game.generate_state_image()

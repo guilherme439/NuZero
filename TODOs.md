@@ -40,3 +40,9 @@
 - Lançar X Gamers e um Trainer e treinar/jogar até chegar a um certo numero de training steps 
 
 
+<!---------------------------------------------------------------------------------------------------------------------------------------->
+
+## Issues
+
+- rede tem informaçao suficiente sobre a fase do jogo mesmo sem a representar
+
