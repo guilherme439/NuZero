@@ -23,7 +23,6 @@
 ### Tester
 
 ### SCS Game
-- Implement stacking [hard, high]
 - Convert board to numpy array (allows indexing with tuples) [medium, medium]
 
 ### Graphs
@@ -44,5 +43,4 @@
 
 ## Issues
 
-- rede tem informaçao suficiente sobre a fase do jogo mesmo sem a representar
 
