@@ -3,6 +3,8 @@
 # python slurm-launch.py --exp-name test \
 #     --command "rllib train --run PPO --env CartPole-v0"
 
+# Taken from the ray documentation and modified
+
 import argparse
 import subprocess
 import sys
@@ -61,6 +63,9 @@ if __name__ == "__main__":
         " --command 'python test.py'. "
         "Note that the command must be a string.",
     )
+    parser.add_argument(
+        "--no-run", action='store_true', help="Create the script file without running it."
+    )
     args = parser.parse_args()
 
     if args.node:
@@ -94,16 +99,17 @@ if __name__ == "__main__":
     )
 
     # ===== Save the script =====
-    script_file = "{}.sh".format(job_name)
+    script_file = "Scripts/" + str(args.num_nodes) + "_nodes-" + str(args.num_gpus) + "_gpus" + ".sh"
     with open(script_file, "w") as f:
         f.write(text)
 
-    # ===== Submit the job =====
-    print("Starting to submit job!")
-    subprocess.Popen(["sbatch", script_file])
-    print(
-        "Job submitted! Script file is at: <{}>. Log file is at: <{}>".format(
-            script_file, "{}.log".format(job_name)
+    if not args.no_run:    
+        # ===== Submit the job =====
+        print("Starting to submit job!")
+        subprocess.Popen(["sbatch", script_file])
+        print(
+            "Job submitted! Script file is at: <{}>. Log file is at: <{}>".format(
+                script_file, "{}.log".format(job_name)
+            )
         )
-    )
     sys.exit(0)
