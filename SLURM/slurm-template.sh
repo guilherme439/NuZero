@@ -18,6 +18,9 @@ ${GIVEN_NODE}
 # conda activate ${CONDA_ENV}
 ${LOAD_ENV}
 
+python -c 'print("oi")'
+
+
 # ===== DO NOT CHANGE THINGS HERE UNLESS YOU KNOW WHAT YOU ARE DOING =====
 # This script is a modification to the implementation suggest by gregSchwartz18 here:
 # https://github.com/ray-project/ray/issues/826#issuecomment-522116599

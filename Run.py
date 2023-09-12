@@ -62,24 +62,6 @@ def main():
     match mode:
 
         case 0:
-
-            game_class = SCS_Game
-            print(game_class)
-
-        case 1: # Set default search config
-            search_config = Search_config()
-
-            filepath = "Configs/Config_files/default_search_config.ini"
-            search_config.save(filepath)
-
-        case 2: # Set default alphazero config
-            alpha_config = AlphaZero_config()
-
-            filepath = "Configs/Config_files/default_alphazero_config.ini"
-            alpha_config.save(filepath)
-
-        case 3: # Start Training
-            	
             context = start_ray_local()
             
             game_class = SCS_Game
@@ -98,9 +80,28 @@ def main():
                                    default_alpha_config="Configs/Config_files/local_alpha_config.ini", 
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
+
+        case 1: # Slice
+            context = start_ray_slice()
+            
+            game_class = SCS_Game
+            game_args = ["SCS/Game_configs/detailed_config.yml"]
+            game = game_class(*game_args)
+
+            in_channels = game.state_shape()[0]
+            policy_channels = game.get_action_space_shape()[0]
+
+            model = dt_net_2d(in_channels, policy_channels, 256)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
             
 
-        case 4:
+            alpha_zero = AlphaZero(game_class, game_args, model=model, 
+                                   default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", 
+                                   default_search_config="Configs/Config_files/SCS_search_config.ini")
+            alpha_zero.run()
+
+        case 2: # RNL
             context = start_ray_rnl()
             
             game_class = SCS_Game
@@ -120,6 +121,18 @@ def main():
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
 
+        case 3: # Start Training	
+            search_config = Search_config()
+
+            filepath = "Configs/Config_files/default_search_config.ini"
+            search_config.save(filepath)
+
+        case 4:
+            alpha_config = AlphaZero_config()
+
+            filepath = "Configs/Config_files/default_alphazero_config.ini"
+            alpha_config.save(filepath)
+            
         case 5: # test network
             
             game_class = SCS_Game
@@ -330,7 +343,7 @@ def main():
 ##########################################################################
 
 
-def start_ray():
+def start_ray_slice():
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
