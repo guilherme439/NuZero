@@ -80,7 +80,7 @@ def main():
 
         case 3: # Start Training
             	
-            context = start_ray()
+            context = start_ray_local()
             
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/detailed_config.yml"]
@@ -95,19 +95,29 @@ def main():
             
 
             alpha_zero = AlphaZero(game_class, game_args, model=model, 
-                                   default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", 
+                                   default_alpha_config="Configs/Config_files/local_alpha_config.ini", 
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
             
 
-        case 4:  # Continue Training
-            context = start_ray()
-
+        case 4:
+            context = start_ray_rnl()
+            
             game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game_args = ["SCS/Game_configs/detailed_config.yml"]
             game = game_class(*game_args)
 
-            alpha_zero = AlphaZero(game_class, game_args)
+            in_channels = game.state_shape()[0]
+            policy_channels = game.get_action_space_shape()[0]
+
+            model = dt_net_2d(in_channels, policy_channels, 256)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
+            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
+            
+
+            alpha_zero = AlphaZero(game_class, game_args, model=model, 
+                                   default_alpha_config="Configs/Config_files/rnl_alpha_config.ini", 
+                                   default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
 
         case 5: # test network
@@ -327,10 +337,23 @@ def start_ray():
 					(
 					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
 					conda="tese",
-					env_vars=
+                    env_vars=
 							{
 							"LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
 							}
+					)
+		
+    context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)
+    return context
+
+
+def start_ray_rnl():
+    print("\n\n--------------------------------\n\n")
+
+    runtime_env=RuntimeEnv \
+					(
+					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					pip="./requirements.txt"
 					)
 		
     context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)

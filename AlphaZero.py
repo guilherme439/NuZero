@@ -65,6 +65,8 @@ class AlphaZero():
 		self.game_folder_name = game.get_name()
 		self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
 		self.plots_path = self.model_folder_path + "plots/"
+		self.plot_data_load_path = self.model_folder_path + "plot_data.pkl"
+		self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
 
 		if os.path.exists(self.model_folder_path):
 			continue_answer = input("\nThere is a network with that name already.\nDo you wish to continue training this network?(y/n)")
@@ -90,6 +92,25 @@ class AlphaZero():
 					print("\nThe default config paths are:\n " + default_alpha_config + "\n " + default_search_config)
 					alpha_config_path = default_alpha_config
 					search_config_path = default_search_config
+
+				rename_answer = input("\nDo you wish to continue the training with a new name?(y/n)")
+				if rename_answer == "y":
+					new_name = input("Insert the new name: ")
+					self.network_name = new_name
+					self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
+					self.plots_path = self.model_folder_path + "plots/"
+					self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
+					print("\nA new directory will be created.")
+					if os.path.exists(self.model_folder_path):
+						print("Can not use that name. It is already being used by another network.")
+						exit()
+					else:
+						os.mkdir(self.model_folder_path)
+						os.mkdir(self.plots_path)
+						print("Directory successfully created.")
+
+				else:
+					print("\nUsing the previous name.\n")
 			else:
 				overwrite_answer = input("\nThis will overwrite the previous network data. Continue?(y/n)")
 				if overwrite_answer != "y":
@@ -283,14 +304,13 @@ class AlphaZero():
 		if self.starting_iteration != 0:
 			print("\n-Starting from iteration " + str(self.starting_iteration+1) + ".\n")
 
-
+		
 		model = self.latest_network.get_model()
 		model_dict = model.state_dict()
 
 		if self.continuing:
 			# Load all the plot data
-			plot_data_path = self.model_folder_path + "plot_data.pkl"
-			with open(plot_data_path, 'rb') as file:
+			with open(self.plot_data_load_path, 'rb') as file:
 				self.epochs_value_loss = pickle.load(file)
 				self.epochs_policy_loss = pickle.load(file)
 				self.epochs_combined_loss = pickle.load(file)
@@ -330,11 +350,14 @@ class AlphaZero():
 				for param in model.parameters():
 					all_weights = torch.cat((all_weights, param.clone().detach().flatten()), 0)
 
+				# For some reason Ray waits here and not somewhere else
+				print("\nRay is finishing its setup...")
 				self.weight_size_max.append(max(abs(all_weights)))
 				self.weight_size_min.append(min(abs(all_weights)))
 				self.weight_size_average.append(torch.mean(abs(all_weights)))
 				del all_weights
-		
+
+		print("\nRay is ready.\n")
 		ray.get(initial_storage_future) # wait for the network to be in storage
 
 		if early_fill > 0:
@@ -401,14 +424,17 @@ class AlphaZero():
 					del all_weights
 
 					plt.plot(range(len(self.weight_size_max)), self.weight_size_max)
+					plt.title("Max Weight")
 					plt.savefig(self.plots_path + self.network_name + '_weight_max.png')
 					plt.clf()
 
 					plt.plot(range(len(self.weight_size_min)), self.weight_size_min)
+					plt.title("Min Weight")
 					plt.savefig(self.plots_path + self.network_name + '_weight_min.png')
 					plt.clf()
 
 					plt.plot(range(len(self.weight_size_average)), self.weight_size_average)
+					plt.title("Average Weight")
 					plt.savefig(self.plots_path + self.network_name + '_weight_average.png')
 					plt.clf()
 
@@ -438,6 +464,7 @@ class AlphaZero():
 							if test_set:
 								plt.plot(range(learning_epochs), self.tests_value_loss, label = "Testing")
 
+							plt.title("Epoch value loss")
 							plt.legend()
 							plt.savefig(self.plots_path + self.network_name + '_value_loss_' + str((b+1)) + '.png')
 							plt.clf()
@@ -447,6 +474,7 @@ class AlphaZero():
 							if test_set:
 								plt.plot(range(learning_epochs), self.tests_policy_loss, label = "Testing")
 
+							plt.title("Epoch policy loss")
 							plt.legend()
 							plt.savefig(self.plots_path + self.network_name + '_policy_loss_' + str((b+1)) + '.png')
 							plt.clf()
@@ -456,6 +484,7 @@ class AlphaZero():
 							if test_set:
 								plt.plot(range(learning_epochs), self.tests_combined_loss, label = "Testing")
 
+							plt.title("Epoch combined loss")
 							plt.legend()
 							plt.savefig(self.plots_path + self.network_name + '_total_loss_' + str((b+1)) + '.png')
 							plt.clf()
@@ -468,6 +497,7 @@ class AlphaZero():
 						if test_set:
 							plt.plot(x, self.test_global_value_loss, label = "Testing")
 
+						plt.title("global value loss")
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_value_loss.png')
 						plt.clf()
@@ -476,6 +506,7 @@ class AlphaZero():
 						if test_set:
 							plt.plot(x, self.test_global_policy_loss, label = "Testing")
 
+						plt.title("global policy loss")
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_policy_loss.png')
 						plt.clf()
@@ -484,6 +515,7 @@ class AlphaZero():
 						if test_set:
 							plt.plot(x, self.test_global_combined_loss, label = "Testing")
 
+						plt.title("global combined loss")
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_total_loss.png')
 						plt.clf()
@@ -495,8 +527,7 @@ class AlphaZero():
 
 
 			# Save ploting information to use when continuing training
-			plot_data_path = self.model_folder_path + "plot_data.pkl"
-			with open(plot_data_path, 'wb') as file:
+			with open(self.plot_data_save_path, 'wb') as file:
 				pickle.dump(self.epochs_value_loss, file)
 				pickle.dump(self.epochs_policy_loss, file)
 				pickle.dump(self.epochs_combined_loss, file)
@@ -761,7 +792,7 @@ class AlphaZero():
 				spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
 				if batch_extraction == 'local':
 					print("Getting buffer...")
-					# We get entire buffer and slice locally to avoid a lot of remote calls (buffer.get_slice could also be used)
+					# We get entire buffer and slice locally to avoid a lot of remote calls
 					replay_buffer = ray.get(future_replay_buffer, timeout=300) 
 
 				for b in range(number_of_batches):		
