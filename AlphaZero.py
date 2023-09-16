@@ -573,6 +573,7 @@ class AlphaZero():
 	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
 		start = time.time()
 		print("\n")
+		print("progress bar currently not working")
 
 		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
 
@@ -617,9 +618,7 @@ class AlphaZero():
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				stats_list.append(stats)
-				print('■', end='', flush=True)
-				sys.stdout.write("-")
-				print("oi")
+				#print('■', end='', flush=True)
 				bar.next()
 	
 		bar.finish()
