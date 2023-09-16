@@ -618,6 +618,8 @@ class AlphaZero():
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				stats_list.append(stats)
 				print('■', end='', flush=True)
+				sys.stdout.write("-")
+				print("oi")
 				bar.next()
 	
 		bar.finish()
