@@ -1287,20 +1287,30 @@ class SCS_Game():
                         units_by_id[id]["name"] = unit_name
                         units_by_id[id].update(properties)
             
-                case "Reinforcements":
-                    # Currently reinforcements can be placed on each player's side of the board
-                    player_arraival_locations = [[], []]
-                    for i in range(self.rows):
-                        for j in range(self.columns):
-                            location = (i,j)
-                            if j <= self.p1_last_index:
-                                player_arraival_locations[0].append(location)
-                            elif j >= self.p2_first_index:
-                                player_arraival_locations[1].append(location)
+                case "Reinforcements":                 
+                    schedule = values["schedule"]
+                    arrival = values["arrival"]
+                    arrival_method = arrival["method"]
 
+                    if arrival_method == "Default":
+                        player_arrival_locations = [[], []]
+                        for i in range(self.rows):
+                            for j in range(self.columns):
+                                location = (i,j)
+                                if j <= self.p1_last_index:
+                                    player_arrival_locations[0].append(location)
+                                elif j >= self.p2_first_index:
+                                    player_arrival_locations[1].append(location)
+                    elif arrival_method == "Detailed":
+                        locations = [[],[]]
+                        p_locations = arrival["locations"]
+                        locations[0] = p_locations["p1"]
+                        locations[1] = p_locations["p2"]
+                        unit_indexes = [0, 0]
 
-                    for p, reinforcements in values.items():
-                        if len(reinforcements) != (self.turns + 1):
+                    for p, reinforcement_schedule in schedule.items():
+                        num_turns = len(reinforcement_schedule)
+                        if num_turns != (self.turns + 1):
                             print("\nError in config.\n \
                                   Reinforcement schedule should have \'turns + 1\' entries.\n \
                                   In order to account for initial troop placement (turn 0).")
@@ -1308,8 +1318,8 @@ class SCS_Game():
                         player_index = int(p[-1]) - 1
                         self.all_reinforcements[player_index] = []
                         self.current_reinforcements[player_index] = []
-                        for turn_idx in range(len(reinforcements)):
-                            turn_units = reinforcements[turn_idx]
+                        for turn_idx in range(num_turns):
+                            turn_units = reinforcement_schedule[turn_idx]
 
                             self.all_reinforcements[player_index].append([])
                             self.current_reinforcements[player_index].append([])
@@ -1320,9 +1330,14 @@ class SCS_Game():
                                 defense = units_by_id[id]["defense"]
                                 mov_allowance = units_by_id[id]["movement"]
                                 image_path = units_by_id[id]["image_path"]
-                                # In the future, configs should allow definition of custom arraival locations
-                                unit_arraival_locations = player_arraival_locations[player_index]
-                                new_unit = Unit(name, attack, defense, mov_allowance, player, unit_arraival_locations, image_path)
+
+                                if arrival_method == "Default":
+                                    unit_arrival_locations = player_arrival_locations[player_index]
+                                elif arrival_method == "Detailed":
+                                    unit_arrival_locations = [ tuple(point) for point in locations[player_index][unit_indexes[player_index]] ]
+                                    unit_indexes[player_index]+=1
+
+                                new_unit = Unit(name, attack, defense, mov_allowance, player, unit_arrival_locations, image_path)
                                 self.current_reinforcements[player_index][turn_idx].append(new_unit)
 
                     self.all_reinforcements = deepcopy(self.current_reinforcements)

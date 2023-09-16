@@ -40,7 +40,11 @@ Reinforcements:
     p2: [ [1,1], [], [], [], [], [], [], [] ]
 
   arrival:
-    method: Default  # Default | Detailed
+    method: Detailed  # Default | Detailed
+    locations:  # There should be a list of points for each unit on the schedule
+      p1: [ [[1,0]] ]
+
+      p2: [ [[3,3]], [[2,3]] ]
 
 
 ###

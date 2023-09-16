@@ -4,7 +4,7 @@
 
 
 ### Configs
-- Consider changing configs to YAML. [medium, low]
+- Consider changing INI configs to YAML. [medium, low]
 
 ### Explorer
 - Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, low] (Might not be possible because of object lifetimes)

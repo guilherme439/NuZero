@@ -46,6 +46,9 @@ from Shared_network_storage import Shared_network_storage
 
 from ray.runtime_env import RuntimeEnv
 
+'''
+ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py 0
+'''
 
 def main():
     pid = os.getpid()
@@ -62,7 +65,7 @@ def main():
     match mode:
 
         case 0:
-            context = start_ray_local()
+            #context = start_ray_local()
             
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/detailed_config.yml"]
@@ -73,8 +76,6 @@ def main():
 
             model = dt_net_2d(in_channels, policy_channels, 256)
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
-            #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=(3,3), num_filters=128)
-            
 
             alpha_zero = AlphaZero(game_class, game_args, model=model, 
                                    default_alpha_config="Configs/Config_files/local_alpha_config.ini", 
@@ -82,7 +83,7 @@ def main():
             alpha_zero.run()
 
         case 1: # Slice
-            context = start_ray_slice()
+            #context = start_ray_slice()
             
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/detailed_config.yml"]
@@ -102,7 +103,7 @@ def main():
             alpha_zero.run()
 
         case 2: # RNL
-            context = start_ray_rnl()
+            #context = start_ray_rnl()
             
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/detailed_config.yml"]
@@ -121,13 +122,13 @@ def main():
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
 
-        case 3: # Start Training	
+        case 3: # search config
             search_config = Search_config()
 
             filepath = "Configs/Config_files/default_search_config.ini"
             search_config.save(filepath)
 
-        case 4:
+        case 4: # alpha config
             alpha_config = AlphaZero_config()
 
             filepath = "Configs/Config_files/default_alphazero_config.ini"
@@ -144,7 +145,7 @@ def main():
         case 6: # Watch trained game
             
             game_class = SCS_Game
-            game_args = ["SCS/Game_configs/detailed_config.yml"]
+            game_args = ["SCS/Game_configs/randomized_config.yml"]
             game = game_class(*game_args)
 
             test_trained_network(game)
@@ -356,7 +357,7 @@ def start_ray_slice():
 							}
 					)
 		
-    context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)
+    context = ray.init(runtime_env=runtime_env, log_to_driver=True)
     return context
 
 

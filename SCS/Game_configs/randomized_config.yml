@@ -34,10 +34,14 @@ Units:
 
 ###
 Reinforcements:
-  p1: [[1,1], [], [], [], [], [], [], []]
+  schedule:
+    p1: [ [1], [], [], [], [], [], [], [] ]
 
-  p2: [[1,1], [], [], [], [], [], [], []]
+    p2: [ [1,1], [], [], [], [], [], [], [] ]
 
+  arrival:
+    method: Default  # Default | Detailed
+    # In Default method each player can place units on his/her side of the board
 
 ###
 Terrain:

@@ -63,7 +63,10 @@ class AlphaZero():
 		self.network_name = input("\nName of the network you wish to train: ")
 
 		self.game_folder_name = game.get_name()
-		self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
+
+		current_directory = os.getcwd()
+		relative_path = self.game_folder_name + "/models/" + self.network_name + "/"
+		self.model_folder_path = os.path.join(current_directory, relative_path)
 		self.plots_path = self.model_folder_path + "plots/"
 		self.plot_data_load_path = self.model_folder_path + "plot_data.pkl"
 		self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
@@ -97,9 +100,12 @@ class AlphaZero():
 				if rename_answer == "y":
 					new_name = input("Insert the new name: ")
 					self.network_name = new_name
-					self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
+					
+					relative_path = self.game_folder_name + "/models/" + self.network_name + "/"
+					self.model_folder_path = os.path.join(current_directory, relative_path)
 					self.plots_path = self.model_folder_path + "plots/"
 					self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
+
 					print("\nA new directory will be created.")
 					if os.path.exists(self.model_folder_path):
 						print("Can not use that name. It is already being used by another network.")
@@ -110,7 +116,7 @@ class AlphaZero():
 						print("Directory successfully created.")
 
 				else:
-					print("\nUsing the previous name.\n")
+					print("Using the previous name.\n")
 			else:
 				overwrite_answer = input("\nThis will overwrite the previous network data. Continue?(y/n)")
 				if overwrite_answer != "y":
@@ -359,6 +365,7 @@ class AlphaZero():
 
 		print("\nRay is ready.\n")
 		ray.get(initial_storage_future) # wait for the network to be in storage
+		print("\n--------------------------------\n")
 
 		if early_fill > 0:
 			print("\n\n\n\nEarly Buffer Fill")
