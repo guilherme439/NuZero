@@ -617,7 +617,7 @@ class AlphaZero():
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				stats_list.append(stats)
-				print("i'M WOrkinG")
+				print('■', end='', flush=True)
 				bar.next()
 	
 		bar.finish()
