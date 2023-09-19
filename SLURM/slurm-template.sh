@@ -63,4 +63,4 @@ for ((i = 1; i <= worker_num; i++)); do
 done
 
 # ===== Call your code below =====
-ray job submit --address="$ip_head" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python -u Run.py 2
+echo "HEAD IP: $ip_head"
