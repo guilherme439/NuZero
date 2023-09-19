@@ -89,7 +89,7 @@ if __name__ == "__main__":
     )
 
     # ===== Save the script =====
-    script_file = "Scripts/" + str(args.num_nodes) + "_nodes-" + str(args.num_gpus) + "_gpus-" + str(args.exp_name) + ".sh"
+    script_file = "SLURM/Scripts/" + str(args.num_nodes) + "_nodes-" + str(args.num_gpus) + "_gpus-" + str(args.exp_name) + ".sh"
     with open(script_file, "w") as f:
         f.write(text)
 
