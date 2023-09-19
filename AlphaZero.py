@@ -574,8 +574,6 @@ class AlphaZero():
 			
 	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
 		start = time.time()
-		print("\n")
-		print("progress bar currently only works when running locally")
 
 		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
 

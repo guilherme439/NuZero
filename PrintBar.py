@@ -16,7 +16,7 @@ class PrintBar():
         while self.current_progress+1 >= self.next_step:
             print('■', end=' ', flush=True)
             self.next_step += self.interval_size
-            self.current_progress +=1
+        self.current_progress +=1
     
     def finish(self):
         print('|', end='\n', flush=True)
