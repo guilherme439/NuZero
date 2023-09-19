@@ -42,6 +42,8 @@ from stats_utilities import *
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
+from PrintBar import PrintBar
+
 
 class AlphaZero():
 
@@ -60,13 +62,14 @@ class AlphaZero():
 		self.game_class = game_class
 		game = game_class(*game_args)
 
+		current_directory = os.getcwd()
+		print("Current working directory: " + str(current_directory) + "\n")
+		#self.model_folder_path = os.path.join(current_directory, relative_path)
+
 		self.network_name = input("\nName of the network you wish to train: ")
 
 		self.game_folder_name = game.get_name()
-
-		current_directory = os.getcwd()
-		relative_path = self.game_folder_name + "/models/" + self.network_name + "/"
-		self.model_folder_path = os.path.join(current_directory, relative_path)
+		self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
 		self.plots_path = self.model_folder_path + "plots/"
 		self.plot_data_load_path = self.model_folder_path + "plot_data.pkl"
 		self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
@@ -101,8 +104,7 @@ class AlphaZero():
 					new_name = input("Insert the new name: ")
 					self.network_name = new_name
 					
-					relative_path = self.game_folder_name + "/models/" + self.network_name + "/"
-					self.model_folder_path = os.path.join(current_directory, relative_path)
+					self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
 					self.plots_path = self.model_folder_path + "plots/"
 					self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
 
@@ -573,7 +575,7 @@ class AlphaZero():
 	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
 		start = time.time()
 		print("\n")
-		print("progress bar currently not working")
+		print("progress bar currently only works when running locally")
 
 		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
 
@@ -590,8 +592,8 @@ class AlphaZero():
 
 		stats_list = []
 		args_list = []
-		bar = ChargingBar(text, max=num_games_per_batch)
-		bar.next(0)
+		#bar = ChargingBar(text, max=num_games_per_batch)
+		bar = PrintBar(text, num_games_per_batch, 10)
 		for c in range(num_chunks+1):
 			games_to_play = chunk_size
 			if c == num_chunks:
@@ -618,7 +620,6 @@ class AlphaZero():
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
 				stats_list.append(stats)
-				#print('■', end='', flush=True)
 				bar.next()
 	
 		bar.finish()
@@ -658,8 +659,9 @@ class AlphaZero():
 
 		
 
-		bar = ChargingBar(text, max=num_games)
-		bar.next(0)
+		#bar = ChargingBar(text, max=num_games)
+		bar = PrintBar(text, num_games, 10)
+		#bar.next(0)
 		for c in range(num_chunks+1):
 			games_to_play = chunk_size
 			if c == num_chunks:
