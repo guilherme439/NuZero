@@ -9,7 +9,7 @@ class PrintBar():
         self.interval_size = bar_steps / bar_divisions
         self.next_step = self.interval_size
 
-        print(title + "  | ", end='', flush=True)
+        print(title + "  |", end='', flush=True)
         
 
     def next(self):

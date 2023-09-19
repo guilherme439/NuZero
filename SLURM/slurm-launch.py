@@ -16,7 +16,6 @@ JOB_NAME = "${JOB_NAME}"
 NUM_NODES = "${NUM_NODES}"
 NUM_GPUS_PER_NODE = "${NUM_GPUS_PER_NODE}"
 PARTITION_OPTION = "${PARTITION_OPTION}"
-COMMAND_PLACEHOLDER = "${COMMAND_PLACEHOLDER}"
 GIVEN_NODE = "${GIVEN_NODE}"
 LOAD_ENV = "${LOAD_ENV}"
 
@@ -56,14 +55,6 @@ if __name__ == "__main__":
         default="",
     )
     parser.add_argument(
-        "--command",
-        type=str,
-        required=True,
-        help="The command you wish to execute. For example: "
-        " --command 'python test.py'. "
-        "Note that the command must be a string.",
-    )
-    parser.add_argument(
         "--no-run", action='store_true', help="Create the script file without running it."
     )
     args = parser.parse_args()
@@ -89,7 +80,6 @@ if __name__ == "__main__":
     text = text.replace(NUM_NODES, str(args.num_nodes))
     text = text.replace(NUM_GPUS_PER_NODE, str(args.num_gpus))
     text = text.replace(PARTITION_OPTION, partition_option)
-    text = text.replace(COMMAND_PLACEHOLDER, str(args.command))
     text = text.replace(LOAD_ENV, str(args.load_env))
     text = text.replace(GIVEN_NODE, node_info)
     text = text.replace(

@@ -103,7 +103,6 @@ def main():
             alpha_zero.run()
 
         case 2: # RNL
-            #context = start_ray_rnl()
             
             game_class = SCS_Game
             game_args = ["SCS/Game_configs/detailed_config.yml"]

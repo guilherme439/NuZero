@@ -63,7 +63,7 @@ class AlphaZero():
 		game = game_class(*game_args)
 
 		current_directory = os.getcwd()
-		print("Current working directory: " + str(current_directory) + "\n")
+		print("\nCurrent working directory: " + str(current_directory))
 		#self.model_folder_path = os.path.join(current_directory, relative_path)
 
 		self.network_name = input("\nName of the network you wish to train: ")
@@ -306,6 +306,8 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
+		print("\n\n--------------------------------\n")
+
 		print("\nRunning for " + str(num_batches) + " batches of " + str(num_games_per_batch) + " games each.")
 		if state_cache != "disabled":
 			print("\n-Using state dictonary as cache.")			  
@@ -370,7 +372,7 @@ class AlphaZero():
 		print("\n--------------------------------\n")
 
 		if early_fill > 0:
-			print("\n\n\n\nEarly Buffer Fill")
+			print("\n\n\n\nEarly Buffer Fill\n")
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 
 		updates = 0
@@ -378,7 +380,7 @@ class AlphaZero():
 		for b in batches_to_run:
 			updated = True
 
-			print("\n\n\n\nBatch: " + str(b+1))
+			print("\n\n\n\nBatch: " + str(b+1) + "\n")
 			
 			self.decisive_count = 0
 			self.run_selfplay(num_games_per_batch, False, state_cache, text="Self-Play Games")
