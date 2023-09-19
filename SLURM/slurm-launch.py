@@ -1,9 +1,5 @@
-# slurm-launch.py
-# Usage:
-# python slurm-launch.py --exp-name test \
-#     --command "rllib train --run PPO --env CartPole-v0"
-
 # Taken from the ray documentation and modified
+# Should be run from the project's root directory
 
 import argparse
 import subprocess
@@ -11,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-template_file = "slurm-template.sh"
+template_file = "SLURM/slurm-template.sh"
 JOB_NAME = "${JOB_NAME}"
 NUM_NODES = "${NUM_NODES}"
 NUM_GPUS_PER_NODE = "${NUM_GPUS_PER_NODE}"
