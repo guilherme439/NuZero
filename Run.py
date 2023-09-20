@@ -65,10 +65,10 @@ def main():
     match mode:
 
         case 0: # Local
-            #context = start_ray_local()
+            context = start_ray_local()
             
             game_class = SCS_Game
-            game_args = ["SCS/Game_configs/detailed_config.yml"]
+            game_args = ["SCS/Game_configs/mirrored_config.yml"]
             game = game_class(*game_args)
 
             in_channels = game.state_shape()[0]
@@ -78,7 +78,7 @@ def main():
             #model = ResNet(in_channels, policy_channels, num_blocks=3, kernel_size=1, num_filters=128)
 
             alpha_zero = AlphaZero(game_class, game_args, model=model, 
-                                   default_alpha_config="Configs/Config_files/test_alpha_config.ini", 
+                                   default_alpha_config="Configs/Config_files/local_alpha_config.ini", 
                                    default_search_config="Configs/Config_files/SCS_search_config.ini")
             alpha_zero.run()
 
@@ -140,7 +140,7 @@ def main():
         case 6: # Watch trained game
             
             game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game_args = ["SCS/Game_configs/unbalanced_config.yml"]
             game = game_class(*game_args)
 
             test_trained_network(game)

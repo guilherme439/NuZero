@@ -593,7 +593,7 @@ class AlphaZero():
 		stats_list = []
 		args_list = []
 		#bar = ChargingBar(text, max=num_games_per_batch)
-		bar = PrintBar(text, num_games_per_batch, 10)
+		bar = PrintBar(text, num_games_per_batch, 15)
 		for c in range(num_chunks+1):
 			games_to_play = chunk_size
 			if c == num_chunks:
@@ -660,7 +660,7 @@ class AlphaZero():
 		
 
 		#bar = ChargingBar(text, max=num_games)
-		bar = PrintBar(text, num_games, 10)
+		bar = PrintBar(text, num_games, 15)
 		#bar.next(0)
 		for c in range(num_chunks+1):
 			games_to_play = chunk_size

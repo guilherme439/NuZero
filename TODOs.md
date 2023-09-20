@@ -9,8 +9,6 @@
 ### Explorer
 - Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, low] (Might not be possible because of object lifetimes)
 
-### Custom games
-- Custom placement locations for reinforcements
 
 ### Implement Ray's features
 - Use Ray's destributed training. [easy, low]
