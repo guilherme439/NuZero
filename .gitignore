@@ -13,3 +13,6 @@ SCS/models/*
 Tic_Tac_Toe/models/*
 !Tic_Tac_Toe/models/__init__.py
 !SCS/models/__init__.py
+
+SLURM/Scripts/*
+!SLURM/Scripts/__init__.py
