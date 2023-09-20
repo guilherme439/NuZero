@@ -12,7 +12,7 @@ ${GIVEN_NODE}
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
 ##SBATCH --gpus-per-task=${NUM_GPUS_PER_NODE}
-###SBATCH --gres=shard:${NUM_GPUS_PER_NODE}
+##SBATCH --gres=shard:0
 
 # Load modules or your own conda environment here
 # module load pytorch/v1.4.0-gpu
@@ -53,7 +53,7 @@ echo "IP Head: $ip_head"
 echo "STARTING HEAD at $node_1"
 srun --nodes=1 --ntasks=1 -w "$node_1" \
   ray start --head --node-ip-address="$ip" --port=$port --redis-password="$redis_password" --block &
-sleep 30
+sleep 20
 
 worker_num=$((SLURM_JOB_NUM_NODES - 1)) #number of nodes other than the head node
 for ((i = 1; i <= worker_num; i++)); do
