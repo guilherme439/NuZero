@@ -15,17 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from copy import deepcopy
-
-from Neural_Networks.Torch_NN import Torch_NN
-from Neural_Networks.MLP_Network import MLP_Network
-
-from Neural_Networks.Rectangular.Simple_Conv_Network import Simple_Conv_Network
-from Neural_Networks.Rectangular.ResNet import ResNet
-from Neural_Networks.Rectangular.dt_neural_network import *
-
-#from Neural_Networks.Hexagonal.Simple_Conv_Network import Simple_Conv_Network
-#from Neural_Networks.Hexagonal.ResNet import ResNet
-#from Neural_Networks.Hexagonal.dt_neural_network import *
+from torch import nn
 
 from Neural_Networks.Torch_NN import Torch_NN
 
@@ -48,15 +38,12 @@ from PrintBar import PrintBar
 class AlphaZero():
 
 	
-	def __init__(self, game_class, game_args, model=None, default_alpha_config="Configs/Config_files/SCS_alpha_config.ini", default_search_config="Configs/Config_files/SCS_search_config.ini"):
+	def __init__(self, game_class, game_args, model, net_name, alpha_config_path, search_config_path, plot_data_path=None):
 
 		
 		# ------------------------------------------------------ #
         # -------------------- SYSTEM SETUP -------------------- #
         # ------------------------------------------------------ #
-
-		self.continuing = False
-		self.starting_iteration = 0
 
 		self.game_args = game_args  # Args for the game's __init__()
 		self.game_class = game_class
@@ -64,97 +51,24 @@ class AlphaZero():
 
 		current_directory = os.getcwd()
 		print("\nCurrent working directory: " + str(current_directory))
-		#self.model_folder_path = os.path.join(current_directory, relative_path)
 
-		self.network_name = input("\nName of the network you wish to train: ")
+		self.network_name = net_name
 
 		self.game_folder_name = game.get_name()
 		self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
+		if not os.path.exists(self.model_folder_path):
+			os.mkdir(self.model_folder_path)
+
 		self.plots_path = self.model_folder_path + "plots/"
-		self.plot_data_load_path = self.model_folder_path + "plot_data.pkl"
+		if not os.path.exists(self.plots_path):
+			os.mkdir(self.plots_path)
+
+		
 		self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
+		if plot_data_path != None:
+			self.plot_data_load_path = plot_data_path
 
-		if os.path.exists(self.model_folder_path):
-			continue_answer = input("\nThere is a network with that name already.\nDo you wish to continue training this network?(y/n)")
-			if continue_answer == "y":
-				self.continuing = True
-
-				pickle_path =  self.model_folder_path + "base_model.pkl"
-				with open(pickle_path, 'rb') as file:
-					self.model = pickle.load(file)
-
-				model_paths = glob.glob(self.model_folder_path + "*_model")
-				
-				# finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-				self.starting_iteration = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
-				latest_model_path = self.model_folder_path + self.network_name + "_" + str(self.starting_iteration) + "_model"
-				self.model.load_state_dict(torch.load(latest_model_path))
-
-				configs_answer = input("\nContinue with the same configs?(y/n)")
-				if configs_answer == "y":
-					alpha_config_path = self.model_folder_path + "alpha_config_copy.ini"
-					search_config_path = self.model_folder_path + "search_config_copy.ini"
-				else:
-					print("\nThe default config paths are:\n " + default_alpha_config + "\n " + default_search_config)
-					alpha_config_path = default_alpha_config
-					search_config_path = default_search_config
-
-				rename_answer = input("\nDo you wish to continue the training with a new name?(y/n)")
-				if rename_answer == "y":
-					new_name = input("Insert the new name: ")
-					self.network_name = new_name
-					
-					self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
-					self.plots_path = self.model_folder_path + "plots/"
-					self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
-
-					print("\nA new directory will be created.")
-					if os.path.exists(self.model_folder_path):
-						print("Can not use that name. It is already being used by another network.")
-						exit()
-					else:
-						os.mkdir(self.model_folder_path)
-						os.mkdir(self.plots_path)
-						print("Directory successfully created.")
-
-				else:
-					print("Using the previous name.\n")
-			else:
-				overwrite_answer = input("\nThis will overwrite the previous network data. Continue?(y/n)")
-				if overwrite_answer != "y":
-					print("Overwrite canceled. Exiting...")
-					exit()
-
-					
-		if not self.continuing:
-			if not os.path.exists(self.model_folder_path):
-				os.mkdir(self.model_folder_path)
-			if not os.path.exists(self.plots_path):	
-				os.mkdir(self.plots_path)
-			
-
-			pickled_model_answer = input("\nDo you wish to import a pickled model?(y/n)")
-			if pickled_model_answer == "y":
-				pickle_path = input("\nPath to the pickled model: ")
-				with open(pickle_path, 'rb') as file:
-					self.model = pickle.load(file)
-			else:
-				if model:
-					self.model = model
-				else:
-					print("If you are not importing a model, please provide one as argument to AlphaZero.")
-					exit()
-
-			print("\nThe default config paths are:\n " + default_alpha_config + "\n " + default_search_config)
-			alpha_config_path = default_alpha_config
-			search_config_path = default_search_config
-
-		recurrent = False
-		recurrent_answer = input("\nIs the network recurrent?(y/n)")
-		if recurrent_answer == "y":
-			recurrent = True
-
-		self.latest_network = Torch_NN(game, self.model, recurrent)
+		self.latest_network = Torch_NN(game, model)
 			
 		self.search_config = Search_config()
 		self.search_config.load(search_config_path)
@@ -197,7 +111,7 @@ class AlphaZero():
 		self.weight_size_average = []
 		
 
-	def run(self):
+	def run(self, starting_iteration=0):
 		pid = os.getpid()
 		process = psutil.Process(pid)
 
@@ -311,14 +225,13 @@ class AlphaZero():
 		print("\nRunning for " + str(num_batches) + " batches of " + str(num_games_per_batch) + " games each.")
 		if state_cache != "disabled":
 			print("\n-Using state dictonary as cache.")			  
-		if self.starting_iteration != 0:
-			print("\n-Starting from iteration " + str(self.starting_iteration+1) + ".\n")
+		if starting_iteration != 0:
+			print("\n-Starting from iteration " + str(starting_iteration+1) + ".\n")
 
-		
 		model = self.latest_network.get_model()
 		model_dict = model.state_dict()
 
-		if self.continuing:
+		if starting_iteration != 0 and self.plot_data_load_path != None:
 			# Load all the plot data
 			with open(self.plot_data_load_path, 'rb') as file:
 				self.epochs_value_loss = pickle.load(file)
@@ -345,7 +258,7 @@ class AlphaZero():
 				self.weight_size_average = pickle.load(file)
 		else:
 			# Initial save (untrained network)
-			save_path = self.model_folder_path + self.network_name + "_0_model"
+			save_path = self.model_folder_path + self.network_name + "_" + str(starting_iteration) + "_model"
 			torch.save(model_dict, save_path)
 
 			# Set initial win rate to 0 (simplification to avoid testing untrained network)
@@ -355,6 +268,10 @@ class AlphaZero():
 					self.p2_wr_stats[player].append(0.0)
 
 			if self.plot_weights:
+				# Dummy forward pass to initialize the weights
+				game = self.game_class(*self.game_args)
+				self.latest_network.inference(game.generate_state_image(), False, 1)
+
 				# Weight graphs
 				all_weights = torch.Tensor()
 				for param in model.parameters():
@@ -376,7 +293,7 @@ class AlphaZero():
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 
 		updates = 0
-		batches_to_run = range(self.starting_iteration, num_batches)
+		batches_to_run = range(starting_iteration, num_batches)
 		for b in batches_to_run:
 			updated = True
 
@@ -778,7 +695,8 @@ class AlphaZero():
 			total_updates = learning_epochs*number_of_batches
 			print("\nTotal number of updates: " + str(total_updates) + "\n")
 			
-			bar = ChargingBar('Training ', max=learning_epochs)
+			#bar = ChargingBar('Training ', max=learning_epochs)
+			bar = PrintBar('Training ', learning_epochs, 15)
 			for e in range(learning_epochs):
 
 				ray.get(self.replay_buffer.shuffle.remote(), timeout=120) # ray.get() beacuse we want the shuffle to be done before using buffer
@@ -800,7 +718,7 @@ class AlphaZero():
 					t_epoch_policy_loss = 0.0
 					t_epoch_combined_loss = 0.0
 
-				spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
+				#spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
 				if batch_extraction == 'local':
 					print("Getting buffer...")
 					# We get entire buffer and slice locally to avoid a lot of remote calls
@@ -821,7 +739,7 @@ class AlphaZero():
 					epoch_value_loss += value_loss
 					epoch_policy_loss += policy_loss
 					epoch_combined_loss += combined_loss
-					spinner.next()
+					#spinner.next()
 
 				epoch_value_loss /= number_of_batches
 				epoch_policy_loss /= number_of_batches
@@ -841,7 +759,7 @@ class AlphaZero():
 						t_epoch_value_loss += test_value_loss
 						t_epoch_policy_loss += test_policy_loss
 						t_epoch_combined_loss += test_combined_loss
-						spinner.next()
+						#spinner.next()
 						
 					t_epoch_value_loss /= number_of_test_batches
 					t_epoch_policy_loss /= number_of_test_batches
@@ -857,7 +775,7 @@ class AlphaZero():
 						self.tests_policy_loss.append(test_policy_loss)
 						self.tests_combined_loss.append(test_combined_loss)
 
-				spinner.finish
+				#spinner.finish()
 				bar.next()
 				
 			bar.finish()
@@ -899,13 +817,12 @@ class AlphaZero():
 			average_combined_loss = 0
 
 			print("\nTotal number of updates: " + str(num_samples) + "\n")
-			bar = ChargingBar('Training ', max=num_samples)
-
-			
 			if batch_extraction == 'local':
 				print("Getting buffer...")
 				replay_buffer = ray.get(future_buffer, timeout=300)
 
+			#bar = ChargingBar('Training ', max=num_samples)
+			bar = PrintBar('Training ', num_samples, 15)
 			for _ in range(num_samples):
 				if batch_extraction == 'local':
 					if probs == []:

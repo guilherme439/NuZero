@@ -12,13 +12,20 @@ from torch import nn
 
 class Torch_NN():
 
-    def __init__(self, game, model, recurrent):
+    def __init__(self, game, model):
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         #print(f"\n--------------\nUsing {self.device} device\n--------------\n")
 
         self.model = model.to(self.device)
-        self.recurrent = recurrent
+        if not hasattr(self.model, "recurrent"):
+            print("You need to add a \"recurrent\" bollean atribute to the model,\n \
+                   Specifing if the model is or not recurrent.")
+            exit()
+        elif not isinstance(self.model.recurrent, bool):
+            print("\"model.recurrent\" must be a bollean atribute specifing if the model is or not recurrent.")
+            exit()
+
         self.game = game
         
 
@@ -30,7 +37,7 @@ class Torch_NN():
         if not training:
             self.model.eval()
 
-        if not self.recurrent:
+        if not self.model.recurrent:
             if not training:
                 with torch.no_grad():
                     p,v = self.model(state.to(self.device))

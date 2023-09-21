@@ -1,5 +1,5 @@
 
-__pychache__
+*.pyc
 __pychache__/
 /__pychache__/
 Configs/__pycache__/
@@ -16,3 +16,5 @@ Tic_Tac_Toe/models/*
 
 SLURM/Scripts/*
 !SLURM/Scripts/__init__.py
+
+*.insyncdl

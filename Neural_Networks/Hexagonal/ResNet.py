@@ -8,13 +8,12 @@ import os
 from torch import nn
 
 
-
-
 class ResNet(nn.Module):
 
     def __init__(self, in_channels, policy_channels, num_blocks=4, kernel_size=1, num_filters=256):
 
         super(ResNet, self).__init__()
+        self.recurrent = False
 
         self.kernel_size = kernel_size
         self.num_filters = num_filters

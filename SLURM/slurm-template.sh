@@ -60,7 +60,7 @@ for ((i = 1; i <= worker_num; i++)); do
   node_i=${nodes_array[$i]}
   echo "STARTING WORKER $i at $node_i"
   srun --nodes=1 --ntasks=1 -w "$node_i" ray start --address "$ip_head" --redis-password="$redis_password" &
-  sleep 5
+  sleep 10
 done
 
 # ===== Call your code below =====

@@ -14,7 +14,7 @@ class MLP_Network(nn.Module):
     def __init__(self, out_features):
 
         super(MLP_Network, self).__init__()
-    
+        self.recurrent=False
 
         # General Module
         self.general_module = nn.Sequential(
@@ -33,7 +33,6 @@ class MLP_Network(nn.Module):
         
 
         # Policy Head
-
         self.policy_head = nn.Sequential(
             nn.Linear(in_features=64, out_features=32),
             nn.SiLU(),

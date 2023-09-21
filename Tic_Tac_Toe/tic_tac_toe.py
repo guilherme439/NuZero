@@ -22,7 +22,10 @@ class tic_tac_toe():
 
 
     def __init__(self):
-        self.board = np.zeros((3,3))
+        self.board = [[0,0,0],
+                      [0,0,0],
+                      [0,0,0]]
+        
         self.current_player = 1  # Two players: 1 and 2
         
         self.total_action_planes = 1
@@ -101,7 +104,10 @@ class tic_tac_toe():
 ##########################################################################
 
     def reset_env(self):
-        self.board = np.zeros((3,3))
+        self.board = [[0,0,0],
+                      [0,0,0],
+                      [0,0,0]]
+
         self.current_player = 1  # Two players: 1 and 2
 
         # MCTS support atributes

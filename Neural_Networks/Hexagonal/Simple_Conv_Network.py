@@ -13,7 +13,7 @@ class Simple_Conv_Network(nn.Module):
     def __init__(self, in_channels, policy_channels, kernel_size=1, num_filters=256):
 
         super(Simple_Conv_Network, self).__init__()
-
+        self.recurrent = False
 
         self.kernel_size = kernel_size
         self.num_filters = num_filters

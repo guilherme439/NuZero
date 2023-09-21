@@ -19,7 +19,7 @@ class DTNet(nn.Module):
 
     def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, **kwargs):
         super().__init__()
-
+        self.recurrent = True
 
         self.recall = recall
         self.width = int(width)
