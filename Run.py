@@ -104,6 +104,7 @@ def main():
 
             case 1: # Run on local machine
                 print("\n")
+                context = start_ray_local()
 
                 # ******************* SETUP ******************* #
                 
@@ -123,14 +124,14 @@ def main():
 
                 # ******************************************* #
 
-                context = start_ray_local()
-
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
             case 2: # Run on local machine within a cluster
                 print("\n")
-                
+                context = start_ray_local_cluster()
+                # The local computer will use the local files while the other nodes use the git repository
+
                 # ******************* SETUP ******************* #
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
@@ -144,7 +145,7 @@ def main():
                 alpha_config_path="Configs/Config_files/local_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
-                network_name = "new_net"
+                network_name = "testing_net"
 
                 # ******************************************* #
                 
@@ -152,6 +153,7 @@ def main():
                 alpha_zero.run()
 
             case 3: # Run on remote cluster using ray jobs API
+                # The runtime environment is specified when launching the job
 
                 # ******************* SETUP ******************* #
                 
@@ -265,7 +267,8 @@ def main():
 
             alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
             alpha_zero.run()
-        
+
+
     elif args.debug is not None:
         match args.training_preset:
             case 0: # Debug search
@@ -281,7 +284,10 @@ def main():
     elif args.test_trained:
         pass
 
-      
+
+
+
+    # Old code 
     mode = -1
     match mode:
 
@@ -632,8 +638,23 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
     alpha_zero = AlphaZero(game_class, game_args, model, alpha_config_path, search_config_path, continue_network_name, plot_data_path=plot_data_load_path)
     alpha_zero.run(starting_iteration)
 
-def str_to_class(classname):
-    return getattr(sys.modules[__name__], classname)
+def start_ray_local():
+    print("\n\n--------------------------------\n\n")
+		
+    context = ray.init()
+    return context
+
+def start_ray_local_cluster():
+    print("\n\n--------------------------------\n\n")
+
+    runtime_env=RuntimeEnv \
+					(
+					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					pip="./requirements.txt"
+					)
+		
+    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=True)
+    return context
 
 def start_ray_slice():
     print("\n\n--------------------------------\n\n")
@@ -647,24 +668,8 @@ def start_ray_slice():
     context = ray.init(runtime_env=runtime_env, log_to_driver=True)
     return context
 
-
-def start_ray_rnl():
-    print("\n\n--------------------------------\n\n")
-
-    runtime_env=RuntimeEnv \
-					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-					pip="./requirements.txt"
-					)
-		
-    context = ray.init(address="auto", runtime_env=runtime_env, log_to_driver=True)
-    return context
-
-def start_ray_local():
-    print("\n\n--------------------------------\n\n")
-		
-    context = ray.init()
-    return context
+def str_to_class(classname):
+    return getattr(sys.modules[__name__], classname)
 
 def test_trained_network(game):
 
