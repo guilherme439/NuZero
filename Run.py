@@ -130,6 +130,7 @@ def main():
             case 2: # Run on local machine within a cluster
                 print("\n")
                 context = start_ray_local_cluster()
+                # Local machine runs on local files and remote nodes use git repository
 
                 # ******************* SETUP ******************* #
                 game_class = SCS_Game
@@ -153,8 +154,6 @@ def main():
 
             case 3: # Run on remote cluster using ray jobs API
                 # The runtime environment is specified when launching the job
-                
-                context = ray.init(_temp_dir="/home/guilherme/ray_tmp")
 
                 # ******************* SETUP ******************* #
                 
