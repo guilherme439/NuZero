@@ -19,13 +19,14 @@ ${GIVEN_NODE}
 # conda activate ${CONDA_ENV}
 
 ${LOAD_ENV}
-
+tmp_dir=${TMP_DIR}
 
 # ===== DO NOT CHANGE THINGS HERE UNLESS YOU KNOW WHAT YOU ARE DOING =====
 # This script is a modification to the implementation suggest by gregSchwartz18 here:
 # https://github.com/ray-project/ray/issues/826#issuecomment-522116599
 redis_password=$(uuidgen)
 export redis_password
+
 
 nodes=$(scontrol show hostnames "$SLURM_JOB_NODELIST") # Getting the node names
 nodes_array=($nodes)
@@ -52,7 +53,7 @@ echo "IP Head: $ip_head"
 
 echo "STARTING HEAD at $node_1"
 srun --nodes=1 --ntasks=1 -w "$node_1" \
-  ray start --head --node-ip-address="$ip" --port=$port --redis-password="$redis_password" &
+  ray start --head --node-ip-address="$ip" --port=$port --redis-password="$redis_password" --temp-dir=$tmp_dir &
 sleep 20
 
 worker_num=$((SLURM_JOB_NUM_NODES - 1)) #number of nodes other than the head node

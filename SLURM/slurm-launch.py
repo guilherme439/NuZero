@@ -14,6 +14,7 @@ NUM_GPUS_PER_NODE = "${NUM_GPUS_PER_NODE}"
 PARTITION_OPTION = "${PARTITION_OPTION}"
 GIVEN_NODE = "${GIVEN_NODE}"
 LOAD_ENV = "${LOAD_ENV}"
+TMP_DIR = "${TMP_DIR}"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -51,6 +52,15 @@ if __name__ == "__main__":
         default="",
     )
     parser.add_argument(
+        "--gaips",
+        action='store_true'
+    )
+    parser.add_argument(
+        "--rnl",
+        action='store_true'
+    )
+
+    parser.add_argument(
         "--no-run", action='store_true', help="Create the script file without running it."
     )
     args = parser.parse_args()
@@ -83,6 +93,14 @@ if __name__ == "__main__":
         "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
         "RUNNABLE!",
     )
+
+    if args.rnl:
+        text = text.replace(TMP_DIR, "/mnt/cirrus/users/5/2/ist189452/TESE/ray_tmp")
+    elif args.gaips:
+        text = text.replace(TMP_DIR, "/home/users/gpalma/Desktop/ray_tmp")
+    else:
+        text = text.replace(TMP_DIR, "/tmp/ray")
+
 
     # ===== Save the script =====
     script_file = "SLURM/Scripts/" + str(args.num_nodes) + "_nodes-" + str(args.num_gpus) + "_gpus-" + str(args.exp_name) + ".sh"

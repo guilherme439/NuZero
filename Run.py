@@ -49,9 +49,9 @@ from Shared_network_storage import Shared_network_storage
 
 from ray.runtime_env import RuntimeEnv
 
-
-
 '''
+python SLURM/slurm-launch.py --exp-name test --num-nodes 3
+
 ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3
 '''
 
