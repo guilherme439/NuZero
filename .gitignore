@@ -18,3 +18,4 @@ SLURM/Scripts/*
 !SLURM/Scripts/__init__.py
 
 *.insyncdl
+*.log

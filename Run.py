@@ -166,7 +166,7 @@ def main():
 
                 model = Hex_DTNet(in_channels, policy_channels, 256)
                 
-                alpha_config_path="Configs/Config_files/test_alpha_config.ini"
+                alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
                 network_name = "cluster_net"
