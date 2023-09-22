@@ -120,7 +120,7 @@ def main():
                 alpha_config_path="Configs/Config_files/local_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
-                network_name = "new_net"
+                network_name = "local_net"
 
                 # ******************************************* #
 
@@ -130,7 +130,6 @@ def main():
             case 2: # Run on local machine within a cluster
                 print("\n")
                 context = start_ray_local_cluster()
-                # The local computer will use the local files while the other nodes use the git repository
 
                 # ******************* SETUP ******************* #
                 game_class = SCS_Game
@@ -145,7 +144,7 @@ def main():
                 alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
-                network_name = "testing_net"
+                network_name = "slice_test"
 
                 # ******************************************* #
                 
@@ -644,12 +643,24 @@ def start_ray_local():
     context = ray.init()
     return context
 
+def start_ray_local_cluster_git():
+    print("\n\n--------------------------------\n\n")
+
+    runtime_env=RuntimeEnv \
+					(
+					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					pip="./requirements.txt"
+					)
+		
+    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=True)
+    return context
+
 def start_ray_local_cluster():
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
 					(
-					working_dir="~/Desktop/TESE/code/NuZero",
+					working_dir="/home/gpalma/NuZero",
 					pip="./requirements.txt"
 					)
 		
