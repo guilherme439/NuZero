@@ -52,7 +52,7 @@ from ray.runtime_env import RuntimeEnv
 
 
 '''
-ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py 0
+ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3
 '''
 
 def main():
@@ -153,11 +153,13 @@ def main():
 
             case 3: # Run on remote cluster using ray jobs API
                 # The runtime environment is specified when launching the job
+                
+                context = ray.init(_temp_dir="/home/guilherme/ray_tmp")
 
                 # ******************* SETUP ******************* #
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/detailed_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
                 in_channels = game.state_shape()[0]
@@ -165,10 +167,10 @@ def main():
 
                 model = Hex_DTNet(in_channels, policy_channels, 256)
                 
-                alpha_config_path="Configs/Config_files/local_alpha_config.ini"
+                alpha_config_path="Configs/Config_files/test_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
-                network_name = "new_net"
+                network_name = "cluster_net"
 
                 # ******************************************* #
                           
@@ -643,24 +645,12 @@ def start_ray_local():
     context = ray.init()
     return context
 
-def start_ray_local_cluster_git():
-    print("\n\n--------------------------------\n\n")
-
-    runtime_env=RuntimeEnv \
-					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-					pip="./requirements.txt"
-					)
-		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=True)
-    return context
-
 def start_ray_local_cluster():
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
 					(
-					working_dir="/home/gpalma/NuZero",
+					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
 					pip="./requirements.txt"
 					)
 		
