@@ -720,7 +720,7 @@ class AlphaZero():
 
 				#spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
 				if batch_extraction == 'local':
-					print("Getting buffer...")
+					#print("Getting buffer...")
 					# We get entire buffer and slice locally to avoid a lot of remote calls
 					replay_buffer = ray.get(future_replay_buffer, timeout=300) 
 

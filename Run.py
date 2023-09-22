@@ -95,7 +95,7 @@ def main():
                 alpha_config_path="Configs/Config_files/ttt_alpha_config.ini"
                 search_config_path="Configs/Config_files/ttt_search_config.ini"
 
-                network_name = "ttt_net_policy_tested"
+                network_name = "ttt_net_long"
 
                 context = start_ray_local()
 
@@ -142,7 +142,7 @@ def main():
 
                 model = Hex_DTNet(in_channels, policy_channels, 256)
                 
-                alpha_config_path="Configs/Config_files/local_alpha_config.ini"
+                alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 network_name = "testing_net"
@@ -649,7 +649,7 @@ def start_ray_local_cluster():
 
     runtime_env=RuntimeEnv \
 					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
+					working_dir="~/Desktop/TESE/code/NuZero",
 					pip="./requirements.txt"
 					)
 		
