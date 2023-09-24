@@ -169,7 +169,7 @@ def main():
                 alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
-                network_name = "cluster_net"
+                network_name = "gaips_cluster_net"
 
                 # ******************************************* #
                           
