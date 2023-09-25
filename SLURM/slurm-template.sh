@@ -70,6 +70,6 @@ done
 srun --nodes=1 --ntasks=1 -w "$node_1"\
   ray job submit --address="http://127.0.0.1:8265" \
   --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' \
-  -- python Run.py --training-preset 3
+  -- python Run.py --training-preset 3 --name ${NET_NAME}
 
 

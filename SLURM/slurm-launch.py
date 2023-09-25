@@ -15,6 +15,7 @@ PARTITION_OPTION = "${PARTITION_OPTION}"
 GIVEN_NODE = "${GIVEN_NODE}"
 LOAD_ENV = "${LOAD_ENV}"
 TMP_DIR = "${TMP_DIR}"
+NET_NAME = "${NET_NAME}"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -59,9 +60,10 @@ if __name__ == "__main__":
         "--rnl",
         action='store_true'
     )
-
     parser.add_argument(
-        "--no-run", action='store_true', help="Create the script file without running it."
+        "--net-name",
+        type=str,
+        help="The name of the network you are training",
     )
     args = parser.parse_args()
 
@@ -93,6 +95,7 @@ if __name__ == "__main__":
         "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
         "RUNNABLE!",
     )
+    text = text.replace(NET_NAME, str(args.net_name))
 
     if args.rnl:
         text = text.replace(TMP_DIR, "/mnt/cirrus/users/5/2/ist189452/TESE/ray_tmp")
@@ -107,13 +110,12 @@ if __name__ == "__main__":
     with open(script_file, "w") as f:
         f.write(text)
 
-    if not args.no_run:    
-        # ===== Submit the job =====
-        print("Starting to submit job!")
-        subprocess.Popen(["sbatch", script_file])
-        print(
-            "Job submitted! Script file is at: <{}>. Log file is at: <{}>".format(
-                script_file, "{}.log".format(job_name)
-            )
+    # ===== Submit the job =====
+    print("Starting to submit job!")
+    subprocess.Popen(["sbatch", script_file])
+    print(
+        "Job submitted! Script file is at: <{}>. Log file is at: <{}>".format(
+            script_file, "{}.log".format(job_name)
         )
+    )
     sys.exit(0)
