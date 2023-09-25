@@ -50,6 +50,8 @@ from Shared_network_storage import Shared_network_storage
 from ray.runtime_env import RuntimeEnv
 
 '''
+srun -w nexus4 ray stop
+
 python SLURM/slurm-launch.py --exp-name test --num-nodes 3
 
 ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3
@@ -61,6 +63,9 @@ def main():
 
     parser = argparse.ArgumentParser()
     exclusive_group = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument(
+        "--name", type=str, default=None,
+        help="Chnage the name of network trained with the preset")
     exclusive_group.add_argument(
         "--interactive", action='store_true',
         help="Create a simple training setup interactivly"
@@ -96,6 +101,8 @@ def main():
                 search_config_path="Configs/Config_files/ttt_search_config.ini"
 
                 network_name = "ttt_net_long"
+                if args.name is not None:
+                    network_name = args.name
 
                 context = start_ray_local()
 
@@ -121,6 +128,8 @@ def main():
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 network_name = "local_net"
+                if args.name is not None:
+                    network_name = args.name
 
                 # ******************************************* #
 
@@ -146,6 +155,8 @@ def main():
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 network_name = "slice_test"
+                if args.name is not None:
+                    network_name = args.name
 
                 # ******************************************* #
                 
@@ -170,6 +181,8 @@ def main():
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
                 network_name = "gaips_cluster_net"
+                if args.name is not None:
+                    network_name = args.name
 
                 # ******************************************* #
                           
@@ -641,7 +654,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
 def start_ray_local():
     print("\n\n--------------------------------\n\n")
 		
-    context = ray.init()
+    context = ray.init(log_to_driver=True)
     return context
 
 def start_ray_local_cluster():

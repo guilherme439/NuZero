@@ -532,7 +532,8 @@ class AlphaZero():
 
 			for g in range(games_to_play):
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
-
+			
+			time.sleep(0.1)
 			
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
@@ -595,7 +596,7 @@ class AlphaZero():
 				elif test_mode == "mcts":
 					actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
 
-				
+			time.sleep(0.1)
 			
 			for g in range(games_to_play):
 				winner, stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
