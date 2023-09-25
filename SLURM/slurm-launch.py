@@ -61,9 +61,15 @@ if __name__ == "__main__":
         action='store_true'
     )
     parser.add_argument(
+        "--local",
+        action='store_true'
+    )
+    parser.add_argument(
         "--net-name",
         type=str,
         help="The name of the network you are training",
+        default=""
+
     )
     args = parser.parse_args()
 
@@ -100,6 +106,8 @@ if __name__ == "__main__":
     if args.rnl:
         text = text.replace(TMP_DIR, "/mnt/cirrus/users/5/2/ist189452/TESE/ray_tmp")
     elif args.gaips:
+        text = text.replace(TMP_DIR, "/home/users/gpalma/Desktop/ray_tmp")
+    elif args.local:
         text = text.replace(TMP_DIR, "/home/users/gpalma/Desktop/ray_tmp")
     else:
         text = text.replace(TMP_DIR, "/tmp/ray")

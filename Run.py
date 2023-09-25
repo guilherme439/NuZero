@@ -50,6 +50,10 @@ from Shared_network_storage import Shared_network_storage
 from ray.runtime_env import RuntimeEnv
 
 '''
+~/Desktop/ray_tmp/session_latest/runtime_resources/working_dir_files
+
+python SLURM/slurm-launch.py --exp-name two_nodes_gaips --num-nodes 2 --gaips --node nexus[2-3] --net-name tests_on_gaips
+
 srun -w nexus4 ray stop
 
 python SLURM/slurm-launch.py --exp-name test --num-nodes 3
@@ -64,8 +68,8 @@ def main():
     parser = argparse.ArgumentParser()
     exclusive_group = parser.add_mutually_exclusive_group(required=True)
     parser.add_argument(
-        "--name", type=str, default=None,
-        help="Chnage the name of network trained with the preset")
+        "--name", type=str, default="",
+        help="Change the name of network trained with the preset")
     exclusive_group.add_argument(
         "--interactive", action='store_true',
         help="Create a simple training setup interactivly"
@@ -101,7 +105,7 @@ def main():
                 search_config_path="Configs/Config_files/ttt_search_config.ini"
 
                 network_name = "ttt_net_long"
-                if args.name is not None:
+                if args.name is not None and args.name != "":
                     network_name = args.name
 
                 context = start_ray_local()
@@ -128,7 +132,7 @@ def main():
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 network_name = "local_net"
-                if args.name is not None:
+                if args.name is not None and args.name != "":
                     network_name = args.name
 
                 # ******************************************* #
@@ -155,7 +159,7 @@ def main():
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 network_name = "slice_test"
-                if args.name is not None:
+                if args.name is not None and args.name != "":
                     network_name = args.name
 
                 # ******************************************* #
@@ -181,7 +185,7 @@ def main():
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
                 network_name = "gaips_cluster_net"
-                if args.name is not None:
+                if args.name is not None and args.name != "":
                     network_name = args.name
 
                 # ******************************************* #
