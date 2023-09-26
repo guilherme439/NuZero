@@ -58,7 +58,11 @@ srun -w nexus4 ray stop
 --------------------------------------------
 
 ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3
+
+python Run.py --training-preset 1 --name good_name
+
 '''
+
 
 def main():
     pid = os.getpid()
@@ -659,7 +663,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
 def start_ray_local():
     print("\n\n--------------------------------\n\n")
 		
-    context = ray.init(log_to_driver=True)
+    context = ray.init(log_to_driver=False)
     return context
 
 def start_ray_local_cluster():
