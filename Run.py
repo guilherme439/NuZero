@@ -55,8 +55,7 @@ from ray.runtime_env import RuntimeEnv
 python SLURM/slurm-launch.py --exp-name two_nodes_gaips --num-nodes 2 --gaips --node nexus[2-3] --net-name tests_on_gaips
 
 srun -w nexus4 ray stop
-
-python SLURM/slurm-launch.py --exp-name test --num-nodes 3
+--------------------------------------------
 
 ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3
 '''
@@ -128,8 +127,8 @@ def main():
 
                 model = Hex_DTNet(in_channels, policy_channels, 256)
 
-                alpha_config_path="Configs/Config_files/local_alpha_config.ini"
-                search_config_path="Configs/Config_files/SCS_search_config.ini"
+                alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
+                search_config_path="Configs/Config_files/slice_search_config.ini"
 
                 network_name = "local_net"
                 if args.name is not None and args.name != "":
@@ -184,7 +183,7 @@ def main():
                 alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
-                network_name = "gaips_cluster_net"
+                network_name = "cluster_net"
                 if args.name is not None and args.name != "":
                     network_name = args.name
 
@@ -195,17 +194,19 @@ def main():
 
             case 4: # Continue Training
 
+                context = start_ray_local()
+
                 # ******************* SETUP ******************* #
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
 
-                trained_network_name = "trained_net"
-                continue_network_name = "continue_net" # new network can have the same name as the previous
-                use_same_configs = True
+                trained_network_name = "high_exploration"
+                continue_network_name = "high_exploration" # new network can have the same name as the previous
+                use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
+                new_alpha_config_path="Configs/Config_files/local_alpha_config.ini"
                 new_search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 # ******************************************** #
@@ -652,7 +653,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
         alpha_config_path = new_alpha_config_path
         search_config_path = new_search_config_path
 
-    alpha_zero = AlphaZero(game_class, game_args, model, alpha_config_path, search_config_path, continue_network_name, plot_data_path=plot_data_load_path)
+    alpha_zero = AlphaZero(game_class, game_args, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path)
     alpha_zero.run(starting_iteration)
 
 def start_ray_local():
@@ -670,7 +671,7 @@ def start_ray_local_cluster():
 					pip="./requirements.txt"
 					)
 		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=True)
+    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=False)
     return context
 
 def start_ray_slice():

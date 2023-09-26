@@ -59,7 +59,9 @@ class AlphaZero_config(Config):
         replay_window_size = int(2000),
         learning_method = "epochs",     # epochs | samples
         normalize_loss = False,         # Policy loss normalization
-        batch_extraction = 'local'      # local | remote 
+        batch_extraction = 'local',     # local | remote 
+        skip_target = 'policy',         # policy | value
+        skip_frequency = 5              # How often loss should be calculated without the target
         )
 
 

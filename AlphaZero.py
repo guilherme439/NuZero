@@ -135,13 +135,15 @@ class AlphaZero():
 		test_set = self.alpha_config.running["test_set"]
 		num_test_set_games = self.alpha_config.running["num_test_set_games"]
 
-
 		save_frequency = self.alpha_config.frequency["save_frequency"]
 		test_frequency = self.alpha_config.frequency["test_frequency"]
 		debug_frequency = self.alpha_config.frequency["debug_frequency"]
 		storage_frequency = self.alpha_config.frequency["storage_frequency"]
 		plot_frequency = self.alpha_config.frequency["plot_frequency"]
 		plot_reset = self.alpha_config.frequency["plot_reset"]
+
+		skip_target = self.alpha_config.learning['skip_target']
+		skip_frequency = self.alpha_config.learning['skip_frequency']
 
 		if test_frequency % save_frequency != 0:
 			print("\nInvalid values for save and/or test frequency.\nThe \"test_frequency\" value must be divisible by the \"save_frequency\" value.")
@@ -311,10 +313,15 @@ class AlphaZero():
 				print("\ntest buffer:")
 				print(ray.get(self.test_buffer.played_games.remote()))
 			
-
+			loss_flag = 0 # 0 -> None | 1 -> Policy | 2 -> Value
+			if (((b+1) % skip_frequency) == 0):
+				if skip_target == "policy":
+					loss_flag = 1
+				elif skip_target == "value":
+					loss_flag = 2
 
 			print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
-			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set)
+			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set, loss_flag)
 			updates +=1
 
 			if (((b+1) % storage_frequency) == 0):
@@ -533,7 +540,6 @@ class AlphaZero():
 			for g in range(games_to_play):
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
 			
-			time.sleep(0.1)
 			
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
@@ -596,7 +602,6 @@ class AlphaZero():
 				elif test_mode == "mcts":
 					actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
 
-			time.sleep(0.1)
 			
 			for g in range(games_to_play):
 				winner, stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
@@ -630,7 +635,6 @@ class AlphaZero():
 
 		if show_results:
 			print("\n\nAI playing as p" + player_choice + "\n")
-
 			print("P1 Win ratio: " + format(p1_winrate, '.4'))
 			print("P2 Win ratio: " + format(p2_winrate, '.4'))
 			print("Draw percentage: " + format(draw_percentage, '.4'))
@@ -645,7 +649,7 @@ class AlphaZero():
 
 		return p1_winrate, p2_winrate, draw_percentage
 
-	def train_network(self, optimizer, scheduler, batch_size, learning_method, test_set):
+	def train_network(self, optimizer, scheduler, batch_size, learning_method, test_set, loss_flag):
 		print()
 		start = time.time()
 
@@ -721,7 +725,6 @@ class AlphaZero():
 
 				#spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
 				if batch_extraction == 'local':
-					#print("Getting buffer...")
 					# We get entire buffer and slice locally to avoid a lot of remote calls
 					replay_buffer = ray.get(future_replay_buffer, timeout=300) 
 
@@ -735,7 +738,7 @@ class AlphaZero():
 						batch = ray.get(self.replay_buffer.get_slice.remote(start_index, next_index))
 					
 				
-					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
+					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations, loss_flag)
 
 					epoch_value_loss += value_loss
 					epoch_policy_loss += policy_loss
@@ -755,7 +758,7 @@ class AlphaZero():
 
 						batch = test_buffer[start_index:next_index]
 					
-						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(batch, batch_size, train_iterations)
+						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(batch, batch_size, train_iterations, loss_flag)
 
 						t_epoch_value_loss += test_value_loss
 						t_epoch_policy_loss += test_policy_loss
@@ -836,7 +839,7 @@ class AlphaZero():
 				else:
 					batch = ray.get(self.replay_buffer.get_sample.remote(batch_size, replace, probs))
 
-				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations)
+				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations, loss_flag)
 
 				average_value_loss += value_loss
 				average_policy_loss += policy_loss
@@ -861,7 +864,7 @@ class AlphaZero():
 
 		return	
 	
-	def test_set_loss(self, batch, batch_size, iterations):
+	def test_set_loss(self, batch, batch_size, iterations, loss_flag):
 
 		normalize_loss = self.alpha_config.learning["normalize_loss"]
 		cross_entropy = nn.CrossEntropyLoss()
@@ -887,11 +890,16 @@ class AlphaZero():
 		value_loss /= batch_size
 		policy_loss /= batch_size
 
-		combined_loss = policy_loss + value_loss
+		if loss_flag == 0:
+			combined_loss = policy_loss + value_loss
+		elif loss_flag == 1:
+			combined_loss = value_loss
+		elif loss_flag == 2:
+			combined_loss = policy_loss
 
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
-	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations):
+	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations, loss_flag):
 
 		normalize_loss = self.alpha_config.learning["normalize_loss"]
 		cross_entropy = nn.CrossEntropyLoss()
@@ -931,7 +939,12 @@ class AlphaZero():
 		value_loss /= batch_size
 		policy_loss /= batch_size
 
-		loss = policy_loss + value_loss
+		if loss_flag == 0:
+			loss = policy_loss + value_loss
+		elif loss_flag == 1:
+			loss = value_loss
+		elif loss_flag == 2:
+			loss = policy_loss
 
 		# If you use pythorch's SGD optimizer, it already applies L2 weight regularization
 		loss.backward()
