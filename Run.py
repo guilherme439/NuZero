@@ -129,7 +129,7 @@ def main():
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
 
-                model = Hex_DTNet(in_channels, policy_channels, 256)
+                model = Hex_DTNet(in_channels, policy_channels, 350)
 
                 alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
                 search_config_path="Configs/Config_files/slice_search_config.ini"

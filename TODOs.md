@@ -17,7 +17,6 @@
 - Implement Ray's hyperparameter search [medium/hard, low]
 
 ### Training
-- Adicionar opção para usar só a policy de x em x batches de treino. [easy, low]
 - Serparar loops de treino e self-play para classes separadas para poder começar a fazer o continuous training. [hard, medium]
 - Implement continuous training option (probably with no intermidiate testing). [hard, medium]
 
