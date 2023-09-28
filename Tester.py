@@ -47,7 +47,7 @@ class Tester():
 # ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
-    def Test_AI_with_mcts(self, player_choice, search_config, game, nn1, nn2=None, use_state_cache=True, recurrent_iterations=1, keep_state_history=False):
+    def Test_AI_with_mcts(self, player_choice, search_config, game, nn1, nn2=None, recurrent_iterations=1, use_state_cache=False, keep_state_history=False):
 
         # --- Initialization --- #
         stats = \
@@ -97,7 +97,7 @@ class Tester():
 
         if self.render:
             ray.get(self.remote_storage.set_item.remote(game))
-            self.renderer.render.remote()
+            self.renderer.render.remote(player_unit_images=True)
             time.sleep(3)
 
         # --- Main test loop --- #
@@ -328,7 +328,7 @@ class Tester():
                 winner = game.get_winner()
                 break
 
-        return winner
+        return winner, {}
 
     def ttt_vs_AI_with_policy(self, AI_player, nn, recurrent_iterations=1):
 

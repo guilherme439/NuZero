@@ -8,9 +8,6 @@ import sys
 from enum import Enum
 
 
-sys.path.append("..")
-from RemoteStorage import RemoteStorage
-
 class Color(Enum):
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
@@ -19,6 +16,7 @@ class Color(Enum):
     BROWN = (90, 50, 0)
     GREEN = (45, 110, 10)
     BAD_PINK = (255, 0, 255)
+    BLUE = (0, 40, 90)
 
     def rgb(self):
         return self.value
@@ -109,6 +107,7 @@ class SCS_Renderer():
 
         debug_state = False
         action_index = 0
+        last_player = 0
         time.sleep(0.1)
         # Run until user closes window
         running=True
@@ -135,6 +134,7 @@ class SCS_Renderer():
             render_game.reset_env()
             for i in range(action_index):
                 action = game.action_history[i]
+                last_player = render_game.get_current_player()
                 render_game.step_function(action)
             
 
@@ -149,9 +149,15 @@ class SCS_Renderer():
             self.render_board_hexagons(screen, render_game, player_unit_images)
 
             action_text = "SCS Analisis board!"
+            action_color = Color.BLACK.rgb()
             if len(render_game.action_history) > 0:
                 last_action = render_game.action_history[-1]
                 action_text = render_game.string_action(last_action)
+                if last_player == 1:
+                    action_color = Color.BLUE.rgb()
+                elif last_player == 2:
+                    action_color = Color.RED.rgb()
+                    
 
             winner_text = ":-)"
             if len(render_game.action_history) == len(game.action_history):
@@ -164,7 +170,7 @@ class SCS_Renderer():
             action_number_text = "Actions played: " + str(action_index)
 
             action_font = pygame.font.SysFont("meera", 40)
-            action_block = action_font.render(action_text, True, Color.RED.rgb())
+            action_block = action_font.render(action_text, True, action_color)
             action_rect = action_block.get_rect(center=(self.WINDOW_WIDTH/2, 50))
             screen.blit(action_block, action_rect)
 

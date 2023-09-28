@@ -14,6 +14,7 @@ import torch
 import numpy
 
 from progress.bar import ChargingBar
+from PrintBar import PrintBar
 
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
@@ -78,17 +79,16 @@ def main():
         help="Create a simple training setup interactivly"
     )
     exclusive_group.add_argument(
-        "--training-preset", type=int, default=-1,
+        "--training-preset", type=int,
         help="Choose one of the preset training setups"
     )
     exclusive_group.add_argument(
-        "--debug", type=int, default=-1,
+        "--debug", type=int,
         help="Choose one of the debug modes"
     )
     exclusive_group.add_argument(
-        "--test-trained",
-        action='store_true',
-        help="Test previously trained network."
+        "--testing-preset", type=int,
+        help="Choose one of the preset testing setups"
     )
 
     args = parser.parse_args()
@@ -96,125 +96,121 @@ def main():
     if args.training_preset is not None:
         match args.training_preset:
             case 0: # Tic_tac_toe example
-                print("\n")
                 game_class = tic_tac_toe
                 game_args = []
                 game = game_class(*game_args)
 
-                num_actions = game.get_num_actions()
-                model = MLP_Net(num_actions)
-
                 alpha_config_path="Configs/Config_files/ttt_alpha_config.ini"
                 search_config_path="Configs/Config_files/ttt_search_config.ini"
 
-                network_name = "ttt_net_long"
+                network_name = "ttt_net"
+
+                ################################################
+
                 if args.name is not None and args.name != "":
                     network_name = args.name
 
-                context = start_ray_local()
+                num_actions = game.get_num_actions()
+                model = MLP_Net(num_actions)
 
+                print("\n")
+                context = start_ray_local()
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
             case 1: # Run on local machine
-                print("\n")
-                context = start_ray_local()
-
-                # ******************* SETUP ******************* #
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
                 game = game_class(*game_args)
-
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-
-                model = Hex_DTNet(in_channels, policy_channels, 350)
 
                 alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
                 search_config_path="Configs/Config_files/slice_search_config.ini"
 
                 network_name = "local_net"
+
+                ################################################
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_DTNet(in_channels, policy_channels, 350)
+
                 if args.name is not None and args.name != "":
                     network_name = args.name
 
-                # ******************************************* #
-
+                print("\n")
+                context = start_ray_local()
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
             case 2: # Run on local machine within a cluster
-                print("\n")
-                context = start_ray_local_cluster()
-                # Local machine runs on local files and remote nodes use git repository
+                    # Local machine runs on local files and remote nodes use git repository
 
-                # ******************* SETUP ******************* #
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-
-                model = Hex_DTNet(in_channels, policy_channels, 256)
-                
+    
                 alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
 
                 network_name = "slice_test"
+
+                ################################################
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_DTNet(in_channels, policy_channels, 256)
+                
                 if args.name is not None and args.name != "":
                     network_name = args.name
 
-                # ******************************************* #
-                
+                print("\n")
+                context = start_ray_local_cluster()
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
             case 3: # Run on remote cluster using ray jobs API
                 # The runtime environment is specified when launching the job
-
-                # ******************* SETUP ******************* #
                 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
-
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-
-                model = Hex_DTNet(in_channels, policy_channels, 256)
                 
                 alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
                 search_config_path="Configs/Config_files/SCS_search_config.ini"
                 
                 network_name = "cluster_net"
+
+                ################################################
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_DTNet(in_channels, policy_channels, 256)
+
                 if args.name is not None and args.name != "":
                     network_name = args.name
-
-                # ******************************************* #
                           
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
             case 4: # Continue Training
 
-                context = start_ray_local()
-
-                # ******************* SETUP ******************* #
-
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
 
-                trained_network_name = "high_exploration"
-                continue_network_name = "high_exploration" # new network can have the same name as the previous
-                use_same_configs = False
+                trained_network_name = "local_alphazero_continue"
+                continue_network_name = "local_alphazero_continue_2" # new network can have the same name as the previous
+                use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
                 new_alpha_config_path="Configs/Config_files/local_alpha_config.ini"
-                new_search_config_path="Configs/Config_files/SCS_search_config.ini"
+                new_search_config_path="Configs/Config_files/local_search_config.ini"
 
-                # ******************************************** #
-                
+                ################################################
+
+                print("\n")
+                context = start_ray_local()
                 continue_training(game_class, game_args, trained_network_name, continue_network_name, \
                                   use_same_configs, new_alpha_config_path, new_search_config_path)
 
@@ -224,8 +220,90 @@ def main():
                 exit()
 
 
+    elif args.testing_preset is not None:
+        match args.testing_preset:
+            case 0: # Example
+                pass
+
+            case 1: # Render Game
+                rendering_mode = "interactive"  # passive | interactive
+
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                method = "mcts"
+
+                # testing options
+                AI_player = "both"
+                recurrent_iterations = 3
+
+                # network options
+                net_name = "local_alphazero_continue_2"
+                model_iteration = 100
+
+                # TODO: Add possibilty of using second network
+
+                ################################################
+
+                game = game_class(*game_args)
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                
+                if rendering_mode == "passive":
+                    tester = Tester(render=True)
+                elif rendering_mode == "interactive":
+                    tester = Tester(print=True)
+
+                if method == "mcts":
+                    tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=False, recurrent_iterations=recurrent_iterations)
+                elif method == "policy":
+                    tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=recurrent_iterations)
+                elif method == "random":
+                    tester.random_vs_random(game)
+
+                print("\n\nLength: " + str(game.get_length()) + "\n")
+
+                if rendering_mode == "interactive":
+                    time.sleep(0.5)
+
+                    renderer = SCS_Renderer.remote()
+                    end = renderer.analyse.remote(game, True)
+
+                    ray.get(end) # wait for the rendering to end
+
+            case 2: # Statistics for Multiple Games
+                ray.init()
+
+                number_of_testers = 5
+
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                method = "mcts"
+
+                # testing options
+                num_games = 100
+                AI_player = "2"
+                recurrent_iterations = 2
+
+                # network options
+                net_name = "local_alphazero_continue_2"
+                model_iteration = 100
+
+                # TODO: Add possibilty of using second network
+
+                ################################################
+                
+                game = game_class(*game_args)
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                
+                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+
+            case _:
+                print("Unknown testing preset.")
+                return
+
+
     elif args.interactive:
-        print("\nStarted interactive mode!\nAnswer the questions to train a new network.\n")
+        print("\nStarted interactive mode!\n")
+        print("\nAnswer the questions to start training or testing.\n")
 
         game_class, game_args = choose_game()
         game = game_class(*game_args)
@@ -292,232 +370,36 @@ def main():
 
 
     elif args.debug is not None:
-        match args.training_preset:
-            case 0: # Debug search
-                game_class = tic_tac_toe
-                game_args = []
+        match args.debug:
+            case 0:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
-                pass
 
-            case 1: # Debug renderer
-                pass
+                tester = Tester(print=False)
 
+                #tester.random_vs_random(game, keep_state_history=True)
+                #random_index = np.random.choice(range(len(game.state_history)))
+                #state_image = game.state_history[random_index]
+                #game.debug_state_image(state_image)
 
-    elif args.test_trained:
-        pass
+                #play_loop(10000, game_class, game_args, tester)
 
+            case 1: # default search config
+                search_config = Search_config()
 
+                filepath = "Configs/Config_files/default_search_config.ini"
+                search_config.save(filepath)
 
+            case 2: # default alpha config
+                alpha_config = AlphaZero_config()
 
-    # Old code 
-    mode = -1
-    match mode:
+                filepath = "Configs/Config_files/default_alphazero_config.ini"
+                alpha_config.save(filepath)
 
-        case 3: # search config
-            search_config = Search_config()
-
-            filepath = "Configs/Config_files/default_search_config.ini"
-            search_config.save(filepath)
-
-        case 4: # alpha config
-            alpha_config = AlphaZero_config()
-
-            filepath = "Configs/Config_files/default_alphazero_config.ini"
-            alpha_config.save(filepath)
-            
-        case 5: # test network
-            
-            game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
-            game = game_class(*game_args)
-
-            test_trained_network(game)
-            
-        case 6: # Watch trained game
-            
-            game_class = SCS_Game
-            game_args = ["SCS/Game_configs/unbalanced_config.yml"]
-            game = game_class(*game_args)
-
-            test_trained_network(game)
-            time.sleep(0.5)
-
-            renderer = SCS_Renderer.remote()
-            end = renderer.analyse.remote(game, True)
-
-            ray.get(end) # wait for the rendering to end
-            
-        case 7: # Watch Random Game
-            game_class = SCS_Game
-            game_args = ["SCS/Game_configs/detailed_config.yml"]
-            game = game_class(*game_args)
-            
-            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
-            model = MLP_Net(features)
-            nn = Torch_NN(game, model, recurrent=False)
-
-            search_config = Search_config()
-            search_config.load("Configs/Config_files/test_search_config.ini")
-
-            tester = Tester(print=True)
-            #tester.set_slow_duration(5)
-            #tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
-            tester.random_vs_random(game)
-            
-            time.sleep(0.5)
-
-            renderer = SCS_Renderer.remote()
-            end = renderer.analyse.remote(game, True)
-
-            ray.get(end) # wait for the rendering to end
-            return
-
-        case 8:
-            print("\n\n GAMER! \n")
-            start_ray()
-
-            game_class = SCS_Game().__class__
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
-            game = game_class(*game_args)
-
-            model = dt_net_2d(game, 128)
-            nn = Torch_NN(model, recurrent=True)
-
-            search_config = Search_config()
-            search_config.load("Configs/Config_files/test_search_config.ini")
-
-            buffer = Replay_Buffer.remote(5000, 64)
-            network_storage = Shared_network_storage.remote(4)
-            network_storage.save_network.remote(nn)
-
-            gamer = Gamer.remote(buffer, network_storage, game_class, game_args, search_config, 2, "disabled")
-        
-            stats = ray.get(gamer.play_game.remote())
-
-            print_stats(stats)
-            
-        case 9:
-            game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
-            game = game_class(*game_args)
-
-            tester = Tester(print=False)
-
-            #tester.random_vs_random(game, keep_state_history=True)
-            #random_index = np.random.choice(range(len(game.state_history)))
-            #state_image = game.state_history[random_index]
-            #game.debug_state_image(state_image)
-
-            play_loop(10000, game_class, game_args, tester)
-            
-        case 10:
-            # reset_env tests
-
-            game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
-            game = game_class(*game_args)
-            
-            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
-            model = MLP_Network(features)
-
-            nn = Torch_NN(game, model, recurrent=False)
-
-            search_config = Search_config()
-            search_config.load("Configs/Config_files/test_search_config.ini")
-
-            tester = Tester(print=True)
-            #tester.set_slow_duration(5)
-            #tester.Test_AI_with_mcts("1", search_config, game, nn, use_state_cache=False, recurrent_iterations=2)
-            tester.random_vs_random(game)
-
-            history_copy = copy.deepcopy(game.action_history)
-            game.reset_env()
-            for action in history_copy:
-                game.step_function(action)
-
-
-        case 11:
-            pass
-        
-        case 12:
-            pass
-
-        case 16:
-            game_class = tic_tac_toe().__class__
-            game_args = []
-            
-            pickle_path = "Tic_Tac_Toe/models/fast_conv/Network.pkl"
-            model = pickle.load(pickle_path)
-
-            trained_model_path = "Tic_Tac_Toe/models/fast_conv/fast_conv_300_model"
-            model.load_state_dict(torch.load(trained_model_path))
-
-            alpha_config = Alpha_Zero_config()
-
-            net_name = input("\nSave the network as: ")
-
-            Alpha_Zero = AlphaZero(model, game_class, game_args, alpha_config, network_name=net_name)
-        
-            Alpha_Zero.run()
-
-        case 17:
-            pass
-
-        case 18:
-            game_class = SCS_Game().__class__
-            game_args = [[3,1],[1,2], True]
-            game = game_class(*game_args)
-
-            model = dt_net_2d(game, 128)
-
-            alpha_config = Alpha_Zero_config()
-            alpha_config.set_SCS_config()
-
-            net_name = "Tests"
-
-            Alpha_Zero = AlphaZero(model, True, game_class, game_args, alpha_config, network_name=net_name)
-            Alpha_Zero.run()
-
-        case 19:
-            game_class = SCS_Game().__class__
-            game_args = [[1,0],[0,0], True]         
-            game = game_class(*game_args)
-            
-            features = game.action_space_shape[0] * game.action_space_shape[1] * game.action_space_shape[2]
-            model = MLP_Network(features)
-
-            nn = Torch_NN(model, recurrent=False)
-
-            search_config = Search_config()
-            search_config.load("Configs/Config_files/test_search_config.ini")
-
-            tester = Tester(render=True)
-            tester.set_slow_duration(1.3)
-            
-            #tester.Test_AI_with_mcts("both", game, search_config, nn, use_state_cache=False, recurrent_iterations=2)
-            tester.random_vs_random(game)
-
-            print("\n\nLength: " + str(game.length) + "\n")
-
-            renderer = SCS_Renderer.remote()
-            end = renderer.analyse.remote(game)
-
-
-            ray.get(end) # wait for the rendering to end
-
-        case 20:
-            game_class = SCS_Game
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
-
-            play_loop(1000, game_class, game_args)
-            
-        case 21:
-            pass
-
-        case _:
-            print("default")
-
+    
     return
+
 ##########################################################################
 # ----------------------------               --------------------------- #
 # ---------------------------   INTERACTIVE   -------------------------- #
@@ -622,7 +504,6 @@ def choose_model(game):
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-
 def continue_training(game_class, game_args, trained_network_name, continue_network_name, use_same_configs, new_alpha_config_path=None, new_search_config_path=None):
     game = game_class(*game_args)
 
@@ -660,6 +541,99 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
     alpha_zero = AlphaZero(game_class, game_args, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path)
     alpha_zero.run(starting_iteration)
 
+def load_trained_network(game, net_name, model_iteration):
+
+    game_folder = game.get_name() + "/"
+    model_folder = game_folder + "models/" + net_name + "/" 
+    pickle_path =  model_folder + "base_model.pkl"
+    search_config_path = model_folder + "search_config_copy.ini"
+
+    trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
+
+    with open(pickle_path, 'rb') as file:
+        model = pickle.load(file)
+    model.load_state_dict(torch.load(trained_model_path))
+
+    nn = Torch_NN(game, model)
+
+    search_config = Search_config()
+    search_config.load(search_config_path)
+
+    return nn, search_config
+
+def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=None, search_config=None, nn=None, recurrent_iterations=None, use_state_cache=None):
+
+    wins = [0,0]
+    
+    if method == "random":
+        args_list = [None]
+        game_index = 0
+    elif method == "policy":
+        args_list = [AI_player, None, nn, recurrent_iterations]
+        game_index = 1
+    elif method == "mcts":
+        args_list = [AI_player, search_config, None, nn, None, recurrent_iterations, False, False]
+        game_index = 2
+
+    
+    actor_list = [RemoteTester.remote() for a in range(num_testers)]
+    actor_pool = ray.util.ActorPool(actor_list)
+
+    text = "Testing using " + method
+    bar = PrintBar(text, num_games, 15)
+
+    for g in range(num_games):
+        game = game_class(*game_args)
+        args_list[game_index] = game
+        if method == "random":
+            actor_pool.submit(lambda actor, args: actor.random_vs_random.remote(*args), args_list)
+        elif method == "policy":
+            actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
+        elif method == "mcts":
+            actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
+
+    
+    for g in range(num_games):
+        winner, _ = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+        if winner != 0:
+            wins[winner-1] +=1
+        bar.next()
+			
+    bar.finish()
+
+    # STATISTICS
+    cmp_winrate_1 = 0.0
+    cmp_winrate_2 = 0.0
+    draws = num_games - wins[0] - wins[1]
+    p1_winrate = wins[0]/num_games
+    p2_winrate = wins[1]/num_games
+    draw_percentage = draws/num_games
+    cmp_2_string = "inf"
+    cmp_1_string = "inf"
+
+    if wins[0] > 0:
+        cmp_winrate_2 = wins[1]/wins[0]
+        cmp_2_string = format(cmp_winrate_2, '.4')
+    if wins[1] > 0:  
+        cmp_winrate_1 = wins[0]/wins[1]
+        cmp_1_string = format(cmp_winrate_1, '.4')
+
+  
+    print("P1 Win ratio: " + format(p1_winrate, '.4'))
+    print("P2 Win ratio: " + format(p2_winrate, '.4'))
+    print("Draw percentage: " + format(draw_percentage, '.4'))
+    print("Comparative Win ratio(p1/p2): " + cmp_1_string)
+    print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+
+def str_to_class(classname):
+    return getattr(sys.modules[__name__], classname)
+   
+##########################################################################
+# ----------------------------               --------------------------- #
+# ---------------------------       RAY       -------------------------- #
+# ----------------------------               --------------------------- #
+##########################################################################
+
 def start_ray_local():
     print("\n\n--------------------------------\n\n")
 		
@@ -689,176 +663,6 @@ def start_ray_slice():
 		
     context = ray.init(runtime_env=runtime_env, log_to_driver=True)
     return context
-
-def str_to_class(classname):
-    return getattr(sys.modules[__name__], classname)
-
-def test_trained_network(game):
-
-    net_name = input("\nName of the network: ")
-    recurrent = False
-    rec = input("\nRecurrent?(y/n):")
-    if rec == "y":
-        recurrent = True
-    model_iteration = int(input("\nModel iteration number: "))
-    AI_player = input("\nChose the AI player (\"1\", \"2\", \"both\"): ")
-
-    ####################
-
-    game_folder = game.get_name() + "/"
-    model_folder = game_folder + "models/" + net_name + "/" 
-    pickle_path =  model_folder + "base_model.pkl"
-    search_config_path = model_folder + "search_config_copy.ini"
-
-    trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
-
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
-    model.load_state_dict(torch.load(trained_model_path))
-
-    nn = Torch_NN(game, model, recurrent=recurrent)
-
-    search_config = Search_config()
-    search_config.load(search_config_path)
-
-    tester = Tester(print=True)
-    tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=True, recurrent_iterations=2)
-    #tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=2)
-
-    print("\n\nLength: " + str(game.length) + "\n")
-
-    return
-   
-
-# -----------
-# -- STUFF --
-# -----------
-
-def play_loop(num_games, game_class, game_args, tester):
-
-    wins = [0,0]
-    total_length = 0
-
-    print()
-    bar = ChargingBar("Playing", max=num_games, suffix='%(percent)d%% - %(remaining)d')
-    bar.next(0)
-    for g in range(num_games):
-        game = game_class(*game_args)
-        winner = tester.random_vs_random(game)
-        if winner != 0:
-            wins[winner-1] +=1
-        total_length += game.length
-        bar.next()
-    
-    bar.finish()
-
-    # STATISTICS
-    cmp_winrate_1 = 0.0
-    cmp_winrate_2 = 0.0
-    draws = num_games - wins[0] - wins[1]
-    p1_winrate = wins[0]/num_games
-    p2_winrate = wins[1]/num_games
-    draw_percentage = draws/num_games
-    cmp_2_string = "inf"
-    cmp_1_string = "inf"
-
-    if wins[0] > 0:
-        cmp_winrate_2 = wins[1]/wins[0]
-        cmp_2_string = format(cmp_winrate_2, '.4')
-    if wins[1] > 0:  
-        cmp_winrate_1 = wins[0]/wins[1]
-        cmp_1_string = format(cmp_winrate_1, '.4')
-
-    average_length = total_length / num_games
-
-    print("\n\nLength: " + format(average_length, '.4'))   
-    print("P1 Win ratio: " + format(p1_winrate, '.4'))
-    print("P2 Win ratio: " + format(p2_winrate, '.4'))
-    print("Draw percentage: " + format(draw_percentage, '.4'))
-    print("Comparative Win ratio(p1/p2): " + cmp_1_string)
-    print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
-
-def sanity_test():
-    #SANITY TEST
-
-    model = MLP_Network(xor_game())
-
-    network = Torch_NN(model)
-
-    optimizer = torch.optim.Adam(network.get_model().parameters(), lr=0.005)
-    
-    states = [[[0.0,0.0]],[[0.0,1.0]],[[1.0,0.0]],[[1.0,1.0]]]
-    policy = [[[0.5,0.5]], [[1.0,0.0]], [[0.0,1.0]], [[0.5,0.5]]]
-    value = [0.0, 1.0, 1.0, 0.0]
-
-    trainining_data = []
-    for i in range(len(states)):
-        target = (policy[i], value[i])
-        pair = (states[i], target)
-        trainining_data.append(pair)
-
-    network.get_model().train()
-
-    policy_loss = 0.0
-    value_loss = 0.0
-    combined_loss = 0
-
-    avarege_loss = 0.0
-
-
-    epochs = 2000
-    for e in range(epochs):
-        random.shuffle(trainining_data)
-
-        for (state, (target_policy, target_value)) in trainining_data:
-            optimizer.zero_grad()
-            state = torch.tensor(state)
-
-            predicted_policy, predicted_value = network.get_model()(state.to(network.device))
-
-            target_policy = torch.tensor(target_policy).to(network.device)
-            target_value = torch.tensor(target_value).to(network.device)
-
-        
-            #policy_loss += ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) / math.log(len(target_policy)) )
-            policy_loss = ( (-torch.sum(target_policy * torch.log(predicted_policy.flatten()))) )
-            #Policy loss is being "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-
-            #value_loss += ((target_value - predicted_value) ** 2)
-            value_loss = torch.abs(target_value - predicted_value)
-
-            combined_loss = policy_loss + value_loss
-
-            combined_loss.backward()
-            optimizer.step()
-
-            avarege_loss += combined_loss
-
-        print(avarege_loss/((e+1)*4))
-
-    print("\n\n")
-    for (state, (target_policy, target_value)) in trainining_data:
-        state = torch.tensor(state)
-        predicted_policy, predicted_value = network.inference(state)
-        print(state, predicted_policy, predicted_value)
-
-class xor_game():
-    def __init__(self):
-        self.action_space_shape = (1,1,2)
-        self.game_state_shape = (1,1,2)
-    
-    def get_action_space_shape(self):
-        return self.action_space_shape
-    
-    def state_shape(self):
-        return self.game_state_shape
-
-def abv(flag):
-    time.sleep(1/20)
-    for i in range(200):
-        i = i + 2
-
-    return 3
 
 if __name__ == "__main__":
     main()

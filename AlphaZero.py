@@ -578,7 +578,7 @@ class AlphaZero():
 			args_list = [player_choice, None, self.latest_network, None, test_iterations, False]
 			game_index = 1
 		elif test_mode == "mcts":
-			args_list = [player_choice, self.search_config, None, self.latest_network, None, use_state_cache, test_iterations, False]
+			args_list = [player_choice, self.search_config, None, self.latest_network, None, test_iterations, use_state_cache, False]
 			game_index = 2
 
 		
