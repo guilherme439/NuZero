@@ -24,20 +24,13 @@ Units:
     movement: 3
     image_path: "SCS/Images/soldier.png"
 
-  Tank:
-    id: 2
-    attack: 2
-    defense: 2
-    movement: 4
-    image_path: "SCS/Images/tank.jpg"
-
 
 ###
 Reinforcements:
   schedule:
-    p1: [ [1,1], [], [], [], [], [], [], [] ]
+    p1: [ [1,1], [], [], [], [], [], [], [], [] ]
 
-    p2: [ [1,1], [], [], [], [], [], [], [] ]
+    p2: [ [1,1], [], [], [], [], [], [], [], [] ]
 
   arrival:
     method: Default  # Default | Detailed

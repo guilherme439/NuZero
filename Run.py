@@ -275,8 +275,8 @@ def main():
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
-                method = "mcts"
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                method = "random"
 
                 # testing options
                 num_games = 100
