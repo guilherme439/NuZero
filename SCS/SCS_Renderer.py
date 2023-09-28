@@ -11,6 +11,7 @@ from enum import Enum
 class Color(Enum):
     WHITE = (255, 255, 255)
     BAD_PINK = (255, 0, 255)
+    YELLOW = (245, 200, 0)
     ORANGE = (200, 100, 0)
     RED = (200, 0, 0)
     BROWN = (90, 50, 0)
@@ -396,14 +397,21 @@ class SCS_Renderer():
 # -------------------- UNIT IMAGES --------------------- #
 # ------------------------------------------------------ #
 
-    def create_unit_image(self, image_name, image_choice, player_borders=False):
+    def create_unit_image(self, image_name, image_choice, unit_stats, player_borders=False):
+        pygame.init()
         green_image_path = "SCS/Images/green_unit.jpg"
         red_image_path = "SCS/Images/red_unit.jpg"
 
+        (attack, defense, movement) = unit_stats
+
         if image_choice == 0:
             raw_image_path = green_image_path
+            rectangle_position = (45, 365)
+            rectangle_dims = (584, 244)
         elif image_choice == 1:
             raw_image_path = red_image_path
+            rectangle_position = (45, 365)
+            rectangle_dims = (584, 244)
         else:
             print("Unknown image choice.\nexiting")
             exit()
@@ -411,20 +419,32 @@ class SCS_Renderer():
         raw_image = pygame.image.load(raw_image_path)
         (width, height) = raw_image.get_size()
 
-        
+        stats_area_rect = pygame.draw.rect(raw_image, Color.YELLOW.rgb(), [rectangle_position, rectangle_dims])
+        stats_area_w = stats_area_rect.width
+        stats_area_h = stats_area_rect.height
+
+        stats_text = str(attack) + " - "  + str(defense) + " - "  + str(movement)
+        stats_font = pygame.font.SysFont("uroob", 200)
+        stats_surface = stats_font.render(stats_text, True, Color.BLACK.rgb())
+        stats_surface = pygame.transform.scale(stats_surface, (0.75*stats_area_w, 1.1*stats_area_h))
+        stats_rect = stats_surface.get_rect(center=stats_area_rect.center)
+        stats_rect.y += 30
+        raw_image.blit(stats_surface, stats_rect)
+
+        pygame.image.save(raw_image, "SCS/Images/" + image_name + ".jpg")
 
 
-        border_thickness = 4
+        border_thickness = 22
         if player_borders:
             p1_image = raw_image.copy()
             p2_image = raw_image.copy()
-            pygame.draw.rect(p1_image, Color.LIGHT_BLUE.rgb(), [0, 0, width-border_thickness, height-border_thickness], border_thickness)
-            pygame.draw.rect(p2_image, Color.RED.rgb(), [0, 0, width-border_thickness, height-border_thickness], border_thickness)
+            pygame.draw.rect(p1_image, Color.LIGHT_BLUE.rgb(), [0, 0, width, height], border_thickness)
+            pygame.draw.rect(p2_image, Color.RED.rgb(), [0, 0, width, height], border_thickness)
             pygame.image.save(p1_image, "SCS/Images/p1_" + image_name + ".jpg")
             pygame.image.save(p2_image, "SCS/Images/p2_" + image_name + ".jpg")
         else:
             final_image = raw_image.copy()
-            pygame.draw.rect(final_image, Color.BLACK.rgb(), [0, 0, width-border_thickness, height-border_thickness], border_thickness)
+            pygame.draw.rect(final_image, Color.BLACK.rgb(), [0, 0, width, height], border_thickness)
             pygame.image.save(final_image, "SCS/Images/" + image_name + ".jpg")
  
 

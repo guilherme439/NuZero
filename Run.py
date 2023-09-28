@@ -397,6 +397,12 @@ def main():
                 filepath = "Configs/Config_files/default_alphazero_config.ini"
                 alpha_config.save(filepath)
 
+            case 3:
+                renderer = SCS_Renderer.remote()
+                name = "floribela"
+                lindura = renderer.create_unit_image.remote(name, 1, (2,5,4))
+                ray.get(lindura)
+                print(name)
     
     return
 
