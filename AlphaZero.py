@@ -540,7 +540,7 @@ class AlphaZero():
 			for g in range(games_to_play):
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
 			
-			time.sleep(0.1) # Sometimes it bugs we dont wait before getting the results
+			time.sleep(0.2) # Sometimes it bugs if we dont wait before getting the results
 			
 			for g in range(games_to_play):
 				stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
@@ -603,7 +603,7 @@ class AlphaZero():
 				elif test_mode == "mcts":
 					actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
 
-			time.sleep(0.1) # Sometimes it bugs we dont wait before getting the results
+			time.sleep(0.2) # Sometimes it bugs if we dont wait before getting the results
 
 			for g in range(games_to_play):
 				winner, stats = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
@@ -805,7 +805,7 @@ class AlphaZero():
 			probs = []
 			if late_heavy:
 				# The way I found to create a scalling array
-				variation = 0.6 # number between 0 and 1
+				variation = 0.5 # number between 0 and 1
 				num_positions = replay_size
 				offset = (1-variation)/2    
 				fraction = variation / num_positions
@@ -824,7 +824,6 @@ class AlphaZero():
 
 			print("\nTotal number of updates: " + str(num_samples) + "\n")
 			if batch_extraction == 'local':
-				print("Getting buffer...")
 				replay_buffer = ray.get(future_buffer, timeout=300)
 
 			#bar = ChargingBar('Training ', max=num_samples)

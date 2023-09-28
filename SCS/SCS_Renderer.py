@@ -9,14 +9,15 @@ from enum import Enum
 
 
 class Color(Enum):
-    BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
+    BAD_PINK = (255, 0, 255)
     ORANGE = (200, 100, 0)
     RED = (200, 0, 0)
     BROWN = (90, 50, 0)
     GREEN = (45, 110, 10)
-    BAD_PINK = (255, 0, 255)
+    LIGHT_BLUE = (40, 110, 230)
     BLUE = (0, 40, 90)
+    BLACK = (0, 0, 0)
 
     def rgb(self):
         return self.value
@@ -390,7 +391,43 @@ class SCS_Renderer():
         ], width)
 
         return rectangle
-    
+
+# ------------------------------------------------------ #
+# -------------------- UNIT IMAGES --------------------- #
+# ------------------------------------------------------ #
+
+    def create_unit_image(self, image_name, image_choice, player_borders=False):
+        green_image_path = "SCS/Images/green_unit.jpg"
+        red_image_path = "SCS/Images/red_unit.jpg"
+
+        if image_choice == 0:
+            raw_image_path = green_image_path
+        elif image_choice == 1:
+            raw_image_path = red_image_path
+        else:
+            print("Unknown image choice.\nexiting")
+            exit()
+
+        raw_image = pygame.image.load(raw_image_path)
+        (width, height) = raw_image.get_size()
+
+        
+
+
+        border_thickness = 4
+        if player_borders:
+            p1_image = raw_image.copy()
+            p2_image = raw_image.copy()
+            pygame.draw.rect(p1_image, Color.LIGHT_BLUE.rgb(), [0, 0, width-border_thickness, height-border_thickness], border_thickness)
+            pygame.draw.rect(p2_image, Color.RED.rgb(), [0, 0, width-border_thickness, height-border_thickness], border_thickness)
+            pygame.image.save(p1_image, "SCS/Images/p1_" + image_name + ".jpg")
+            pygame.image.save(p2_image, "SCS/Images/p2_" + image_name + ".jpg")
+        else:
+            final_image = raw_image.copy()
+            pygame.draw.rect(final_image, Color.BLACK.rgb(), [0, 0, width-border_thickness, height-border_thickness], border_thickness)
+            pygame.image.save(final_image, "SCS/Images/" + image_name + ".jpg")
+ 
+
 # ------------------------------------------------------ #
 # ----------------------- FONTS ------------------------ #
 # ------------------------------------------------------ #
