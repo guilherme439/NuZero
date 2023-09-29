@@ -201,11 +201,11 @@ def main():
 
                 trained_network_name = "soldier_value_factor"
                 continue_network_name = "soldier_value_factor_continue" # new network can have the same name as the previous
-                use_same_configs = True
+                use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_alpha_config_path="Configs/Config_files/local_alpha_config.ini"
-                new_search_config_path="Configs/Config_files/local_search_config.ini"
+                new_alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
+                new_search_config_path="Configs/Config_files/slice_search_config.ini"
 
                 ################################################
 
