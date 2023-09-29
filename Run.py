@@ -199,8 +199,8 @@ def main():
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
 
-                trained_network_name = "local_alphazero_continue"
-                continue_network_name = "local_alphazero_continue_2" # new network can have the same name as the previous
+                trained_network_name = "soldier_value_factor"
+                continue_network_name = "soldier_value_factor_continue" # new network can have the same name as the previous
                 use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
@@ -208,6 +208,7 @@ def main():
                 new_search_config_path="Configs/Config_files/local_search_config.ini"
 
                 ################################################
+
 
                 print("\n")
                 context = start_ray_local()
@@ -276,16 +277,16 @@ def main():
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
-                method = "random"
+                method = "mcts"
 
                 # testing options
                 num_games = 100
                 AI_player = "2"
-                recurrent_iterations = 2
+                recurrent_iterations = 3
 
                 # network options
-                net_name = "local_alphazero_continue_2"
-                model_iteration = 100
+                net_name = "soldier_value_factor"
+                model_iteration = 3
 
                 # TODO: Add possibilty of using second network
 
