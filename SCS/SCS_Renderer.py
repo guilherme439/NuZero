@@ -1,8 +1,9 @@
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 import time
 import ray
 import math
-import os
 import sys
 
 from enum import Enum

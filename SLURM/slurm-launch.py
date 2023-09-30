@@ -15,7 +15,8 @@ PARTITION_OPTION = "${PARTITION_OPTION}"
 GIVEN_NODE = "${GIVEN_NODE}"
 LOAD_ENV = "${LOAD_ENV}"
 TMP_DIR = "${TMP_DIR}"
-NET_NAME = "${NET_NAME}"
+GPU_MEM = "${GPU_MEM}"
+NUM_CPUS = "${NUM_CPUS}"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -42,6 +43,18 @@ if __name__ == "__main__":
         help="Number of GPUs to use in each node. (Default: 0)",
     )
     parser.add_argument(
+        "--gpu-mem",
+        type=int,
+        default=0,
+        help="GPU memory to use. (Default: 0)",
+    )
+    parser.add_argument(
+        "--num-cpus",
+        type=int,
+        default=0,
+        help="CPUs per node. (Default: 0)",
+    )
+    parser.add_argument(
         "--partition",
         "-p",
         type=str,
@@ -59,13 +72,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--rnl",
         action='store_true'
-    )
-    parser.add_argument(
-        "--net-name",
-        type=str,
-        help="The name of the network you are training",
-        default=""
-
     )
     args = parser.parse_args()
 
@@ -92,12 +98,13 @@ if __name__ == "__main__":
     text = text.replace(PARTITION_OPTION, partition_option)
     text = text.replace(LOAD_ENV, str(args.load_env))
     text = text.replace(GIVEN_NODE, node_info)
+    text = text.replace(GPU_MEM, str(args.gpu_mem))
+    text = text.replace(NUM_CPUS, str(args.num_cpus))
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO " "PRODUCTION!",
         "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
         "RUNNABLE!",
     )
-    text = text.replace(NET_NAME, str(args.net_name))
 
     if args.rnl:
         text = text.replace(TMP_DIR, "/mnt/cirrus/users/5/2/ist189452/TESE/ray_tmp")

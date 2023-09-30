@@ -11,8 +11,10 @@ ${GIVEN_NODE}
 ###SBATCH --exclusive
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
-###SBATCH --gpus-per-task=${NUM_GPUS_PER_NODE}
-###SBATCH --gres=shard:0
+#SBATCH --cpus-per-task=${NUM_CPUS}
+#SBATCH --gres=shard:${GPU_MEM}
+
+
 
 # Load modules or your own conda environment here
 # module load pytorch/v1.4.0-gpu
@@ -64,12 +66,6 @@ for ((i = 1; i <= worker_num; i++)); do
   sleep 5
 done
 
-# ===== Call your code below =====
 
-# Request ray to run the job from the head node, since we can't access nodes in the cluster by port forwarding
-srun -w "$node_1"\
-  ray job submit --address="http://127.0.0.1:8265" \
-  --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' \
-  -- python Run.py --training-preset 3 --name ${NET_NAME}
 
 
