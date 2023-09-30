@@ -177,8 +177,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
                 
-                alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
-                search_config_path="Configs/Config_files/SCS_search_config.ini"
+                alpha_config_path="Configs/Config_files/cluster_alpha_config.ini"
+                search_config_path="Configs/Config_files/cluster_search_config.ini"
                 
                 network_name = "cluster_net"
 
