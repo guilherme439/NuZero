@@ -11,10 +11,12 @@ from enum import Enum
 from collections import Counter
 from termcolor import colored
 
-
 from .Unit import Unit
 from .Tile import Tile
 from .Terrain import Terrain
+
+from .SCS_Renderer import SCS_Renderer
+
 
 '''
 From the hexagly source code, this is how the board is converted
@@ -1286,6 +1288,7 @@ class SCS_Game():
                         units_by_id[id] = {}
                         units_by_id[id]["name"] = unit_name
                         units_by_id[id].update(properties)
+
             
                 case "Reinforcements":                 
                     schedule = values["schedule"]
@@ -1329,8 +1332,13 @@ class SCS_Game():
                                 attack = units_by_id[id]["attack"]
                                 defense = units_by_id[id]["defense"]
                                 mov_allowance = units_by_id[id]["movement"]
-                                image_path = units_by_id[id]["image_path"]
-
+                                image_path = units_by_id[id].get("image_path")
+                                if image_path is None:
+                                    renderer = SCS_Renderer()
+                                    image_name = "p" + str(player) + "_" + name
+                                    image_path = renderer.create_unit_image(image_name, player_index, (attack, defense, mov_allowance), False)
+                                
+                                
                                 if arrival_method == "Default":
                                     unit_arrival_locations = player_arrival_locations[player_index]
                                 elif arrival_method == "Detailed":

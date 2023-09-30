@@ -197,11 +197,11 @@ def main():
             case 4: # Continue Training
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
 
-                trained_network_name = "soldier_value_factor"
+                trained_network_name = "soldier_value_factor_continue"
                 continue_network_name = "soldier_value_factor_continue" # new network can have the same name as the previous
-                use_same_configs = False
+                use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
                 new_alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
@@ -230,16 +230,16 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
                 method = "mcts"
 
                 # testing options
-                AI_player = "both"
+                AI_player = "2"
                 recurrent_iterations = 3
 
                 # network options
-                net_name = "local_alphazero_continue_2"
-                model_iteration = 100
+                net_name = "soldier_value_factor_continue"
+                model_iteration = 19
 
                 # TODO: Add possibilty of using second network
 
@@ -254,21 +254,25 @@ def main():
                     tester = Tester(print=True)
 
                 if method == "mcts":
-                    tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=False, recurrent_iterations=recurrent_iterations)
+                    winner, _ = tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=False, recurrent_iterations=recurrent_iterations)
                 elif method == "policy":
-                    tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=recurrent_iterations)
+                    winner, _ = tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=recurrent_iterations)
                 elif method == "random":
-                    tester.random_vs_random(game)
+                    winner, _ = tester.random_vs_random(game)
 
+                if winner == 0:
+                    winner_text = "Draw!"
+                else:
+                    winner_text = "Player " + str(winner) + " won!"
+                
                 print("\n\nLength: " + str(game.get_length()) + "\n")
-
+                print(winner_text)
+                
                 if rendering_mode == "interactive":
                     time.sleep(0.5)
 
-                    renderer = SCS_Renderer.remote()
-                    end = renderer.analyse.remote(game, True)
-
-                    ray.get(end) # wait for the rendering to end
+                    renderer = SCS_Renderer()
+                    renderer.analyse(game)
 
             case 2: # Statistics for Multiple Games
                 ray.init()
@@ -280,13 +284,13 @@ def main():
                 method = "mcts"
 
                 # testing options
-                num_games = 100
+                num_games = 50
                 AI_player = "2"
                 recurrent_iterations = 3
 
                 # network options
-                net_name = "soldier_value_factor"
-                model_iteration = 3
+                net_name = "soldier_value_factor_continue"
+                model_iteration = 19
 
                 # TODO: Add possibilty of using second network
 
@@ -399,11 +403,12 @@ def main():
                 alpha_config.save(filepath)
 
             case 3:
-                renderer = SCS_Renderer.remote()
-                name = "floribela"
-                lindura = renderer.create_unit_image.remote(name, 1, (2,5,4))
-                ray.get(lindura)
-                print(name)
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/test_config.yml"]
+                game = game_class(*game_args)
+
+            case 4:
+                print(12%256)
     
     return
 
@@ -599,7 +604,8 @@ def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=N
         elif method == "mcts":
             actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
 
-    
+    time.sleep(1)
+
     for g in range(num_games):
         winner, _ = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
         if winner != 0:

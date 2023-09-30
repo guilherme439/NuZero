@@ -8,11 +8,11 @@ Board_dimensions:
 
 
 ###
-Turns: 8
+Turns: 9
 
 
 ###
-Stacking_limit: 2
+Stacking_limit: 3
 
 
 ###
@@ -21,16 +21,21 @@ Units:
     id: 1
     attack: 1
     defense: 1
-    movement: 3
-    image_path: "SCS/Images/soldier.png" # image_path is optional
+    movement: 2
+
+  Tank:
+    id: 2
+    attack: 2
+    defense: 2
+    movement: 4
 
 
 ###
 Reinforcements:
   schedule:
-    p1: [ [1,1], [], [], [], [], [], [], [], [] ]
+    p1: [ [1], [2], [], [2,2], [2,1,2], [], [2,1], [], [], [1] ]
 
-    p2: [ [1,1], [], [], [], [], [], [], [], [] ]
+    p2: [ [1,1], [1,2], [2], [], [1,1,1,1,1], [], [1], [2,1], [], [] ]
 
   arrival:
     method: Default  # Default | Detailed
@@ -70,11 +75,11 @@ Terrain:
 ###
 Map:
   creation_method: Detailed # Detailed | Randomized
-  map_configuration : [ [1,3,4,1,1],
-                        [1,3,1,1,1],
-                        [1,3,2,3,1],
-                        [1,1,1,3,1],
-                        [1,1,4,3,1] ]
+  map_configuration : [ [1,2,2,2,2],
+                        [1,3,2,2,2],
+                        [1,4,1,2,2],
+                        [3,1,1,1,2],
+                        [3,3,1,1,3] ]
 
 
 ###

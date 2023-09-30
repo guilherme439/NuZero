@@ -24,7 +24,6 @@ class Color(Enum):
         return self.value
 
 
-@ray.remote
 class SCS_Renderer():
 
     def __init__(self, remote_storage=None):
@@ -35,12 +34,7 @@ class SCS_Renderer():
         self.WINDOW_HEIGHT = 1000
 
     # Passively render a game while it is being played, using a remote storage for communication
-    def render(self, player_unit_images=False):
-        ''' The argument player_unit_images allows different unit images for each player.
-            It expects two extra images with "p1_" and "p2_" prefixing the image name
-            in the same folder as the original unit's image_path.
-        '''
-
+    def render(self):
         pygame.init()
 
         # A remote game storage is used to update the game being displayed
@@ -65,7 +59,7 @@ class SCS_Renderer():
             # Fill the background with white
             screen.fill(Color.WHITE.rgb())
 
-            self.render_board_hexagons(screen, game, player_unit_images)
+            self.render_board_hexagons(screen, game)
 
             text = "SCS Board live rendering!"
             if len(game.action_history) > 0:
@@ -94,12 +88,7 @@ class SCS_Renderer():
         return
     
     # Interactively render an already played game using arrow keys
-    def analyse(self, game, player_unit_images=False):
-        ''' The argument player_unit_images allows different unit images for each player.
-            It expects two extra images with "p1_" and "p2_" prefixing the image name
-            in the same folder as the original unit's image_path.
-        '''
-
+    def analyse(self, game):
         pygame.init()
 
         render_game = game.clone() # scratch game for rendering
@@ -148,7 +137,7 @@ class SCS_Renderer():
             # Fill the background with white
             screen.fill(Color.WHITE.rgb())
 
-            self.render_board_hexagons(screen, render_game, player_unit_images)
+            self.render_board_hexagons(screen, render_game)
 
             action_text = "SCS Analisis board!"
             action_color = Color.BLACK.rgb()
@@ -204,7 +193,7 @@ class SCS_Renderer():
         pygame.quit()
         return
 
-    def render_board_hexagons(self, screen, game, player_unit_images, debug=[]):
+    def render_board_hexagons(self, screen, game, debug=[]):
 
         if len(debug) > 0:
             values, positions = list(zip(*debug))
@@ -229,7 +218,7 @@ class SCS_Renderer():
         # Dimensions
         star_scale = 0.3        # as a percentage of hexagon side
         unit_scale = 0.6        # as a percentage of tile height
-        stacking_offset = 0.05  # as a percentage of hexagon side (how much each stacked unit "slides" to the side)
+        stacking_offset = 0.08  # as a percentage of hexagon side (how much each stacked unit "slides" to the side)
 
         # Board sizes
         board_top_gap = math.floor(0.15*self.WINDOW_HEIGHT)
@@ -366,11 +355,6 @@ class SCS_Renderer():
                     s = tile.get_stacking_level(unit)
                     unit_offset = s * stacking_offset * hexagon_side
                     unit_image_path = unit.get_image_path()
-                    if player_unit_images:
-                        file_name = os.path.basename(unit_image_path)
-                        file_name = "p" + str(unit.player) + "_" + file_name
-                        folder_path = os.path.dirname(unit_image_path)
-                        unit_image_path = folder_path + "/" + file_name
                         
                     unit_image = pygame.image.load(unit_image_path)
                     image_height = unit_image.get_rect().h
@@ -397,24 +381,30 @@ class SCS_Renderer():
 # -------------------- UNIT IMAGES --------------------- #
 # ------------------------------------------------------ #
 
-    def create_unit_image(self, image_name, image_choice, unit_stats, player_borders=False):
+    def create_unit_image(self, image_name, unit_choice, unit_stats, black_border):
         pygame.init()
+        
         green_image_path = "SCS/Images/green_unit.jpg"
         red_image_path = "SCS/Images/red_unit.jpg"
 
         (attack, defense, movement) = unit_stats
 
-        if image_choice == 0:
+        if unit_choice == 0:
             raw_image_path = green_image_path
-            rectangle_position = (45, 365)
-            rectangle_dims = (584, 244)
-        elif image_choice == 1:
+            rectangle_position = (48, 338)
+            rectangle_dims = (540, 225)
+            border_color = Color.GREEN.rgb()
+        elif unit_choice == 1:
             raw_image_path = red_image_path
             rectangle_position = (45, 365)
             rectangle_dims = (584, 244)
+            border_color = Color.RED.rgb()
         else:
             print("Unknown image choice.\nexiting")
             exit()
+
+        if black_border:
+            border_color = Color.BLACK.rgb()
 
         raw_image = pygame.image.load(raw_image_path)
         (width, height) = raw_image.get_size()
@@ -431,22 +421,15 @@ class SCS_Renderer():
         stats_rect.y += 30
         raw_image.blit(stats_surface, stats_rect)
 
-        pygame.image.save(raw_image, "SCS/Images/" + image_name + ".jpg")
+        border_thickness = int(0.04 * height)
+        
+        final_image = raw_image.copy()
+        image_path = "SCS/Images/" + image_name + ".jpg"
+        pygame.draw.rect(final_image, border_color, [0, 0, width, height], border_thickness)
+        pygame.image.save(final_image, image_path)  
 
-
-        border_thickness = 22
-        if player_borders:
-            p1_image = raw_image.copy()
-            p2_image = raw_image.copy()
-            pygame.draw.rect(p1_image, Color.LIGHT_BLUE.rgb(), [0, 0, width, height], border_thickness)
-            pygame.draw.rect(p2_image, Color.RED.rgb(), [0, 0, width, height], border_thickness)
-            pygame.image.save(p1_image, "SCS/Images/p1_" + image_name + ".jpg")
-            pygame.image.save(p2_image, "SCS/Images/p2_" + image_name + ".jpg")
-        else:
-            final_image = raw_image.copy()
-            pygame.draw.rect(final_image, Color.BLACK.rgb(), [0, 0, width, height], border_thickness)
-            pygame.image.save(final_image, "SCS/Images/" + image_name + ".jpg")
- 
+        return image_path
+  
 
 # ------------------------------------------------------ #
 # ----------------------- FONTS ------------------------ #
