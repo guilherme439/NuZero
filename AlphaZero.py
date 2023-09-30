@@ -539,10 +539,10 @@ class AlphaZero():
 			for g in range(games_to_play):
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
 			
-			time.sleep(5) # Sometimes it bugs if we dont wait before getting the results
+			time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
 			
 			for g in range(games_to_play):
-				stats = actor_pool.get_next_unordered(300) # Timeout and Ignore_if_timeout
+				stats = actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
 				stats_list.append(stats)
 				bar.next()
 	
@@ -602,10 +602,10 @@ class AlphaZero():
 				elif test_mode == "mcts":
 					actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
 
-			time.sleep(5) # Sometimes it bugs if we dont wait before getting the results
+			time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
 
 			for g in range(games_to_play):
-				winner, stats = actor_pool.get_next_unordered(300) # Timeout and Ignore_if_timeout
+				winner, stats = actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
 				stats_list.append(stats)
 				if winner != 0:
 					wins[winner-1] +=1

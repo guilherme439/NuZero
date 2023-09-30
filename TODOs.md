@@ -32,6 +32,9 @@
 - SCS unit image creator based on unit stats [medium, high]
 - Implement a user interface to play games vs trained AI [hard, low]
 
+### Structure
+- Add separate folder for alpha and search configs [easy, high]
+
 
 <!---------------------------------------------------------------------------------------------------------------------------------------->
 

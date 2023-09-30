@@ -197,7 +197,7 @@ def main():
             case 4: # Continue Training
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
 
                 trained_network_name = "soldier_value_factor_continue"
                 continue_network_name = "soldier_value_factor_continue" # new network can have the same name as the previous
