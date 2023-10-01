@@ -62,12 +62,16 @@ ray job submit --address="http://127.0.0.1:8265" --runtime-env-json='{"working_d
 
 python Run.py --training-preset 1 --name good_name
 
+srun -w nexus3 --pty bash -i
 
 srun -w "$node_1"\
   ray job submit --no-wait --address="http://127.0.0.1:8265" \
   --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' \
   -- python Run.py --training-preset 3 --name ${NET_NAME}
 
+  
+
+ray job submit --no-wait --address="insert_address" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3 --name good_name
 '''
 
 
