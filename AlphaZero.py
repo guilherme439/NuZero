@@ -522,6 +522,7 @@ class AlphaZero():
 			if c == num_chunks:
 				games_to_play = rest
 
+			print("\nCreating actors")
 			actor_list= [Gamer.remote
 		 				(
 						buffer_to_use,
@@ -535,6 +536,7 @@ class AlphaZero():
 		 				for a in range(num_actors)]
 			
 			actor_pool = ray.util.ActorPool(actor_list)
+			print("Actors created\n")
 
 			for g in range(games_to_play):
 				actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)

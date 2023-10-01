@@ -98,6 +98,7 @@ class SCS_Renderer():
         screen = pygame.display.set_mode([self.WINDOW_WIDTH, self.WINDOW_HEIGHT])
 
         debug_state = False
+        debug_actions = False
         action_index = 0
         last_player = 0
         time.sleep(0.1)
@@ -122,6 +123,9 @@ class SCS_Renderer():
                         elif event.key == pygame.K_DOWN:
                             debug_state = True
 
+                        elif event.key == pygame.K_UP:
+                            debug_actions = True
+
             # Uses the action_history to replay the game since it is deterministic
             render_game.reset_env()
             for i in range(action_index):
@@ -134,6 +138,10 @@ class SCS_Renderer():
                 state_image = render_game.generate_state_image()
                 render_game.debug_state_image(state_image)
                 debug_state = False
+            
+            if debug_actions:
+                render_game.print_possible_actions()
+                debug_actions = False
 
             # Fill the background with white
             screen.fill(Color.WHITE.rgb())

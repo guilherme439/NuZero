@@ -70,7 +70,6 @@ srun -w "$node_1"\
   -- python Run.py --training-preset 3 --name ${NET_NAME}
 
   
-
 ray job submit --no-wait --address="insert_address" --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' -- python Run.py --training-preset 3 --name good_name
 '''
 
@@ -249,7 +248,7 @@ def main():
 
                 # network options
                 net_name = "soldier_value_factor_continue"
-                model_iteration = 19
+                model_iteration = 108
 
                 # TODO: Add possibilty of using second network
 

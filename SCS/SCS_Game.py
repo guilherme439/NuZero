@@ -1042,7 +1042,8 @@ class SCS_Game():
                         strongest_unit = unit
 
         return strongest_unit
-    
+
+
 ##########################################################################
 # -------------------------                   -------------------------- #
 # ------------------------  ALPHAZERO SUPPORT  ------------------------- #
@@ -1288,9 +1289,8 @@ class SCS_Game():
                         units_by_id[id] = {}
                         units_by_id[id]["name"] = unit_name
                         units_by_id[id].update(properties)
-
-            
-                case "Reinforcements":                 
+         
+                case "Reinforcements":
                     schedule = values["schedule"]
                     arrival = values["arrival"]
                     arrival_method = arrival["method"]
@@ -1494,6 +1494,7 @@ class SCS_Game():
                 
         return new_game
 
+
 ##########################################################################
 # ----------------------                         ----------------------- #
 # ----------------------  REPRESENTATION METHODS  ---------------------- #
@@ -1628,6 +1629,13 @@ class SCS_Game():
 
         #print(string)
         return string
+    
+    def print_possible_actions(self):
+        possible_actions = self.possible_actions()
+        action_indexes = np.nonzero(possible_actions)
+        for action in action_indexes:
+            print(self.string_action(action))
+
 
 ##########################################################################
 # -------------------------                    ------------------------- #
