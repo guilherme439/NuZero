@@ -131,11 +131,11 @@ def main():
             case 1: # Run on local machine
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
-                search_config_path="Configs/Config_files/slice_search_config.ini"
+                alpha_config_path="Configs/Config_files/cluster_alpha_config.ini"
+                search_config_path="Configs/Config_files/cluster_search_config.ini"
 
                 network_name = "local_net"
 
