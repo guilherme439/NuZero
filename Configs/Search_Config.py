@@ -1,6 +1,6 @@
 from .Config import Config
 
-class Search_config(Config):
+class Search_Config(Config):
 
 
     def __init__(self):

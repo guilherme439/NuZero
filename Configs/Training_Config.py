@@ -1,6 +1,6 @@
 from .Config import Config
 
-class AlphaZero_config(Config):
+class Training_Config(Config):
 
     def __init__(self):
 

@@ -140,6 +140,7 @@ class SCS_Renderer():
                 debug_state = False
             
             if debug_actions:
+                print("\n\n")
                 render_game.print_possible_actions()
                 debug_actions = False
 
@@ -390,30 +391,37 @@ class SCS_Renderer():
 # -------------------- UNIT IMAGES --------------------- #
 # ------------------------------------------------------ #
 
-    def create_unit_image(self, image_name, unit_choice, unit_stats, black_border):
+    def create_unit_image(self, image_name, base_unit_choice, unit_stats):
         pygame.init()
         
-        green_image_path = "SCS/Images/green_unit.jpg"
-        red_image_path = "SCS/Images/red_unit.jpg"
+        green_image_path = "SCS/Images/base_units/green_unit.jpg"
+        red_image_path = "SCS/Images/base_units/red_unit.jpg"
+        blue_image_path = "SCS/Images/base_units/blue_unit.jpg"
+        black_image_path = "SCS/Images/base_units/black_unit.jpg"
 
         (attack, defense, movement) = unit_stats
 
-        if unit_choice == 0:
-            raw_image_path = green_image_path
-            rectangle_position = (48, 338)
-            rectangle_dims = (540, 225)
-            border_color = Color.GREEN.rgb()
-        elif unit_choice == 1:
-            raw_image_path = red_image_path
-            rectangle_position = (45, 365)
-            rectangle_dims = (584, 244)
-            border_color = Color.RED.rgb()
-        else:
-            print("Unknown image choice.\nexiting")
-            exit()
-
-        if black_border:
-            border_color = Color.BLACK.rgb()
+        match base_unit_choice:
+            case "green":
+                raw_image_path = green_image_path
+                rectangle_position = (48, 338)
+                rectangle_dims = (540, 225)
+            case "red":
+                raw_image_path = red_image_path
+                rectangle_position = (45, 365)
+                rectangle_dims = (584, 244)
+            case "blue":
+                raw_image_path = blue_image_path
+                rectangle_position = (45, 365)
+                rectangle_dims = (584, 244)
+            case "black":
+                raw_image_path = black_image_path
+                rectangle_position = (45, 365)
+                rectangle_dims = (584, 244)
+            case _:
+                print("Unknown image choice.\nExiting")
+                exit()
+            
 
         raw_image = pygame.image.load(raw_image_path)
         (width, height) = raw_image.get_size()
@@ -429,13 +437,34 @@ class SCS_Renderer():
         stats_rect = stats_surface.get_rect(center=stats_area_rect.center)
         stats_rect.y += 30
         raw_image.blit(stats_surface, stats_rect)
-
-        border_thickness = int(0.04 * height)
         
         final_image = raw_image.copy()
         image_path = "SCS/Images/" + image_name + ".jpg"
-        pygame.draw.rect(final_image, border_color, [0, 0, width, height], border_thickness)
         pygame.image.save(final_image, image_path)  
+
+        return image_path
+    
+    def add_border(self, image_name, border_color_choice):
+
+        match border_color_choice:
+            case "green":
+                border_color = Color.GREEN.rgb()
+            case "red":
+                border_color = Color.RED.rgb()
+            case "blue":
+                border_color = Color.BLUE.rgb()
+            case "black":
+                border_color = Color.BLACK.rgb()
+            case _:
+                print("Unknown border color choice.\nExiting")
+                exit()
+
+        image_path = "SCS/Images/" + image_name + ".jpg"
+        final_image = pygame.image.load(image_path)
+
+        (width, height) = final_image.get_size()
+        border_thickness = int(0.04 * height)
+        pygame.draw.rect(final_image, border_color, [0, 0, width, height], border_thickness)
 
         return image_path
   

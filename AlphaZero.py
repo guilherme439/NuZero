@@ -275,9 +275,9 @@ class AlphaZero():
 				self.latest_network.inference(game.generate_state_image(), False, 1)
 
 				# Weight graphs
-				all_weights = torch.Tensor()
+				all_weights = torch.Tensor().cpu()
 				for param in model.parameters():
-					all_weights = torch.cat((all_weights, param.clone().detach().flatten()), 0)
+					all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0)
 
 				# For some reason Ray waits here and not somewhere else
 				print("\nRay is finishing its setup...")
@@ -349,9 +349,9 @@ class AlphaZero():
 
 					model = self.latest_network.get_model()
 					
-					all_weights = torch.Tensor()
+					all_weights = torch.Tensor().cpu()
 					for param in model.parameters():
-						all_weights = torch.cat((all_weights, param.clone().detach().flatten()), 0)
+						all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0)
 
 					self.weight_size_max.append(max(abs(all_weights)))
 					self.weight_size_min.append(min(abs(all_weights)))

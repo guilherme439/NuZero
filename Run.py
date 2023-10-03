@@ -35,8 +35,8 @@ from SCS.SCS_Renderer import SCS_Renderer
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from Configs.AlphaZero_config import AlphaZero_config
-from Configs.Search_config import Search_config
+from Configs.Training_Config import Training_Config
+from Configs.Search_Config import Search_Config
 
 from AlphaZero import AlphaZero
 from Tester import Tester
@@ -77,7 +77,7 @@ srun -w "$node_1"\
   --runtime-env-json='{"working_dir": "https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip", "pip": "./requirements.txt"}' \
   -- python Run.py --training-preset 3 --name ${NET_NAME}
 
-srun --job-name=gaips --mincpus=16 --gres=shard:10 --ntasks-per-node=1 --time=72:00:00  python Run.py --training-preset 1 --name good_net_name
+srun --job-name=gaips --mincpus=18 --gres=shard:10 --ntasks-per-node=1 --time=72:00:00  python Run.py --training-preset 1 --name good_net_name
 
 '''
 
@@ -117,8 +117,8 @@ def main():
                 game_args = []
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_files/ttt_alpha_config.ini"
-                search_config_path="Configs/Config_files/ttt_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/ttt_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/ttt_search_config.ini"
 
                 network_name = "ttt_net"
 
@@ -141,8 +141,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_files/cluster_alpha_config.ini"
-                search_config_path="Configs/Config_files/cluster_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/cluster_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/cluster_search_config.ini"
 
                 network_name = "local_net"
 
@@ -168,8 +168,8 @@ def main():
                 game = game_class(*game_args)
 
     
-                alpha_config_path="Configs/Config_files/SCS_alpha_config.ini"
-                search_config_path="Configs/Config_files/SCS_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/SCS_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/SCS_search_config.ini"
 
                 network_name = "slice_test"
 
@@ -194,8 +194,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
                 
-                alpha_config_path="Configs/Config_files/cluster_alpha_config.ini"
-                search_config_path="Configs/Config_files/cluster_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/cluster_alpha_config.ini"
+                search_config_path="Configs/Config_Files/Search/cluster_search_config.ini"
                 
                 network_name = "cluster_net"
 
@@ -231,7 +231,7 @@ def main():
                 context = start_ray_local()
                 continue_training(game_class, game_args, trained_network_name, continue_network_name, \
                                   use_same_configs, new_alpha_config_path, new_search_config_path)
-
+                
 
             case 6:
                 # Define your setup here
@@ -247,8 +247,8 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
-                method = "mcts"
+                game_args = ["SCS/Game_configs/test_config.yml"]
+                method = "random"
 
                 # testing options
                 AI_player = "2"
@@ -256,7 +256,7 @@ def main():
 
                 # network options
                 net_name = "soldier_value_factor_continue"
-                model_iteration = 108
+                model_iteration = 170
 
                 # TODO: Add possibilty of using second network
 

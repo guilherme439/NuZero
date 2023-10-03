@@ -1632,7 +1632,8 @@ class SCS_Game():
     
     def print_possible_actions(self):
         possible_actions = self.possible_actions()
-        action_indexes = np.nonzero(possible_actions)
+        action_indexes = list(zip(*np.nonzero(possible_actions)))
+
         for action in action_indexes:
             print(self.string_action(action))
 
