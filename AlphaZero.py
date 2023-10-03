@@ -38,7 +38,7 @@ from PrintBar import PrintBar
 class AlphaZero():
 
 	
-	def __init__(self, game_class, game_args, model, net_name, alpha_config_path, search_config_path, plot_data_path=None):
+	def __init__(self, game_class, game_args, model, net_name, train_config_path, search_config_path, plot_data_path=None):
 
 		
 		# ------------------------------------------------------ #
@@ -73,8 +73,8 @@ class AlphaZero():
 		self.search_config = Search_Config()
 		self.search_config.load(search_config_path)
 
-		self.alpha_config = Training_Config()
-		self.alpha_config.load(alpha_config_path)
+		self.train_config = Training_Config()
+		self.train_config.load(train_config_path)
 
 		self.n_updates = 0
 		self.decisive_count = 0
@@ -123,27 +123,27 @@ class AlphaZero():
 
 		#NOTE: currently self-play uses the storage_network and testing uses the latest_network, they are only the same if storage_frequency=1
 
-		state_cache = self.alpha_config.optimization["state_cache"]
+		state_cache = self.train_config.optimization["state_cache"]
 
 
-		num_games_per_batch = self.alpha_config.running["num_games_per_batch"]
-		num_batches = self.alpha_config.running["num_batches"]
-		early_fill = self.alpha_config.running["early_fill"]
-		num_wr_testing_games = self.alpha_config.running["num_wr_testing_games"]
+		num_games_per_batch = self.train_config.running["num_games_per_batch"]
+		num_batches = self.train_config.running["num_batches"]
+		early_fill = self.train_config.running["early_fill"]
+		num_wr_testing_games = self.train_config.running["num_wr_testing_games"]
 
 		# Test set requires playing extra games
-		test_set = self.alpha_config.running["test_set"]
-		num_test_set_games = self.alpha_config.running["num_test_set_games"]
+		test_set = self.train_config.running["test_set"]
+		num_test_set_games = self.train_config.running["num_test_set_games"]
 
-		save_frequency = self.alpha_config.frequency["save_frequency"]
-		test_frequency = self.alpha_config.frequency["test_frequency"]
-		debug_frequency = self.alpha_config.frequency["debug_frequency"]
-		storage_frequency = self.alpha_config.frequency["storage_frequency"]
-		plot_frequency = self.alpha_config.frequency["plot_frequency"]
-		plot_reset = self.alpha_config.frequency["plot_reset"]
+		save_frequency = self.train_config.frequency["save_frequency"]
+		test_frequency = self.train_config.frequency["test_frequency"]
+		debug_frequency = self.train_config.frequency["debug_frequency"]
+		storage_frequency = self.train_config.frequency["storage_frequency"]
+		plot_frequency = self.train_config.frequency["plot_frequency"]
+		plot_reset = self.train_config.frequency["plot_reset"]
 
-		skip_target = self.alpha_config.learning['skip_target']
-		skip_frequency = self.alpha_config.learning['skip_frequency']
+		skip_target = self.train_config.learning['skip_target']
+		skip_frequency = self.train_config.learning['skip_frequency']
 
 		if test_frequency % save_frequency != 0:
 			print("\nInvalid values for save and/or test frequency.\nThe \"test_frequency\" value must be divisible by the \"save_frequency\" value.")
@@ -156,14 +156,14 @@ class AlphaZero():
 		# pickle the network class
 		file_name = self.model_folder_path + "base_model.pkl"
 		with open(file_name, 'wb') as file:
-			pickle.dump(self.latest_network.get_model(), file)
+			pickle.dump(self.latest_network.get_model().cpu(), file)
 			print(f'Successfully pickled model class at "{file_name}".\n')
 
 		# create copies of the config files
 		print("\nCreating config file copies:")
 		search_config_copy_path = self.model_folder_path + "search_config_copy.ini"
-		alpha_config_copy_path = self.model_folder_path + "alpha_config_copy.ini"
-		self.alpha_config.save(alpha_config_copy_path)
+		train_config_copy_path = self.model_folder_path + "train_config_copy.ini"
+		self.train_config.save(train_config_copy_path)
 		self.search_config.save(search_config_copy_path)
 		print("\n\n--------------------------------\n")
 
@@ -171,9 +171,9 @@ class AlphaZero():
         # ------------- STORAGE AND BUFFERS SETUP -------------- #
         # ------------------------------------------------------ #
 
-		shared_storage_size = self.alpha_config.learning["shared_storage_size"]
-		replay_window_size = self.alpha_config.learning["replay_window_size"]
-		learning_method = self.alpha_config.learning["learning_method"]
+		shared_storage_size = self.train_config.learning["shared_storage_size"]
+		replay_window_size = self.train_config.learning["replay_window_size"]
+		learning_method = self.train_config.learning["learning_method"]
 
 		self.network_storage = Shared_network_storage.remote(shared_storage_size)
 
@@ -182,11 +182,11 @@ class AlphaZero():
 		self.latest_network.model_to_device()
 
 		if learning_method == "epochs":
-			batch_size = self.alpha_config.epochs["batch_size"]
-			learning_epochs = self.alpha_config.epochs["learning_epochs"]
-			plot_epoch = self.alpha_config.epochs["plot_epoch"]
+			batch_size = self.train_config.epochs["batch_size"]
+			learning_epochs = self.train_config.epochs["learning_epochs"]
+			plot_epoch = self.train_config.epochs["plot_epoch"]
 		elif learning_method == "samples":
-			batch_size = self.alpha_config.samples["batch_size"]
+			batch_size = self.train_config.samples["batch_size"]
 
 		self.replay_buffer = Replay_Buffer.remote(replay_window_size, batch_size)
 
@@ -202,14 +202,14 @@ class AlphaZero():
         # ------------------ OPTIMIZER SETUP ------------------- #
         # ------------------------------------------------------ #
 
-		optimizer_name = self.alpha_config.optimizer["optimizer"]
-		learning_rate = self.alpha_config.optimizer["learning_rate"]
+		optimizer_name = self.train_config.optimizer["optimizer"]
+		learning_rate = self.train_config.optimizer["learning_rate"]
 
-		weight_decay = self.alpha_config.optimizer["weight_decay"]
-		momentum = self.alpha_config.optimizer["momentum"]
+		weight_decay = self.train_config.optimizer["weight_decay"]
+		momentum = self.train_config.optimizer["momentum"]
 
-		scheduler_boundaries = self.alpha_config.optimizer["scheduler_boundaries"]
-		scheduler_gamma = self.alpha_config.optimizer["scheduler_gamma"]
+		scheduler_boundaries = self.train_config.optimizer["scheduler_boundaries"]
+		scheduler_gamma = self.train_config.optimizer["scheduler_gamma"]
 		
 		if optimizer_name == "Adam":
 			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
@@ -502,10 +502,10 @@ class AlphaZero():
 	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
 		start = time.time()
 
-		pred_iterations = self.alpha_config.recurrent_networks["num_pred_iterations"]
+		pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
 
-		num_actors = self.alpha_config.actors["num_actors"]
-		chunk_size = self.alpha_config.actors["chunk_size"]
+		num_actors = self.train_config.actors["num_actors"]
+		chunk_size = self.train_config.actors["chunk_size"]
 
 		if test_set:
 			buffer_to_use = self.test_buffer
@@ -562,10 +562,10 @@ class AlphaZero():
 		start = time.time()
 		print("\n")
 
-		test_mode = self.alpha_config.running["testing_mode"]
-		test_iterations = self.alpha_config.recurrent_networks["num_test_iterations"]
-		num_actors = self.alpha_config.actors["num_actors"]
-		chunk_size = self.alpha_config.actors["chunk_size"]
+		test_mode = self.train_config.running["testing_mode"]
+		test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
+		num_actors = self.train_config.actors["num_actors"]
+		chunk_size = self.train_config.actors["chunk_size"]
 
 		stats_list = []
 		wins = [0,0]
@@ -657,8 +657,8 @@ class AlphaZero():
 		start = time.time()
 
 		replace = True
-		train_iterations = self.alpha_config.recurrent_networks["num_train_iterations"]
-		batch_extraction = self.alpha_config.learning["batch_extraction"]
+		train_iterations = self.train_config.recurrent_networks["num_train_iterations"]
+		batch_extraction = self.train_config.learning["batch_extraction"]
 
 		replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
 		n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=120)
@@ -669,7 +669,7 @@ class AlphaZero():
 		print("Total number of games: " + str(n_games))
 		
 		if learning_method == "epochs":
-			learning_epochs = self.alpha_config.epochs["learning_epochs"]
+			learning_epochs = self.train_config.epochs["learning_epochs"]
 			
 			if  batch_size > replay_size:
 				print("Batch size too large.\n" + 
@@ -797,8 +797,8 @@ class AlphaZero():
 				self.test_global_combined_loss.extend(self.tests_combined_loss)
 				
 		elif learning_method == "samples":
-			num_samples = self.alpha_config.samples["num_samples"]
-			late_heavy = self.alpha_config.samples["late_heavy"]
+			num_samples = self.train_config.samples["num_samples"]
+			late_heavy = self.train_config.samples["late_heavy"]
 
 			if batch_extraction == 'local':
 				future_buffer = self.replay_buffer.get_buffer.remote()
@@ -868,7 +868,7 @@ class AlphaZero():
 	
 	def test_set_loss(self, batch, batch_size, iterations, loss_flag):
 
-		normalize_loss = self.alpha_config.learning["normalize_loss"]
+		normalize_loss = self.train_config.learning["normalize_loss"]
 		cross_entropy = nn.CrossEntropyLoss()
 
 		combined_loss = 0.0
@@ -903,7 +903,7 @@ class AlphaZero():
 
 	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations, loss_flag):
 
-		normalize_loss = self.alpha_config.learning["normalize_loss"]
+		normalize_loss = self.train_config.learning["normalize_loss"]
 		cross_entropy = nn.CrossEntropyLoss()
 		
 		self.latest_network.get_model().train()

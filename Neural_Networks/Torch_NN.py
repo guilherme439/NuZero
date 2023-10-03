@@ -13,9 +13,9 @@ from torch import nn
 class Torch_NN():
 
     def __init__(self, game, model):
-
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        #print(f"\n--------------\nUsing {self.device} device\n--------------\n")
+        
+        self.model = model
+        self.check_devices()
 
         self.model = model.to(self.device)
         if not hasattr(self.model, "recurrent"):
@@ -36,7 +36,10 @@ class Torch_NN():
         self.model = self.model.to('cpu')
 
     def model_to_device(self):
-        print(torch.cuda.is_available())
+        self.model = self.model.to(self.device)
+
+    def check_devices(self):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = self.model.to(self.device)
     
     def inference(self, state, training, iters_to_do=2):

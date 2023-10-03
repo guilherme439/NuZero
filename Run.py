@@ -88,9 +88,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     exclusive_group = parser.add_mutually_exclusive_group(required=True)
-    parser.add_argument(
-        "--name", type=str, default="",
-        help="Change the name of network trained with the preset")
     exclusive_group.add_argument(
         "--interactive", action='store_true',
         help="Create a simple training setup interactivly"
@@ -98,6 +95,14 @@ def main():
     exclusive_group.add_argument(
         "--training-preset", type=int,
         help="Choose one of the preset training setups"
+    )
+    parser.add_argument(
+        "--name", type=str, default="",
+        help="Change the name of network trained with the preset"
+    )
+    parser.add_argument(
+        "--driver-log", action='store_true',
+        help="log_to_driver=True"
     )
     exclusive_group.add_argument(
         "--debug", type=int,
@@ -581,11 +586,11 @@ def load_trained_network(game, net_name, model_iteration):
 
     with open(pickle_path, 'rb') as file:
         model = pickle.load(file)
-    model.load_state_dict(torch.load(trained_model_path))
+    model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
 
     nn = Torch_NN(game, model)
 
-    search_config = Search_config()
+    search_config = Search_Config()
     search_config.load(search_config_path)
 
     return nn, search_config
@@ -664,13 +669,13 @@ def str_to_class(classname):
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-def start_ray_local():
+def start_ray_local(log_to_driver):
     print("\n\n--------------------------------\n\n")
-		
-    context = ray.init(log_to_driver=False)
+
+    context = ray.init(log_to_driver=log_to_driver)
     return context
 
-def start_ray_local_cluster():
+def start_ray_local_cluster(log_to_driver):
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
@@ -679,10 +684,10 @@ def start_ray_local_cluster():
 					pip="./requirements.txt"
 					)
 		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=False)
+    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
     return context
 
-def start_ray_slice():
+def start_ray_slice(log_to_driver):
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
@@ -691,7 +696,7 @@ def start_ray_slice():
 					conda="tese",
 					)
 		
-    context = ray.init(runtime_env=runtime_env, log_to_driver=True)
+    context = ray.init(runtime_env=runtime_env, log_to_driver=log_to_driver)
     return context
 
 if __name__ == "__main__":

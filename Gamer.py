@@ -31,7 +31,7 @@ class Gamer():
         
 
     def play_game(self):
-        future_network = self.shared_storage.get_latest_network.remote() # ask for latest network
+        future_network = self.shared_storage.get_latest_network.remote() # ask for a copy of the latest network
 
         stats = \
         {
@@ -50,9 +50,10 @@ class Gamer():
         
         subtree_root = Node(0)
         game = self.game_class(*self.game_args)
-        
-        network = ray.get(future_network, timeout=200)
-        network.model_to_device()
+
+        network_copy = ray.get(future_network, timeout=200)
+        network_copy.check_devices() # Switch to gpu if available
+
         while not game.is_terminal():
             state = game.generate_state_image()
             game.store_state(state)
@@ -61,7 +62,7 @@ class Gamer():
             if not keep_sub_tree:
                 subtree_root = Node(0)
             
-            action_i, chosen_child, root_bias = self.explorer.run_mcts(network, game, subtree_root, self.state_dict)
+            action_i, chosen_child, root_bias = self.explorer.run_mcts(network_copy, game, subtree_root, self.state_dict)
             tree_size = subtree_root.get_visit_count()
             node_children = subtree_root.num_children()
 
