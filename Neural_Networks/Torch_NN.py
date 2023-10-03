@@ -36,6 +36,7 @@ class Torch_NN():
         self.model = self.model.to('cpu')
 
     def model_to_device(self):
+        print(torch.cuda.is_available())
         self.model = self.model.to(self.device)
     
     def inference(self, state, training, iters_to_do=2):
