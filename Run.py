@@ -101,7 +101,7 @@ def main():
         help="Change the name of network trained with the preset"
     )
     parser.add_argument(
-        "--driver-log", action='store_true',
+        "--log-driver", action='store_true',
         help="log_to_driver=True"
     )
     exclusive_group.add_argument(
@@ -116,6 +116,10 @@ def main():
     args = parser.parse_args()
                
     if args.training_preset is not None:
+        log_to_driver = False
+        if args.log_driver:
+            log_to_driver = True
+
         match args.training_preset:
             case 0: # Tic_tac_toe example
                 game_class = tic_tac_toe
@@ -136,7 +140,7 @@ def main():
                 model = MLP_Net(num_actions)
 
                 print("\n")
-                context = start_ray_local()
+                context = start_ray_local(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
@@ -161,7 +165,7 @@ def main():
                     network_name = args.name
 
                 print("\n")
-                context = start_ray_local()
+                context = start_ray_local(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
@@ -188,7 +192,7 @@ def main():
                     network_name = args.name
 
                 print("\n")
-                context = start_ray_local_cluster()
+                context = start_ray_local_cluster(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
@@ -233,7 +237,7 @@ def main():
 
 
                 print("\n")
-                context = start_ray_local()
+                context = start_ray_local(log_to_driver)
                 continue_training(game_class, game_args, trained_network_name, continue_network_name, \
                                   use_same_configs, new_alpha_config_path, new_search_config_path)
                 
@@ -669,13 +673,13 @@ def str_to_class(classname):
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-def start_ray_local(log_to_driver):
+def start_ray_local(log_to_driver=False):
     print("\n\n--------------------------------\n\n")
 
     context = ray.init(log_to_driver=log_to_driver)
     return context
 
-def start_ray_local_cluster(log_to_driver):
+def start_ray_local_cluster(log_to_driver=False):
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
@@ -687,7 +691,7 @@ def start_ray_local_cluster(log_to_driver):
     context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
     return context
 
-def start_ray_slice(log_to_driver):
+def start_ray_slice(log_to_driver=False):
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \

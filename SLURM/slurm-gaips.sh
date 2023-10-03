@@ -11,7 +11,7 @@
 #SBATCH --job-name=gaips
 
 
-python Run.py --training-preset 1 --name gaips_big_net
+python Run.py --training-preset 1 --name gaips_big_net --log-driver
 
 
 
