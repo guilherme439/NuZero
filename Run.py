@@ -408,13 +408,13 @@ def main():
                 #play_loop(10000, game_class, game_args, tester)
 
             case 1: # default search config
-                search_config = Search_config()
+                search_config = Search_Config()
 
                 filepath = "Configs/Config_files/default_search_config.ini"
                 search_config.save(filepath)
 
             case 2: # default alpha config
-                alpha_config = AlphaZero_config()
+                alpha_config = Training_Config()
 
                 filepath = "Configs/Config_files/default_alphazero_config.ini"
                 alpha_config.save(filepath)
@@ -555,7 +555,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
     # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
     starting_iteration = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
     latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(starting_iteration) + "_model"
-    model.load_state_dict(torch.load(latest_model_path))
+    model.load_state_dict(torch.load(latest_model_path, map_location=torch.device('cpu')))
 
     if use_same_configs:
         alpha_config_path = trained_model_folder_path + "alpha_config_copy.ini"
