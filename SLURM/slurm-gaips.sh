@@ -6,7 +6,7 @@
 #SBATCH --time=72:00:00
 
 #SBATCH --mincpus=18
-#SBATCH --gres=shard:10
+#SBATCH --gres=shard:0
 
 #SBATCH --job-name=gaips
 
