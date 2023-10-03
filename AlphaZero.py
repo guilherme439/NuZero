@@ -19,8 +19,8 @@ from torch import nn
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from Configs.AlphaZero_config import AlphaZero_config
-from Configs.Search_config import Search_config
+from Configs.Training_Config import Training_Config
+from Configs.Search_Config import Search_Config
 
 from Gamer import Gamer
 from Replay_Buffer import Replay_Buffer
@@ -70,10 +70,10 @@ class AlphaZero():
 
 		self.latest_network = Torch_NN(game, model)
 			
-		self.search_config = Search_config()
+		self.search_config = Search_Config()
 		self.search_config.load(search_config_path)
 
-		self.alpha_config = AlphaZero_config()
+		self.alpha_config = Training_Config()
 		self.alpha_config.load(alpha_config_path)
 
 		self.n_updates = 0
