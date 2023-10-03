@@ -32,6 +32,12 @@ class Torch_NN():
     def get_model(self):
         return self.model
     
+    def model_to_cpu(self):
+        self.model = self.model.to('cpu')
+
+    def model_to_device(self):
+        self.model = self.model.to(self.device)
+    
     def inference(self, state, training, iters_to_do=2):
 
         if not training:

@@ -176,7 +176,9 @@ class AlphaZero():
 		learning_method = self.alpha_config.learning["learning_method"]
 
 		self.network_storage = Shared_network_storage.remote(shared_storage_size)
-		ray.get(self.network_storage.save_network.remote(self.latest_network))
+
+		self.latest_network.model_to_cpu()
+		initial_storage_future = self.network_storage.save_network.remote(self.latest_network)
 
 		if learning_method == "epochs":
 			batch_size = self.alpha_config.epochs["batch_size"]
@@ -287,7 +289,7 @@ class AlphaZero():
 				del all_weights
 
 		print("\nRay is ready.\n")
-		#ray.get(initial_storage_future) # wait for the network to be in storage
+		ray.get(initial_storage_future) # wait for the network to be in storage
 		print("\n--------------------------------\n")
 
 		if early_fill > 0:

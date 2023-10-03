@@ -31,7 +31,6 @@ class Gamer():
         
 
     def play_game(self):
-        torch.multiprocessing.set_sharing_strategy('file_system')
         future_network = self.shared_storage.get_latest_network.remote() # ask for latest network
 
         stats = \
@@ -51,7 +50,9 @@ class Gamer():
         
         subtree_root = Node(0)
         game = self.game_class(*self.game_args)
+        
         network = ray.get(future_network, timeout=200)
+        network.model_to_device()
         while not game.is_terminal():
             state = game.generate_state_image()
             game.store_state(state)
