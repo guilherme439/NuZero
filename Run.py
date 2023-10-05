@@ -50,6 +50,8 @@ from Shared_network_storage import Shared_network_storage
 
 from ray.runtime_env import RuntimeEnv
 
+from scipy.special import softmax
+
 '''
 ~/Desktop/ray_tmp/session_latest/runtime_resources/working_dir_files
 
@@ -150,8 +152,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/cluster_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/cluster_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
 
                 network_name = "local_net"
 
@@ -242,6 +244,66 @@ def main():
                                   use_same_configs, new_alpha_config_path, new_search_config_path)
                 
 
+            case 5: # Run with debug set
+                
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game = game_class(*game_args)
+
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+
+                network_name = "local_net"
+
+                ################################################
+
+                renderer = SCS_Renderer()
+
+                state_set = []
+                game.set_simple_game_state(6, [1], [(0,1)], [2])
+                state_set.append(game.generate_state_image())
+                #renderer.display_board(game)
+
+                game.reset_env()
+                game.set_simple_game_state(6, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
+                state_set.append(game.generate_state_image())
+                #renderer.display_board(game)
+
+                game.reset_env()
+                game.set_simple_game_state(6, [1], [(4,4)], [2])
+                state_set.append(game.generate_state_image())
+                #renderer.display_board(game)
+
+                game.reset_env()
+                game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
+                state_set.append(game.generate_state_image())
+                #renderer.display_board(game)
+
+                game.reset_env()
+                game.set_simple_game_state(6, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
+                state_set.append(game.generate_state_image())
+                #renderer.display_board(game)
+
+                game.reset_env()
+                game.set_simple_game_state(6, [1], [(4,3)], [1])
+                state_set.append(game.generate_state_image())
+                #renderer.display_board(game)
+
+                game.reset_env()
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_DTNet(in_channels, policy_channels, 350)
+
+                if args.name is not None and args.name != "":
+                    network_name = args.name
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero.run()
+
+
             case 6:
                 # Define your setup here
                 exit()
@@ -256,8 +318,8 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/test_config.yml"]
-                method = "random"
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                method = "policy"
 
                 # testing options
                 AI_player = "2"
@@ -265,7 +327,7 @@ def main():
 
                 # network options
                 net_name = "soldier_value_factor_continue"
-                model_iteration = 170
+                model_iteration = 240
 
                 # TODO: Add possibilty of using second network
 
@@ -307,16 +369,16 @@ def main():
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
-                method = "mcts"
+                method = "random"
 
                 # testing options
-                num_games = 50
+                num_games = 100
                 AI_player = "2"
                 recurrent_iterations = 3
 
                 # network options
                 net_name = "soldier_value_factor_continue"
-                model_iteration = 19
+                model_iteration = 244
 
                 # TODO: Add possibilty of using second network
 
@@ -330,74 +392,6 @@ def main():
             case _:
                 print("Unknown testing preset.")
                 return
-
-
-    elif args.interactive:
-        print("\nStarted interactive mode!\n")
-        print("\nAnswer the questions to start training or testing.\n")
-
-        game_class, game_args = choose_game()
-        game = game_class(*game_args)
-        game_folder_name = game.get_name()
-
-        continue_answer = input("\nDo you wish to continue training a previous network or train a new one?(1 or 2)\
-                                 \n1 -> Continue training\
-                                 \n2 -> New Network\n\n")
-        
-        if continue_answer == "1":
-            continuing = True
-        elif continue_answer == "2":
-            continuing = False
-        else:
-            print("Unknown answer.")
-            exit()
-                    
-        if continuing:
-            trained_network_name = input("\nName of the existing network: ")
-            continue_network_name = trained_network_name
-            new_name_answer = input("\nDo you wish to continue with the new name?(y/n)")
-            if new_name_answer == "y":
-                continue_network_name = input("\nNew name: ")
-
-            configs_answer = input("\nDo you wish to use the same previous configs?(y/n)")
-            if configs_answer == "y":
-                use_same_configs = True
-                new_alpha_config_path = ""
-                new_search_config_path = ""
-            else:
-                use_same_configs = False
-                print("\nYou will new to provide new configs.")
-                new_alpha_config_path = input("\nAlpha config path: ")
-                new_search_config_path = input("\nSearch config path: ")
-
-            continue_training(game_class, game_args, trained_network_name, continue_network_name, \
-                                  use_same_configs, new_alpha_config_path, new_search_config_path)
-            
-        else:
-            invalid = True
-            network_name = input("\nName of the new network to train: ")
-            while invalid:
-                model_folder_path = game_folder_name + "/models/" + network_name + "/"
-                if not os.path.exists(model_folder_path):
-                    invalid = False
-                else:
-                    network_name = input("\nThere is a network with that name already.\
-                                          \nPlease choose a new name: ")
-
-            model = choose_model(game)
-
-            alpha_config_path = "Configs/Config_files/default_alpha_config.ini"
-            search_config_path = "Configs/Config_files/default_search_config.ini"
-            print("\nThe default config paths are:\n " + alpha_config_path + "\n " + search_config_path)
-
-            change_configs = input("\nDo you wish to use these configs?(y/n)")
-            if change_configs == "y":
-                print("\nYou will new to provide new configs.")
-                alpha_config_path = input("\nAlpha config path: ")
-                search_config_path = input("\nSearch config path: ")
-
-            alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
-            alpha_zero.run()
 
 
     elif args.debug is not None:
@@ -424,7 +418,6 @@ def main():
 
             case 2: # default alpha config
                 alpha_config = Training_Config()
-
                 filepath = "Configs/Config_files/default_alphazero_config.ini"
                 alpha_config.save(filepath)
 
@@ -434,7 +427,69 @@ def main():
                 game = game_class(*game_args)
 
             case 4:
-                print(12%256)
+                renderer = SCS_Renderer()
+                source_path = renderer.create_marker_from_scratch("sCraTCh", (4,7,12), "mechanized", color_rgb=(53, 84, 135))
+                renderer.add_border("red", source_path)
+                
+            case 5: # Debug 
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game = game_class(*game_args)
+
+                # network options
+                net_name = "soldier_value_factor_continue"
+                model_iteration = 305
+                recurrent_iterations = 3
+
+                ##########################################################################
+
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                
+                game.set_simple_game_state(7, [1], [(0,1)], [2])
+
+                renderer = SCS_Renderer()
+                renderer.display_board(game)
+
+                state = game.generate_state_image()
+                
+                policy, value = nn.inference(state, False, 3)
+
+                print("\nSoftmax Policy:\n" + str(softmax(policy)) + "\n\n")
+                print("Value: " + str(value.item()) + "\n\n")
+
+            case 6:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game = game_class(*game_args)
+
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_DTNet(in_channels, policy_channels, 256)
+
+                
+
+
+    elif args.interactive:
+        print("\nStarted interactive mode!\n")
+        
+        mode_answer = input("\nDo you wish to continue training a previous network or train a new one?(insert the number)\
+                             \n 1 -> Training\
+                             \n 2 -> Testing\
+                             \n 3 -> Image creation\
+                             \n\nNumber: ")
+        
+        match int(mode_answer):
+            case 1:
+                training_mode()
+            case 2:
+                testing_mode()
+            case 3:
+                images_mode()
+
+            case _:
+                print("Option unavailable")    
+
     
     return
 
@@ -443,6 +498,76 @@ def main():
 # ---------------------------   INTERACTIVE   -------------------------- #
 # ----------------------------               --------------------------- #
 ##########################################################################
+
+def images_mode():
+    return
+
+def testing_mode():
+    return
+
+def training_mode():
+    game_class, game_args = choose_game()
+    game = game_class(*game_args)
+    game_folder_name = game.get_name()
+
+    continue_answer = input("\nDo you wish to continue training a previous network or train a new one?(1 or 2)\
+                                \n1 -> Continue training\
+                                \n2 -> New Network\n\n")
+    
+    if continue_answer == "1":
+        continuing = True
+    elif continue_answer == "2":
+        continuing = False
+    else:
+        print("Unknown answer.")
+        exit()
+                
+    if continuing:
+        trained_network_name = input("\nName of the existing network: ")
+        continue_network_name = trained_network_name
+        new_name_answer = input("\nDo you wish to continue with the new name?(y/n)")
+        if new_name_answer == "y":
+            continue_network_name = input("\nNew name: ")
+
+        configs_answer = input("\nDo you wish to use the same previous configs?(y/n)")
+        if configs_answer == "y":
+            use_same_configs = True
+            new_alpha_config_path = ""
+            new_search_config_path = ""
+        else:
+            use_same_configs = False
+            print("\nYou will new to provide new configs.")
+            new_alpha_config_path = input("\nAlpha config path: ")
+            new_search_config_path = input("\nSearch config path: ")
+
+        continue_training(game_class, game_args, trained_network_name, continue_network_name, \
+                                use_same_configs, new_alpha_config_path, new_search_config_path)
+        
+    else:
+        invalid = True
+        network_name = input("\nName of the new network to train: ")
+        while invalid:
+            model_folder_path = game_folder_name + "/models/" + network_name + "/"
+            if not os.path.exists(model_folder_path):
+                invalid = False
+            else:
+                network_name = input("\nThere is a network with that name already.\
+                                        \nPlease choose a new name: ")
+
+        model = choose_model(game)
+
+        alpha_config_path = "Configs/Config_files/default_alpha_config.ini"
+        search_config_path = "Configs/Config_files/default_search_config.ini"
+        print("\nThe default config paths are:\n " + alpha_config_path + "\n " + search_config_path)
+
+        change_configs = input("\nDo you wish to use these configs?(y/n)")
+        if change_configs == "y":
+            print("\nYou will new to provide new configs.")
+            alpha_config_path = input("\nAlpha config path: ")
+            search_config_path = input("\nSearch config path: ")
+
+        alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
+        alpha_zero.run()
 
 def choose_game():
     available_games = ("SCS", "tic_tac_toe")

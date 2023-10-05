@@ -34,11 +34,13 @@ from progress.spinner import PieSpinner
 
 from PrintBar import PrintBar
 
+from loss_functions import *
+
 
 class AlphaZero():
 
 	
-	def __init__(self, game_class, game_args, model, net_name, train_config_path, search_config_path, plot_data_path=None):
+	def __init__(self, game_class, game_args, model, net_name, train_config_path, search_config_path, plot_data_path=None, state_set=None):
 
 		
 		# ------------------------------------------------------ #
@@ -79,6 +81,9 @@ class AlphaZero():
 		self.n_updates = 0
 		self.decisive_count = 0
 
+		if state_set is not None:
+			self.state_set=state_set
+
 		# ------------------------------------------------------ #
         # ----------------------- PLOTS ------------------------ #
         # ------------------------------------------------------ #
@@ -103,12 +108,16 @@ class AlphaZero():
 		self.test_global_policy_loss = []
 		self.test_global_combined_loss = []
 
-		self.p1_wr_stats = [[],[]]
-		self.p2_wr_stats = [[],[]]
+		self.p1_policy_wr_stats = [[],[]]
+		self.p2_policy_wr_stats = [[],[]]
+		self.p1_mcts_wr_stats = [[],[]]
+		self.p2_mcts_wr_stats = [[],[]]
 
 		self.weight_size_max = []
 		self.weight_size_min = []
 		self.weight_size_average = []
+
+		self.state_set_stats = [ [] for state in self.state_set ]
 		
 
 	def run(self, starting_iteration=0):
@@ -127,6 +136,7 @@ class AlphaZero():
 
 
 		num_games_per_batch = self.train_config.running["num_games_per_batch"]
+		test_mode = self.train_config.running["testing_mode"]
 		num_batches = self.train_config.running["num_batches"]
 		early_fill = self.train_config.running["early_fill"]
 		num_wr_testing_games = self.train_config.running["num_wr_testing_games"]
@@ -153,6 +163,14 @@ class AlphaZero():
         # ------------------- BACKUP FILES --------------------- #
         # ------------------------------------------------------ #
 		
+		# write model summary and game args to file
+		file_name = self.model_folder_path + "model_and_game_config.txt"
+		with open(file_name, "w") as file:
+			file.write(self.game_args.__str__())
+			file.write("\n\n\n\n----------------------------------\n\n")
+			file.write(self.latest_network.get_model().__str__())
+			
+
 		# pickle the network class
 		file_name = self.model_folder_path + "base_model.pkl"
 		with open(file_name, 'wb') as file:
@@ -214,7 +232,7 @@ class AlphaZero():
 		if optimizer_name == "Adam":
 			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
 		elif optimizer_name == "SGD":
-			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay = weight_decay)
+			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
 		else:
 			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
 			print("Bad optimizer config.\nUsing default optimizer (Adam)...")
@@ -255,22 +273,20 @@ class AlphaZero():
 				self.test_global_policy_loss = pickle.load(file)
 				self.test_global_combined_loss = pickle.load(file)
 
-				self.p1_wr_stats = pickle.load(file)
-				self.p2_wr_stats = pickle.load(file)
-
 				self.weight_size_max = pickle.load(file)
 				self.weight_size_min = pickle.load(file)
 				self.weight_size_average = pickle.load(file)
+
+				self.p1_policy_wr_stats = pickle.load(file)
+				self.p2_policy_wr_stats = pickle.load(file)
+				self.p1_mcts_wr_stats = pickle.load(file)
+				self.p2_mcts_wr_stats = pickle.load(file)
+
+				
 		else:
 			# Initial save (untrained network)
 			save_path = self.model_folder_path + self.network_name + "_" + str(starting_iteration) + "_model"
 			torch.save(model_dict, save_path)
-
-			# Set initial win rate to 0 (simplification to avoid testing untrained network)
-			if self.plot_wr:
-				for player in (0,1):
-					self.p1_wr_stats[player].append(0.0)
-					self.p2_wr_stats[player].append(0.0)
 
 			if self.plot_weights:
 				# Dummy forward pass to initialize the weights
@@ -334,16 +350,19 @@ class AlphaZero():
 				torch.save(self.latest_network.get_model().state_dict(), save_path)
 			
 			if (((b+1) % test_frequency) == 0) and updated:
-				p1_results = self.run_tests("1", num_wr_testing_games, state_cache)
-				p2_results = self.run_tests("2", num_wr_testing_games, state_cache)
+				if test_mode == "policy" or test_mode == "both":
+					p1_policy_results = self.run_tests("1", num_wr_testing_games, state_cache, "policy")
+					p2_policy_results = self.run_tests("2", num_wr_testing_games, state_cache, "policy")
+					for player in (0,1):
+						self.p1_policy_wr_stats[player].append(p1_policy_results[player])
+						self.p2_policy_wr_stats[player].append(p2_policy_results[player])
 
-				# save wr as p1 and p2 for plotting
-				for player in (0,1):
-					self.p1_wr_stats[player].append(p1_results[player])
-					self.p2_wr_stats[player].append(p2_results[player])
-
-			if (((b+1) % debug_frequency) == 0):
-				pass			
+				if test_mode == "mcts" or test_mode == "both":
+					p1_mcts_results = self.run_tests("1", num_wr_testing_games, state_cache, "mcts")
+					p2_mcts_results = self.run_tests("2", num_wr_testing_games, state_cache, "mcts")
+					for player in (0,1):
+						self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
+						self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])		
 
 			if (((b+1) % plot_frequency) == 0):
 				
@@ -376,21 +395,39 @@ class AlphaZero():
 					plt.clf()
 
 				if self.plot_wr:
+					
+					
+					if (test_mode == "policy" or test_mode == "both") and len(self.p1_policy_wr_stats[0]) > 1:
+						plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
+						plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
+						plt.title("Policy -> Win rates as Player 1")
+						plt.legend()
+						plt.savefig(self.plots_path + self.network_name + '_p1_policy_wr.png')
+						plt.clf()
 
-					plt.plot(range(len(self.p1_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
-					plt.plot(range(len(self.p1_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
-					plt.title("Win rates as Player 1")
-					plt.legend()
-					plt.savefig(self.plots_path + self.network_name + '_p1_wr.png')
-					plt.clf()
+
+						plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
+						plt.title("Policy -> Win rates as Player 2")
+						plt.legend()
+						plt.savefig(self.plots_path + self.network_name + '_p2_policy_wr.png')
+						plt.clf()
+
+					if (test_mode == "mcts" or test_mode == "both") and len(self.p1_mcts_wr_stats[0]) > 1:
+						plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
+						plt.title("MCTS -> Win rates as Player 1")
+						plt.legend()
+						plt.savefig(self.plots_path + self.network_name + '_p1_mcts_wr.png')
+						plt.clf()
 
 
-					plt.plot(range(len(self.p2_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
-					plt.plot(range(len(self.p2_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
-					plt.title("Win rates as Player 2")
-					plt.legend()
-					plt.savefig(self.plots_path + self.network_name + '_p2_wr.png')
-					plt.clf()
+						plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
+						plt.title("MCTS -> Win rates as Player 2")
+						plt.legend()
+						plt.savefig(self.plots_path + self.network_name + '_p2_mcts_wr.png')
+						plt.clf()
 
 				if self.plot_loss:
 
@@ -456,7 +493,20 @@ class AlphaZero():
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_total_loss.png')
 						plt.clf()
-					
+
+				if self.state_set is not None:
+					test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
+					for i in range(len(self.state_set)):
+						state = self.state_set[i]
+						_, value = self.latest_network.inference(state, False, test_iterations)
+						self.state_set_stats[i].append(value.item())
+
+						plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i])
+						plt.title("State " + str(i))
+						plt.legend()
+						plt.savefig(self.plots_path + self.network_name + '_state_' + str(i) + '.png')
+						plt.clf()
+
 			if (((b+1) % plot_reset) == 0):
 				self.train_global_combined_loss.clear()
 				self.train_global_policy_loss.clear()
@@ -481,12 +531,16 @@ class AlphaZero():
 				pickle.dump(self.test_global_policy_loss, file)
 				pickle.dump(self.test_global_combined_loss, file)
 
-				pickle.dump(self.p1_wr_stats, file)
-				pickle.dump(self.p2_wr_stats, file)
-
 				pickle.dump(self.weight_size_max, file)
 				pickle.dump(self.weight_size_min, file)
 				pickle.dump(self.weight_size_average, file)
+
+				pickle.dump(self.p1_policy_wr_stats, file)
+				pickle.dump(self.p2_policy_wr_stats, file)
+				pickle.dump(self.p1_mcts_wr_stats, file)
+				pickle.dump(self.p2_mcts_wr_stats, file)
+
+				
 
 			
 			print("\n\nMain process memory usage: ")
@@ -558,11 +612,10 @@ class AlphaZero():
 
 		return
 	
-	def run_tests(self, player_choice, num_games, state_cache, show_results=True, text="Testing"):	
+	def run_tests(self, player_choice, num_games, state_cache, test_mode, show_results=True, text="Testing"):	
 		start = time.time()
 		print("\n")
 
-		test_mode = self.train_config.running["testing_mode"]
 		test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
 		num_actors = self.train_config.actors["num_actors"]
 		chunk_size = self.train_config.actors["chunk_size"]
@@ -902,9 +955,30 @@ class AlphaZero():
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
 	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations, loss_flag):
+		
+		value_loss_choice = self.train_config.learning["value_loss"]
+		policy_loss_choice = self.train_config.learning["policy_loss"]
+		normalize_CEL = self.train_config.learning["normalize_cel"]
 
-		normalize_loss = self.train_config.learning["normalize_loss"]
-		cross_entropy = nn.CrossEntropyLoss()
+		policy_loss_function = None
+		value_loss_function = None
+		normalize_policy = False
+		match policy_loss_choice:
+			case "CEL":
+				policy_loss_function = nn.CrossEntropyLoss()
+				if normalize_CEL:
+					normalize_policy = True
+			case "KLD":
+				policy_loss_function = KLDivergence
+			case "MSE":
+				policy_loss_function = MSError
+		
+		match value_loss_choice:
+			case "SE":
+				value_loss_function = SquaredError
+			case "AE":
+				value_loss_function = AbsoluteError
+		
 		
 		self.latest_network.get_model().train()
 		optimizer.zero_grad()
@@ -927,22 +1001,23 @@ class AlphaZero():
 
 			predicted_value = predicted_values[i]
 			predicted_policy = predicted_policies[i]
-
+			predicted_policy = torch.flatten(predicted_policy)
 			
-			sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
-			if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
+			sample_loss = policy_loss_function(predicted_policy, target_policy)
+			if normalize_policy:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
 				sample_loss /= math.log(len(target_policy))
+
 			policy_loss += sample_loss
-			
-			value_loss += ((target_value - predicted_value) ** 2)
-			#value_loss += torch.abs(target_value - predicted_value)
+
+			value_loss += value_loss_function(predicted_value, target_value)
 			
 			
 		value_loss /= batch_size
 		policy_loss /= batch_size
+		combined_loss = policy_loss + value_loss
 
 		if loss_flag == 0:
-			loss = policy_loss + value_loss
+			loss = combined_loss
 		elif loss_flag == 1:
 			loss = value_loss
 		elif loss_flag == 2:
@@ -953,7 +1028,7 @@ class AlphaZero():
 		optimizer.step()
 		scheduler.step()
 		
+		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
-		return value_loss.item(), policy_loss.item(), loss.item()
 
 

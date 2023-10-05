@@ -47,6 +47,9 @@ class Unit(object):
     def get_arraival_locations(self):
         return self.arraival_locations
     
+    def set_arraival_locations(self, locations_list):
+        self.arraival_locations = locations_list
+    
     def set_status(self, new_status):
         self.status = new_status
     

@@ -6,6 +6,8 @@ import ray
 import math
 import sys
 
+from copy import copy, deepcopy
+
 from enum import Enum
 
 
@@ -15,7 +17,9 @@ class Color(Enum):
     YELLOW = (245, 200, 0)
     ORANGE = (200, 100, 0)
     RED = (200, 0, 0)
+    DARK_RED = (90, 10, 25)
     BROWN = (90, 50, 0)
+    DARK_GREEN = (60, 80, 40)
     GREEN = (45, 110, 10)
     LIGHT_BLUE = (40, 110, 230)
     BLUE = (0, 40, 90)
@@ -33,6 +37,8 @@ class SCS_Renderer():
         # Set the width and height of the output window, in pixels
         self.WINDOW_WIDTH = 1200
         self.WINDOW_HEIGHT = 1000
+        pygame.init()
+        
 
     # Passively render a game while it is being played, using a remote storage for communication
     def render(self):
@@ -202,6 +208,40 @@ class SCS_Renderer():
         # Done! Time to quit.
         pygame.quit()
         return
+
+    # Render the board
+    def display_board(self, game):
+        pygame.init()
+
+        # Set up the drawing window
+        screen = pygame.display.set_mode([self.WINDOW_WIDTH, self.WINDOW_HEIGHT])
+
+        running=True
+        while running:
+            
+            for event in pygame.event.get():
+                match event.type:
+                    case pygame.QUIT:
+                        running=False
+
+            # Fill the background with white
+            screen.fill(Color.WHITE.rgb())
+
+            # Render the board
+            self.render_board_hexagons(screen, game)
+
+            # Update de full display
+            pygame.display.flip()
+
+            # Limit fps
+            time.sleep(0.5)
+
+        # Done! Time to quit.
+        pygame.quit()
+
+# ------------------------------------------------------ #
+# ----------------- AUXILIARY METHODS ------------------ #
+# ------------------------------------------------------ #
 
     def render_board_hexagons(self, screen, game, debug=[]):
 
@@ -391,13 +431,108 @@ class SCS_Renderer():
 # -------------------- UNIT IMAGES --------------------- #
 # ------------------------------------------------------ #
 
-    def create_unit_image(self, image_name, base_unit_choice, unit_stats):
-        pygame.init()
+    def color_str_to_rgb(self, color_str):
+        # There must be a better way of doing this
+
+        match color_str:
+            case "green":
+                rgb = Color.GREEN.rgb()
+            case "dark_green":
+                rgb = Color.DARK_GREEN.rgb()
+            case "red":
+                rgb = Color.RED.rgb()
+            case "dark_red":
+                rgb = Color.DARK_RED.rgb()
+            case "blue":
+                rgb = Color.BLUE.rgb()
+            case "black":
+                rgb = Color.BLACK.rgb()
+            case "light_blue":
+                rgb = Color.LIGHT_BLUE.rgb()
+            case _:
+                print("Unknown color choice.\nExiting")
+                exit()
+
+        return rgb
+ 
+    def create_marker_from_scratch(self, image_name, unit_stats, unit_type, color_str=None, color_rgb=None):
+        #pygame.init()
+
+        if color_rgb is not None:
+            image_color = color_rgb
+        elif color_str is not None:
+            image_color = self.color_str_to_rgb(color_str)
+        else:
+            print("You must either give a color_str(\"blue\") or color_rgb((50,23,246)) argument.\nExiting")
+            exit()
+
+        image_path = "SCS/Images/" + image_name + ".jpg"        
+
+        #### BACKGROUND ####
+        unit_image = pygame.Surface((800, 800))
+        unit_image.fill(image_color)
+
+
+        #### SYMBOL ####
+        unit_symbol_position = (220, 150)
+        unit_symbol_dimensions = (360, 200)
+
+        unit_symbol_rect = pygame.draw.rect(unit_image, Color.BLACK.rgb(),[unit_symbol_position, unit_symbol_dimensions], 16)
+        symbol_center = unit_symbol_rect.center
+
+        match unit_type:
+            case "infantary":
+                line_thickness = 8
+                margin = line_thickness // 2
+
+                top_left = (unit_symbol_rect.topleft[0]+margin, unit_symbol_rect.topleft[1]+margin)
+                top_right = (unit_symbol_rect.topright[0]-margin, unit_symbol_rect.topright[1]+margin)
+                bottom_left = (unit_symbol_rect.bottomleft[0]+margin, unit_symbol_rect.bottomleft[1]-margin)
+                bottom_right = (unit_symbol_rect.bottomright[0]-margin, unit_symbol_rect.bottomright[1]-margin)
+                # We needed to make the lines shorter by a certain margin so that they dont overflow outside the rectangle
+                pygame.draw.line(unit_image, Color.BLACK.rgb(), top_left, bottom_right, line_thickness)
+                pygame.draw.line(unit_image, Color.BLACK.rgb(), top_right, bottom_left, line_thickness)
+
+            case "mechanized":
+                line_thickness = 8
+                elipse_dims = ( unit_symbol_dimensions[0]*0.6, unit_symbol_dimensions[1]*0.6)
+                elipse_rect = pygame.Rect((0,0), elipse_dims)
+                elipse_rect.center = symbol_center
+                pygame.draw.ellipse(unit_image, Color.BLACK.rgb(), elipse_rect, line_thickness)
+
+            case _:
+                print("Unregonized type.\nExiting")
+                exit()
+
+
+        #### STATS ####
+        unit_stats_position = (140, 450)
+        unit_stats_dimensions = (520, 220)
+
+        (attack, defense, movement) = unit_stats
+
+        stats_area_rect = pygame.draw.rect(unit_image, Color.YELLOW.rgb(), [unit_stats_position, unit_stats_dimensions])
+        stats_area_w = stats_area_rect.width
+        stats_area_h = stats_area_rect.height
+
+        stats_text = str(attack) + " - "  + str(defense) + " - "  + str(movement)
+        stats_font = pygame.font.SysFont("uroob", 200)
+        stats_surface = stats_font.render(stats_text, True, Color.BLACK.rgb())
+        stats_surface = pygame.transform.scale(stats_surface, (0.75*stats_area_w, 1.1*stats_area_h))
+        stats_rect = stats_surface.get_rect(center=stats_area_rect.center)
+        stats_rect.y += 30
+        unit_image.blit(stats_surface, stats_rect)     
+    
+        pygame.image.save(unit_image, image_path)
+        #pygame.quit()
+        return image_path
+    
+    def create_marker_from_base_image(self, image_name, base_unit_choice, unit_stats):
+        #pygame.init()
         
         green_image_path = "SCS/Images/base_units/green_unit.jpg"
         red_image_path = "SCS/Images/base_units/red_unit.jpg"
         blue_image_path = "SCS/Images/base_units/blue_unit.jpg"
-        black_image_path = "SCS/Images/base_units/black_unit.jpg"
 
         (attack, defense, movement) = unit_stats
 
@@ -411,13 +546,11 @@ class SCS_Renderer():
                 rectangle_position = (45, 365)
                 rectangle_dims = (584, 244)
             case "blue":
-                raw_image_path = blue_image_path
+                print("blue base image not implemented yet.")
+                raw_image_path = red_image_path
                 rectangle_position = (45, 365)
                 rectangle_dims = (584, 244)
-            case "black":
-                raw_image_path = black_image_path
-                rectangle_position = (45, 365)
-                rectangle_dims = (584, 244)
+
             case _:
                 print("Unknown image choice.\nExiting")
                 exit()
@@ -441,32 +574,25 @@ class SCS_Renderer():
         final_image = raw_image.copy()
         image_path = "SCS/Images/" + image_name + ".jpg"
         pygame.image.save(final_image, image_path)  
-
+        #pygame.quit()
         return image_path
-    
-    def add_border(self, image_name, border_color_choice):
 
-        match border_color_choice:
-            case "green":
-                border_color = Color.GREEN.rgb()
-            case "red":
-                border_color = Color.RED.rgb()
-            case "blue":
-                border_color = Color.BLUE.rgb()
-            case "black":
-                border_color = Color.BLACK.rgb()
-            case _:
-                print("Unknown border color choice.\nExiting")
-                exit()
+    def add_border(self, color_str, source_path, dest_path=""):
+        #pygame.init()
+        border_color = color_str
 
-        image_path = "SCS/Images/" + image_name + ".jpg"
-        final_image = pygame.image.load(image_path)
+        if dest_path == "":
+            dest_path = source_path
+
+        final_image = pygame.image.load(source_path)
 
         (width, height) = final_image.get_size()
         border_thickness = int(0.04 * height)
         pygame.draw.rect(final_image, border_color, [0, 0, width, height], border_thickness)
 
-        return image_path
+        pygame.image.save(final_image, dest_path) 
+        #pygame.quit()
+        return dest_path
   
 
 # ------------------------------------------------------ #

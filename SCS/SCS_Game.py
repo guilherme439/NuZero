@@ -4,6 +4,7 @@ import torch
 import time
 import yaml
 import io
+import os
 
 from copy import copy, deepcopy
 
@@ -89,7 +90,7 @@ class SCS_Game():
         self.current_turn = 0
 
 
-        self.available_units = [[],[]]      # Units that have not move yet
+        self.available_units = [[],[]]      # Units that have not moved yet
         self.moved_units = [[],[]]          # Units that moved but didn't attack
         self.attacked_units = [[],[]]       # Units that already attacked
 
@@ -109,10 +110,13 @@ class SCS_Game():
         self.length = 0
         self.terminal_value = 0
         self.terminal = False
+
+        self.renderer = SCS_Renderer()
         
         if game_config_path != "":
             self.load_from_config(game_config_path)
             self.update_game_env()
+
 
         # ------------------------------------------------------ #
         # --------------- MCTS RELATED ATRIBUTES --------------- #
@@ -230,6 +234,9 @@ class SCS_Game():
 
     def get_state_from_history(self, i):
         return self.state_history[i]
+
+    def get_tile(self, position):
+        return self.board[position[0]][position[1]]
 
     def store_state(self, state):
         self.state_history.append(state)
@@ -454,7 +461,7 @@ class SCS_Game():
             new_unit.move_to(start, 0)
             self.available_units[player-1].append(new_unit)
 
-            tile = self.board[start[0]][start[1]]
+            tile = self.get_tile(start)
             tile.place_unit(new_unit)
 
         elif (act == 1): # Movement
@@ -462,7 +469,7 @@ class SCS_Game():
             unit = start_tile.get_unit_by_level(stacking_lvl)
 
             if start != dest:
-                dest_tile = self.board[dest[0]][dest[1]]
+                dest_tile = self.get_tile(dest)
                 
                 terrain = dest_tile.get_terrain()
                 cost = terrain.cost
@@ -484,11 +491,11 @@ class SCS_Game():
                 exit()
 
         elif (act == 2): # Choosing target
-            target_tile = self.board[start[0]][start[1]]
+            target_tile = self.get_tile(start)
             self.target_tile = target_tile
         
         elif (act == 3): # Choosing attacker
-            tile = self.board[start[0]][start[1]]
+            tile = self.get_tile(start)
             unit = tile.get_unit_by_level(stacking_lvl)
             self.attackers.append(unit)
 
@@ -498,7 +505,7 @@ class SCS_Game():
             self.attackers.clear()  # reset attackers
 
         elif (act == 5): # No movement
-            tile = self.board[start[0]][start[1]]
+            tile = self.get_tile(start)
             unit = tile.get_unit_by_level(stacking_lvl)
             self.end_movement(unit)
 
@@ -782,6 +789,39 @@ class SCS_Game():
         self.attacked_units[unit.player-1].append(unit)
         self.moved_units[unit.player-1].remove(unit)
 
+    def set_simple_game_state(self, turn, unit_ids_list, unit_position_list, player_list):
+        self.lenght = 0 # artificial game states don't have previous actions
+
+        if len(unit_ids_list) != len(unit_position_list) or len(unit_ids_list) != len(player_list):
+            print("All lists must have the same length.\nExiting")
+            exit()
+
+        # Create the units and place them at the specified position
+        for i in range(len(unit_ids_list)):
+            unit_id = unit_ids_list[i]
+            position = unit_position_list[i]
+            player = player_list[i]
+            player_index = player-1
+
+            unit_details = self.units_by_id[unit_id]
+            new_unit = self.create_unit(unit_details, player)
+
+            new_unit.move_to(position, 0)
+            self.available_units[player_index].append(new_unit)
+            tile = self.get_tile(position)
+            tile.place_unit(new_unit)
+
+        # Clear the reinforcements for the previous turns
+        for reinforcements in self.current_reinforcements.values():
+            for t in range(turn+1):
+                reinforcements[t].clear()
+            
+        # Set the turn and make sure the environment is updated
+        self.current_turn = turn
+        self.current_stage = 0
+        self.update_game_env()
+        return
+        
     # ------------------ COMBAT ------------------ #
     
     def destroy_unit(self, unit):
@@ -1266,8 +1306,8 @@ class SCS_Game():
         with open(filename, 'r') as stream:
             data_loaded = yaml.safe_load(stream)
 
-        units_by_id = {}
-        terrain_by_id = {}
+        self.units_by_id = {}
+        self.terrain_by_id = {}
         
         for section_name, values in data_loaded.items():
             match section_name:
@@ -1286,9 +1326,9 @@ class SCS_Game():
                     for unit_name, properties in values.items():
                         id = properties["id"]
                         properties.pop("id")
-                        units_by_id[id] = {}
-                        units_by_id[id]["name"] = unit_name
-                        units_by_id[id].update(properties)
+                        self.units_by_id[id] = {}
+                        self.units_by_id[id]["name"] = unit_name
+                        self.units_by_id[id].update(properties)
          
                 case "Reinforcements":
                     schedule = values["schedule"]
@@ -1318,7 +1358,8 @@ class SCS_Game():
                                   Reinforcement schedule should have \'turns + 1\' entries.\n \
                                   In order to account for initial troop placement (turn 0).")
                             exit()
-                        player_index = int(p[-1]) - 1
+                        player = int(p[-1])
+                        player_index = player - 1
                         self.all_reinforcements[player_index] = []
                         self.current_reinforcements[player_index] = []
                         for turn_idx in range(num_turns):
@@ -1327,17 +1368,8 @@ class SCS_Game():
                             self.all_reinforcements[player_index].append([])
                             self.current_reinforcements[player_index].append([])
                             for id in turn_units:
-                                player = player_index + 1
-                                name = units_by_id[id]["name"]
-                                attack = units_by_id[id]["attack"]
-                                defense = units_by_id[id]["defense"]
-                                mov_allowance = units_by_id[id]["movement"]
-                                image_path = units_by_id[id].get("image_path")
-                                if image_path is None:
-                                    renderer = SCS_Renderer()
-                                    image_name = "p" + str(player) + "_" + name
-                                    image_path = renderer.create_unit_image(image_name, player_index, (attack, defense, mov_allowance), False)
-                                
+                                unit_details = self.units_by_id[id]
+                                new_unit = self.create_unit(unit_details, player)
                                 
                                 if arrival_method == "Default":
                                     unit_arrival_locations = player_arrival_locations[player_index]
@@ -1345,7 +1377,7 @@ class SCS_Game():
                                     unit_arrival_locations = [ tuple(point) for point in locations[player_index][unit_indexes[player_index]] ]
                                     unit_indexes[player_index]+=1
 
-                                new_unit = Unit(name, attack, defense, mov_allowance, player, unit_arrival_locations, image_path)
+                                new_unit.set_arraival_locations(unit_arrival_locations)
                                 self.current_reinforcements[player_index][turn_idx].append(new_unit)
 
                     self.all_reinforcements = deepcopy(self.current_reinforcements)
@@ -1354,13 +1386,13 @@ class SCS_Game():
                     for terrain_name, properties in values.items():
                         id = properties["id"]
                         properties.pop("id")
-                        terrain_by_id[id] = {}
-                        terrain_by_id[id]["name"] = terrain_name
-                        terrain_by_id[id].update(properties)
+                        self.terrain_by_id[id] = {}
+                        self.terrain_by_id[id]["name"] = terrain_name
+                        self.terrain_by_id[id].update(properties)
 
                 case "Map":
                     self.terrain_types = []
-                    for id, properties in terrain_by_id.items():
+                    for id, properties in self.terrain_by_id.items():
                         instance =  Terrain(
                             attack_modifier=properties["attack_modifier"],
                             defense_modifier=properties["defense_modifier"],
@@ -1376,7 +1408,7 @@ class SCS_Game():
                         if values.get("distribution"):
                             distribution = values["distribution"]
                         else:
-                            num_terrains = len(terrain_by_id)
+                            num_terrains = len(self.terrain_by_id)
                             distribution = [1/num_terrains for _ in range(num_terrains)]
 
                         for i in range(self.rows):
@@ -1396,7 +1428,7 @@ class SCS_Game():
                                 self.board.append([])
                                 for j in range(self.columns):
                                     terrain_id = map_configuration[i][j]
-                                    terrain = terrain_by_id[terrain_id]["instance"]
+                                    terrain = self.terrain_by_id[terrain_id]["instance"]
                                     self.board[i].append(Tile((i,j), terrain))
                     else:
                         print("Unrecognized map creation method. Exiting")
@@ -1494,6 +1526,43 @@ class SCS_Game():
                 
         return new_game
 
+    def create_unit(self, unit_details, player):
+        name = unit_details["name"]
+        attack = unit_details["attack"]
+        defense = unit_details["defense"]
+        mov_allowance = unit_details["movement"]
+        image_path = unit_details.get("image_path")
+        if image_path is None:
+            image_name = "p" + str(player) + "_" + name
+            image_path = "SCS/Images/" + image_name + ".jpg"
+            if not os.path.isfile(image_path):
+                print("No image path provided")
+                print("Automatically creating image for unit.")
+                print("Image locaton: " + image_path + "\n\n")
+
+                stats=(attack, defense, mov_allowance)
+                if player == 1:
+                    color_str = "dark_green"
+                    border_color = "green"
+                elif player == 2:
+                    color_str = "dark_red"
+                    border_color = "red"
+                else:
+                    print("Unknown player.\nexiting")
+                    exit()
+                    
+                source_path = self.renderer.create_marker_from_scratch(image_name, stats, "infantary", color_str=color_str)
+                image_path = self.renderer.add_border(border_color, source_path)
+
+        else:
+            if not os.path.isfile(image_path):
+                print("Image path doesn't point to any file.\nexiting")
+                exit()
+
+            
+
+        new_unit = Unit(name, attack, defense, mov_allowance, player, [], image_path)
+        return new_unit
 
 ##########################################################################
 # ----------------------                         ----------------------- #

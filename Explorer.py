@@ -115,12 +115,12 @@ class Explorer():
 
 
         value_factor = self.config.exploration["value_factor"]
-
-        value_score = child.value() * value_factor
+        value_score = child.value()
         if parent.to_play == 2:
             value_score = (-value_score)
         # for player 2 negative values are good
         value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
+        value_score = value_score * value_factor
 
         return confidence_score + value_score
 
@@ -160,7 +160,6 @@ class Explorer():
             # Expand the node.
             valid_actions_mask = game.possible_actions().flatten()
             action_probs = action_probs.flatten()
-    
             
             probs = action_probs * valid_actions_mask # Use mask to get only valid moves
             total = np.sum(probs)
@@ -206,6 +205,7 @@ class Explorer():
             node.children[a].prior = node.children[a].prior * (1 - frac) + n * frac
 
     def print_tree(self, root, action_space_shape):
+        # Debug
         buffer = []
         print("\nRoot -> ")
         buffer.append((root, None, 0, None, 0))
