@@ -501,11 +501,11 @@ class AlphaZero():
 						_, value = self.latest_network.inference(state, False, test_iterations)
 						self.state_set_stats[i].append(value.item())
 
-						plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i])
-						plt.title("State " + str(i))
-						plt.legend()
-						plt.savefig(self.plots_path + self.network_name + '_state_' + str(i) + '.png')
-						plt.clf()
+						if len(self.state_set_stats[i]) > 1:
+							plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i])
+							plt.title("State " + str(i))
+							plt.savefig(self.plots_path + self.network_name + '_state_' + str(i) + '.png')
+							plt.clf()
 
 			if (((b+1) % plot_reset) == 0):
 				self.train_global_combined_loss.clear()

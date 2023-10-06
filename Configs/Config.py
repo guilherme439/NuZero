@@ -53,8 +53,8 @@ class Config():
 		
     def load(self, filepath):
         if not os.path.exists(filepath):
-            print("File does not exist.")
-            print("Exiting")
+            print(filepath + " does not exist.")
+            print("exiting")
             exit()
 
         config = configparser.ConfigParser()

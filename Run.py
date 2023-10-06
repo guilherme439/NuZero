@@ -226,22 +226,26 @@ def main():
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game = game_class(*game_args)
 
-                trained_network_name = "soldier_value_factor_continue"
-                continue_network_name = "soldier_value_factor_continue" # new network can have the same name as the previous
+                trained_network_name = "local_mse_ae"
+                continue_network_name = "local_mse_ae_continue" # new network can have the same name as the previous
                 use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
-                new_alpha_config_path="Configs/Config_files/slice_alpha_config.ini"
-                new_search_config_path="Configs/Config_files/slice_search_config.ini"
+                new_alpha_config_path="Configs/Config_files/local_alpha_config.ini"
+                new_search_config_path="Configs/Config_files/local_search_config.ini"
 
                 ################################################
+
+                state_set = None
+                state_set = create_state_set(game)
 
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
                 continue_training(game_class, game_args, trained_network_name, continue_network_name, \
-                                  use_same_configs, new_alpha_config_path, new_search_config_path)
+                                  use_same_configs, new_alpha_config_path, new_search_config_path, state_set)
                 
 
             case 5: # Run with debug set
@@ -257,39 +261,7 @@ def main():
 
                 ################################################
 
-                renderer = SCS_Renderer()
-
-                state_set = []
-                game.set_simple_game_state(6, [1], [(0,1)], [2])
-                state_set.append(game.generate_state_image())
-                #renderer.display_board(game)
-
-                game.reset_env()
-                game.set_simple_game_state(6, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
-                state_set.append(game.generate_state_image())
-                #renderer.display_board(game)
-
-                game.reset_env()
-                game.set_simple_game_state(6, [1], [(4,4)], [2])
-                state_set.append(game.generate_state_image())
-                #renderer.display_board(game)
-
-                game.reset_env()
-                game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
-                state_set.append(game.generate_state_image())
-                #renderer.display_board(game)
-
-                game.reset_env()
-                game.set_simple_game_state(6, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
-                state_set.append(game.generate_state_image())
-                #renderer.display_board(game)
-
-                game.reset_env()
-                game.set_simple_game_state(6, [1], [(4,3)], [1])
-                state_set.append(game.generate_state_image())
-                #renderer.display_board(game)
-
-                game.reset_env()
+                state_set = create_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -493,6 +465,42 @@ def main():
     
     return
 
+def create_state_set(game):
+    renderer = SCS_Renderer()
+
+    state_set = []
+    game.set_simple_game_state(6, [1], [(0,1)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(4,4)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(4,3)], [1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    return state_set
+
 ##########################################################################
 # ----------------------------               --------------------------- #
 # ---------------------------   INTERACTIVE   -------------------------- #
@@ -667,7 +675,7 @@ def choose_model(game):
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-def continue_training(game_class, game_args, trained_network_name, continue_network_name, use_same_configs, new_alpha_config_path=None, new_search_config_path=None):
+def continue_training(game_class, game_args, trained_network_name, continue_network_name, use_same_configs, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
     game = game_class(*game_args)
 
     game_folder_name = game.get_name()
@@ -692,7 +700,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
     model.load_state_dict(torch.load(latest_model_path, map_location=torch.device('cpu')))
 
     if use_same_configs:
-        alpha_config_path = trained_model_folder_path + "alpha_config_copy.ini"
+        alpha_config_path = trained_model_folder_path + "train_config_copy.ini"
         search_config_path = trained_model_folder_path + "search_config_copy.ini"
     else:
         if new_search_config_path is None or new_alpha_config_path is None:
@@ -701,7 +709,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
         alpha_config_path = new_alpha_config_path
         search_config_path = new_search_config_path
 
-    alpha_zero = AlphaZero(game_class, game_args, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path)
+    alpha_zero = AlphaZero(game_class, game_args, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
     alpha_zero.run(starting_iteration)
 
 def load_trained_network(game, net_name, model_iteration):
