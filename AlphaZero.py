@@ -134,7 +134,6 @@ class AlphaZero():
 
 		state_cache = self.train_config.optimization["state_cache"]
 
-
 		num_games_per_batch = self.train_config.running["num_games_per_batch"]
 		test_mode = self.train_config.running["testing_mode"]
 		num_batches = self.train_config.running["num_batches"]
@@ -308,7 +307,7 @@ class AlphaZero():
 		print("\nRay is ready.\n")
 		print("\n--------------------------------\n")
 
-		if early_fill > 0:
+		if early_fill > 0 and starting_iteration == 0:
 			print("\n\n\n\nEarly Buffer Fill\n")
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 

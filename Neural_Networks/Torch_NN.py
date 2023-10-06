@@ -38,6 +38,9 @@ class Torch_NN():
     def model_to_device(self):
         self.model = self.model.to(self.device)
 
+    def cuda_is_available():
+        return torch.cuda.is_available()
+
     def check_devices(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = self.model.to(self.device)
