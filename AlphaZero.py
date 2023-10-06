@@ -398,32 +398,32 @@ class AlphaZero():
 					
 					
 					if (test_mode == "policy" or test_mode == "both") and len(self.p1_policy_wr_stats[0]) > 1:
-						plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
-						plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_policy_wr_stats[1], label = "P2")
+						plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_policy_wr_stats[0], label = "P1")
 						plt.title("Policy -> Win rates as Player 1")
 						plt.legend()
 						plt.savefig(self.plots_path + self.network_name + '_p1_policy_wr.png')
 						plt.clf()
 
 
-						plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
-						plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
+						plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_policy_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_policy_wr_stats[1], label = "P2")
 						plt.title("Policy -> Win rates as Player 2")
 						plt.legend()
 						plt.savefig(self.plots_path + self.network_name + '_p2_policy_wr.png')
 						plt.clf()
 
 					if (test_mode == "mcts" or test_mode == "both") and len(self.p1_mcts_wr_stats[0]) > 1:
-						plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_wr_stats[0], label = "P1")
-						plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_wr_stats[1], label = "P2")
+						plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_mcts_wr_stats[1], label = "P2")
 						plt.title("MCTS -> Win rates as Player 1")
 						plt.legend()
 						plt.savefig(self.plots_path + self.network_name + '_p1_mcts_wr.png')
 						plt.clf()
 
 
-						plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_wr_stats[0], label = "P1")
-						plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_wr_stats[1], label = "P2")
+						plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_mcts_wr_stats[0], label = "P1")
+						plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_mcts_wr_stats[1], label = "P2")
 						plt.title("MCTS -> Win rates as Player 2")
 						plt.legend()
 						plt.savefig(self.plots_path + self.network_name + '_p2_mcts_wr.png')
