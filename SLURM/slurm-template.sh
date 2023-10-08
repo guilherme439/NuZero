@@ -61,7 +61,7 @@ export ip_head
 echo "IP Head: $ip_head"
 
 echo "STARTING HEAD at $node_1"
-srun --nodes=1 --ntasks=1 -w "$node_1" \
+srun --export=ALL,LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH,CUDA_VISIBLE_DEVICES=-1 --nodes=1 --ntasks=1 -w "$node_1" \
  ray start --head --node-ip-address="$ip" --port=$port --redis-password="$redis_password" &
  sleep 20
 
@@ -69,7 +69,7 @@ worker_num=$((SLURM_JOB_NUM_NODES - 1)) #number of nodes other than the head nod
 for ((i = 1; i <= worker_num; i++)); do
   node_i=${nodes_array[$i]}
   echo "STARTING WORKER $i at $node_i"
-  srun --nodes=1 --ntasks=1 -w "$node_i" \
+  srun --export=ALL,LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH,CUDA_VISIBLE_DEVICES=-1 --nodes=1 --ntasks=1 -w "$node_i" \
     ray start --address "$ip_head" --redis-password="$redis_password" &
     sleep 5
 done
