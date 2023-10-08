@@ -7,9 +7,10 @@ ${PARTITION_OPTION}
 # --- JOB SETTING --- #
 #SBATCH --job-name=${JOB_NAME}
 #SBATCH --output=${JOB_NAME}.log
-#SBATCH --time=96:00:00
+###SBATCH --time=96:00:00
 
 # --- NODE SETTINGS --- #
+
 ${GIVEN_NODE}
 #SBATCH --nodes=${NUM_NODES}
 #SBATCH --ntasks-per-node=1
@@ -20,7 +21,7 @@ ${GIVEN_NODE}
 
 #SBATCH --cpus-per-task=${NUM_CPUS}
 ###SBATCH --gres=shard:${GPU_MEM}
-#SBATCH --gpus-per-task=§{NUM_GPUS}
+###SBATCH --gpus-per-task=§{NUM_GPUS}
 
 
 # Environment setup
