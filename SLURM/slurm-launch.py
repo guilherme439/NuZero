@@ -10,13 +10,13 @@ from pathlib import Path
 template_file = "SLURM/slurm-template.sh"
 JOB_NAME = "${JOB_NAME}"
 NUM_NODES = "${NUM_NODES}"
-NUM_GPUS_PER_NODE = "${NUM_GPUS_PER_NODE}"
+NUM_GPUS = "${NUM_GPUS}"
 PARTITION_OPTION = "${PARTITION_OPTION}"
 GIVEN_NODE = "${GIVEN_NODE}"
 LOAD_ENV = "${LOAD_ENV}"
-TMP_DIR = "${TMP_DIR}"
 GPU_MEM = "${GPU_MEM}"
 NUM_CPUS = "${NUM_CPUS}"
+NET_NAME = "${NET_NAME}"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -25,6 +25,11 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="The job name and path to logging file (exp_name.log).",
+    )
+    parser.add_argument(
+        "--net-name",
+        type=str,
+        help="The name of the network being trained.",
     )
     parser.add_argument(
         "--num-nodes", "-n", type=int, default=1, help="Number of nodes to use."
@@ -37,7 +42,7 @@ if __name__ == "__main__":
         "return of 'sinfo'. Default: ''.",
     )
     parser.add_argument(
-        "--num-gpus",
+        "--gpus-per-node",
         type=int,
         default=0,
         help="Number of GPUs to use in each node. (Default: 0)",
@@ -49,7 +54,7 @@ if __name__ == "__main__":
         help="GPU memory to use. (Default: 0)",
     )
     parser.add_argument(
-        "--num-cpus",
+        "--cpus-per-node",
         type=int,
         default=0,
         help="CPUs per node. (Default: 0)",
@@ -64,14 +69,6 @@ if __name__ == "__main__":
         type=str,
         help="The script to load your environment ('module load cuda/10.1')",
         default="",
-    )
-    parser.add_argument(
-        "--gaips",
-        action='store_true'
-    )
-    parser.add_argument(
-        "--rnl",
-        action='store_true'
     )
     args = parser.parse_args()
 
@@ -93,29 +90,22 @@ if __name__ == "__main__":
     with open(template_file, "r") as f:
         text = f.read()
     text = text.replace(JOB_NAME, job_name)
+    text = text.replace(NET_NAME, args.net_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
-    text = text.replace(NUM_GPUS_PER_NODE, str(args.num_gpus))
+    text = text.replace(NUM_GPUS, str(args.gpus_per_node))
     text = text.replace(PARTITION_OPTION, partition_option)
     text = text.replace(LOAD_ENV, str(args.load_env))
     text = text.replace(GIVEN_NODE, node_info)
     text = text.replace(GPU_MEM, str(args.gpu_mem))
-    text = text.replace(NUM_CPUS, str(args.num_cpus))
+    text = text.replace(NUM_CPUS, str(args.cpus_per_node))
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO " "PRODUCTION!",
         "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
         "RUNNABLE!",
     )
 
-    if args.rnl:
-        text = text.replace(TMP_DIR, "/mnt/cirrus/users/5/2/ist189452/TESE/ray_tmp")
-    elif args.gaips:
-        text = text.replace(TMP_DIR, "/home/users/gpalma/Desktop/ray_tmp")
-    else:
-        text = text.replace(TMP_DIR, "/tmp/ray")
-
-
     # ===== Save the script =====
-    script_file = "SLURM/Scripts/" + str(args.num_nodes) + "_nodes-" + str(args.num_gpus) + "_gpus-" + str(args.exp_name) + ".sh"
+    script_file = "SLURM/Scripts/" + str(args.num_nodes) + "_nodes-" + str(args.exp_name) + ".sh"
     with open(script_file, "w") as f:
         f.write(text)
 

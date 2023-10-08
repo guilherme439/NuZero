@@ -179,10 +179,10 @@ def main():
                 game = game_class(*game_args)
 
     
-                alpha_config_path="Configs/Config_Files/Training/SCS_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/SCS_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/rnl1_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/rnl1_search_config.ini"
 
-                network_name = "slice_test"
+                network_name = "rnl_net"
 
                 ################################################
 
@@ -194,7 +194,7 @@ def main():
                     network_name = args.name
 
                 print("\n")
-                context = start_ray_local_cluster(log_to_driver)
+                context = start_ray_rnl(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
@@ -228,7 +228,7 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = "local_mse_ae"
+                trained_network_name = "local_mse_ae_continue"
                 continue_network_name = "local_mse_ae_continue" # new network can have the same name as the previous
                 use_same_configs = True
 
@@ -824,16 +824,19 @@ def start_ray_local_cluster(log_to_driver=False):
     context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
     return context
 
-def start_ray_slice(log_to_driver=False):
+def start_ray_rnl(log_to_driver=False):
     print("\n\n--------------------------------\n\n")
 
     runtime_env=RuntimeEnv \
 					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-					conda="tese",
+					working_dir="/mnt/cirrus/users/5/2/ist189452/TESE/NuZero",
+					pip="./requirements.txt",
+                    env_vars={"CUDA_VISIBLE_DEVICES": "-1",
+                              "LD_LIBRARY_PATH": "$NIX_LD_LIBRARY_PATH"
+                             }
 					)
 		
-    context = ray.init(runtime_env=runtime_env, log_to_driver=log_to_driver)
+    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
     return context
 
 if __name__ == "__main__":

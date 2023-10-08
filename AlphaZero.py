@@ -307,7 +307,7 @@ class AlphaZero():
 		print("\nRay is ready.\n")
 		print("\n--------------------------------\n")
 
-		if early_fill > 0 and starting_iteration == 0:
+		if early_fill > 0:
 			print("\n\n\n\nEarly Buffer Fill\n")
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
 
