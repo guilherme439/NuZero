@@ -153,8 +153,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net"
 
@@ -226,11 +226,11 @@ def main():
             case 4: # Continue Training
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = "local_mse_ae_continue"
-                continue_network_name = "local_mse_ae_continue" # new network can have the same name as the previous
+                trained_network_name = "soldier_value_factor_continue"
+                continue_network_name = "soldier_value_factor_continue_local" # new network can have the same name as the previous
                 use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
@@ -828,13 +828,16 @@ def start_ray_local_cluster(log_to_driver=False):
 def start_ray_rnl(log_to_driver=False):
     print("\n\n--------------------------------\n\n")
 
+    '''
+    env_vars={"CUDA_VISIBLE_DEVICES": "-1",
+            "LD_LIBRARY_PATH": "$NIX_LD_LIBRARY_PATH"
+            }
+    '''
+
     runtime_env=RuntimeEnv \
 					(
 					working_dir="/mnt/cirrus/users/5/2/ist189452/TESE/NuZero",
 					pip="./requirements.txt",
-                    env_vars={"CUDA_VISIBLE_DEVICES": "-1",
-                              "LD_LIBRARY_PATH": "$NIX_LD_LIBRARY_PATH"
-                             }
 					)
 		
     context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
