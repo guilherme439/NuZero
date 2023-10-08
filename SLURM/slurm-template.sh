@@ -19,7 +19,7 @@ ${GIVEN_NODE}
 # --- RESOURCE SETTINGS --- #
 
 #SBATCH --cpus-per-task=${NUM_CPUS}
-#SBATCH --gres=shard:${GPU_MEM}
+###SBATCH --gres=shard:${GPU_MEM}
 #SBATCH --gpus-per-task=§{NUM_GPUS}
 
 

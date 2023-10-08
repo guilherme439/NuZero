@@ -81,6 +81,7 @@ srun -w "$node_1"\
 
 srun --job-name=gaips --mincpus=18 --gres=shard:10 --ntasks-per-node=1 --time=72:00:00  python Run.py --training-preset 1 --name good_net_name
 
+LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH python SLURM/slurm-launch.py --exp-name rnl_tests --net-name rnl_tests -num-nodes 3 --cpus-per-node 5
 '''
 
 
