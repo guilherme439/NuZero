@@ -77,7 +77,7 @@ done
 
 
 #srun -w "$node_1"\
-python Run.py --training-preset 2 --name ${NET_NAME}
+LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH python Run.py --training-preset 2 --name ${NET_NAME}
 
 
 
