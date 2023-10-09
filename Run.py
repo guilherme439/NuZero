@@ -117,6 +117,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    print("CUDA: " + str(torch.cuda.is_available()))
                
     if args.training_preset is not None:
         log_to_driver = False
