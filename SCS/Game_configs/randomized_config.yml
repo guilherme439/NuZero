@@ -29,7 +29,7 @@ Units:
     attack: 2
     defense: 2
     movement: 4
-    image_path: "SCS/Images/tank.jpg"
+    image_path: "SCS/Images/tank.png"
 
 
 ###
