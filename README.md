@@ -13,8 +13,7 @@ AlphaZero + DeepThinking + WarGames
 * [x] feature
 
 
-### Further improvements
-Here is a list of features which could be interesting to add but which are not in MuZero's paper. We are open to contributions and other ideas.
+### Further improvements.
 
 * [ ] [no]()
 * [ ] [yes]()
