@@ -1556,6 +1556,7 @@ class SCS_Game():
 
         else:
             if not os.path.isfile(image_path):
+                print(image_path)
                 print("Image path doesn't point to any file.\nexiting")
                 exit()
 
