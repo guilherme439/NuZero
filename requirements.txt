@@ -1,5 +1,5 @@
 psutil
-ray
+ray["default"]
 numpy
 torch
 progress
