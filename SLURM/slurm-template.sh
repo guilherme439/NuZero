@@ -25,6 +25,7 @@ ${GIVEN_NODE}
 
 
 # Environment setup
+export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
 export LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH
 export CUDA_VISIBLE_DEVICES=-1
 

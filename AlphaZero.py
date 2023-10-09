@@ -67,8 +67,7 @@ class AlphaZero():
 
 		
 		self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
-		if plot_data_path != None:
-			self.plot_data_load_path = plot_data_path
+		self.plot_data_load_path = plot_data_path
 
 		self.latest_network = Torch_NN(game, model)
 			
@@ -81,8 +80,8 @@ class AlphaZero():
 		self.n_updates = 0
 		self.decisive_count = 0
 
-		if state_set is not None:
-			self.state_set=state_set
+		
+		self.state_set=state_set
 
 		# ------------------------------------------------------ #
         # ----------------------- PLOTS ------------------------ #

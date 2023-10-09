@@ -234,8 +234,8 @@ def main():
                 use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
-                new_alpha_config_path="Configs/Config_files/local_alpha_config.ini"
-                new_search_config_path="Configs/Config_files/local_search_config.ini"
+                new_alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 ################################################
 
