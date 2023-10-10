@@ -280,6 +280,9 @@ class AlphaZero():
 				self.p1_mcts_wr_stats = pickle.load(file)
 				self.p2_mcts_wr_stats = pickle.load(file)
 
+				if self.state_set is not None:
+					self.state_set_stats = pickle.load(file)
+
 				
 		else:
 			# Initial save (untrained network)
@@ -342,10 +345,6 @@ class AlphaZero():
 
 			if (((b+1) % storage_frequency) == 0):
 				iteration_storage_future = self.network_storage.save_network.remote(self.latest_network)			
-			
-			if (((b+1) % save_frequency) == 0):
-				save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"
-				torch.save(self.latest_network.get_model().state_dict(), save_path)
 			
 			if (((b+1) % test_frequency) == 0) and updated:
 				if test_mode == "policy" or test_mode == "both":
@@ -510,7 +509,10 @@ class AlphaZero():
 				self.train_global_policy_loss.clear()
 				self.train_global_value_loss.clear()
 
-
+			if (((b+1) % save_frequency) == 0):
+				save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"
+				torch.save(self.latest_network.get_model().state_dict(), save_path)
+				
 			# Save ploting information to use when continuing training
 			with open(self.plot_data_save_path, 'wb') as file:
 				pickle.dump(self.epochs_value_loss, file)
@@ -537,6 +539,9 @@ class AlphaZero():
 				pickle.dump(self.p2_policy_wr_stats, file)
 				pickle.dump(self.p1_mcts_wr_stats, file)
 				pickle.dump(self.p2_mcts_wr_stats, file)
+
+				if self.state_set is not None:
+					pickle.dump(self.state_set_stats, file)
 
 				
 

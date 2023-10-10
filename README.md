@@ -6,21 +6,25 @@ AlphaZero + DeepThinking + WarGames
 
 ## Features
 
-* [x] Feature 1
-* [x] Multi-Threaded/Asynchronous/[Cluster](https://docs.ray.io/en/latest/cluster-index.html) with [Ray](https://github.com/ray-project/ray)
-* [X] feature
-* [x] feature
-* [x] feature
+* [x] Self-play and Testing are done using [Ray](https://github.com/ray-project/ray) actors meaning it can be run multi-process/multi-computer.
+* [x] Saves checkpoints during training and allows continuing previous training in case anything goes wrong.
+* [X] Allows defining any custom game or network arquitecture(using pytorch).
+* [x] Tic Tac Toe and SCS games already implemented.
+* [X] Definition of any custom SCS games within the already implemented rules.
+* [x] Creation of custom SCS markers for units.
 
 
-### Further improvements.
+### Features in development
 
-* [ ] [no]()
-* [ ] [yes]()
-* [ ] [maybe]()
+* [ ] Fully Assyncronous Training as described in the [AlphaZero paper](link_to_paper)
+* [ ] CLI interactive mode for new users.
 * [ ] 
-* [ ] 
 
+
+### Future features
+
+* [ ] Training and testing preset creation and saving
+* [ ] Visual Interface for users to play SCS games
 
 ## Code structure
 
