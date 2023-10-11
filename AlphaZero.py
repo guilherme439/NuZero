@@ -253,38 +253,38 @@ class AlphaZero():
 		model = self.latest_network.get_model()
 		model_dict = model.state_dict()
 
-		if starting_iteration != 0 and self.plot_data_load_path != None:
-			# Load all the plot data
-			with open(self.plot_data_load_path, 'rb') as file:
-				self.epochs_value_loss = pickle.load(file)
-				self.epochs_policy_loss = pickle.load(file)
-				self.epochs_combined_loss = pickle.load(file)
+		if starting_iteration != 0:
+			if self.plot_data_load_path != None:
+				# Load all the plot data
+				with open(self.plot_data_load_path, 'rb') as file:
+					self.epochs_value_loss = pickle.load(file)
+					self.epochs_policy_loss = pickle.load(file)
+					self.epochs_combined_loss = pickle.load(file)
 
-				self.tests_value_loss = pickle.load(file)
-				self.tests_policy_loss = pickle.load(file)
-				self.tests_combined_loss = pickle.load(file)
+					self.tests_value_loss = pickle.load(file)
+					self.tests_policy_loss = pickle.load(file)
+					self.tests_combined_loss = pickle.load(file)
 
-				self.train_global_value_loss = pickle.load(file)
-				self.train_global_policy_loss = pickle.load(file)
-				self.train_global_combined_loss = pickle.load(file)
+					self.train_global_value_loss = pickle.load(file)
+					self.train_global_policy_loss = pickle.load(file)
+					self.train_global_combined_loss = pickle.load(file)
 
-				self.test_global_value_loss = pickle.load(file)
-				self.test_global_policy_loss = pickle.load(file)
-				self.test_global_combined_loss = pickle.load(file)
+					self.test_global_value_loss = pickle.load(file)
+					self.test_global_policy_loss = pickle.load(file)
+					self.test_global_combined_loss = pickle.load(file)
 
-				self.weight_size_max = pickle.load(file)
-				self.weight_size_min = pickle.load(file)
-				self.weight_size_average = pickle.load(file)
+					self.weight_size_max = pickle.load(file)
+					self.weight_size_min = pickle.load(file)
+					self.weight_size_average = pickle.load(file)
 
-				self.p1_policy_wr_stats = pickle.load(file)
-				self.p2_policy_wr_stats = pickle.load(file)
-				self.p1_mcts_wr_stats = pickle.load(file)
-				self.p2_mcts_wr_stats = pickle.load(file)
+					self.p1_policy_wr_stats = pickle.load(file)
+					self.p2_policy_wr_stats = pickle.load(file)
+					self.p1_mcts_wr_stats = pickle.load(file)
+					self.p2_mcts_wr_stats = pickle.load(file)
 
-				if self.state_set is not None:
-					self.state_set_stats = pickle.load(file)
-
-				
+					if self.state_set is not None:
+						self.state_set_stats = pickle.load(file)
+		
 		else:
 			# Initial save (untrained network)
 			save_path = self.model_folder_path + self.network_name + "_" + str(starting_iteration) + "_model"
@@ -306,6 +306,21 @@ class AlphaZero():
 				self.weight_size_min.append(min(abs(all_weights)))
 				self.weight_size_average.append(torch.mean(abs(all_weights)))
 				del all_weights
+			
+			print("\nTesting untrained network...\n\n")
+			if test_mode == "policy" or test_mode == "both":
+				p1_policy_results = self.run_tests("1", num_wr_testing_games, state_cache, "policy")
+				p2_policy_results = self.run_tests("2", num_wr_testing_games, state_cache, "policy")
+				for player in (0,1):
+					self.p1_policy_wr_stats[player].append(p1_policy_results[player])
+					self.p2_policy_wr_stats[player].append(p2_policy_results[player])
+
+			if test_mode == "mcts" or test_mode == "both":
+				p1_mcts_results = self.run_tests("1", num_wr_testing_games, state_cache, "mcts")
+				p2_mcts_results = self.run_tests("2", num_wr_testing_games, state_cache, "mcts")
+				for player in (0,1):
+					self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
+					self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
 
 		print("\nRay is ready.\n")
 		print("\n--------------------------------\n")
@@ -500,11 +515,11 @@ class AlphaZero():
 
 						if len(self.state_set_stats[i]) > 1:
 							if i<=1:
-								color = (200, 0, 0)
+								color = (200/255, 0, 0)
 							elif i<=3:
-								color = (65, 65, 65)
+								color = (65/255, 65/255, 65/255)
 							else:
-								color = (45, 110, 10)
+								color = (45/255, 110/255, 10/255)
 								
 							plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], label = "state " + str(i), color=color)
 

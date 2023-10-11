@@ -228,11 +228,11 @@ def main():
             case 4: # Continue Training
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = "ilu_cel_se_random"
-                continue_network_name = "ilu_cel_se_random_continue" # new network can have the same name as the previous
+                trained_network_name = "soldier_value_factor_continue_local"
+                continue_network_name = "soldier_value_factor_continue_local" # new network can have the same name as the previous
                 use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
