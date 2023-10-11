@@ -8,11 +8,11 @@ AlphaZero + DeepThinking + WarGames
 
 * [x] Self-play and Testing are done using [Ray](https://github.com/ray-project/ray) actors meaning it can be run multi-process/multi-computer.
 * [x] Saves checkpoints during training and allows continuing previous training in case anything goes wrong.
+* [x] Creates graphs for loss, win rates and others.
 * [X] Allows defining any custom game or network arquitecture(using pytorch).
 * [x] Tic Tac Toe and SCS games already implemented.
 * [X] Definition of any custom SCS games within the already implemented rules.
 * [x] Creation of custom SCS markers for units.
-
 
 ### Features in development
 
@@ -20,11 +20,16 @@ AlphaZero + DeepThinking + WarGames
 * [ ] CLI interactive mode for new users.
 * [ ] 
 
-
 ### Future features
 
 * [ ] Training and testing preset creation and saving
 * [ ] Visual Interface for users to play SCS games
+
+### Current issues
+
+* [ ] Put the issues on github
+* [ ] Bad GPU performance
+* [ ] Others...
 
 ## Code structure
 

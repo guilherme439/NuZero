@@ -391,8 +391,7 @@ class AlphaZero():
 					plt.savefig(self.plots_path + self.network_name + '_weight_average.png')
 					plt.clf()
 
-				if self.plot_wr:
-					
+				if self.plot_wr:				
 					
 					if (test_mode == "policy" or test_mode == "both") and len(self.p1_policy_wr_stats[0]) > 1:
 						plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_policy_wr_stats[1], label = "P2")
@@ -411,8 +410,8 @@ class AlphaZero():
 						plt.clf()
 
 					if (test_mode == "mcts" or test_mode == "both") and len(self.p1_mcts_wr_stats[0]) > 1:
-						plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
 						plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_mcts_wr_stats[1], label = "P2")
+						plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
 						plt.title("MCTS -> Win rates as Player 1")
 						plt.legend()
 						plt.savefig(self.plots_path + self.network_name + '_p1_mcts_wr.png')
@@ -499,10 +498,18 @@ class AlphaZero():
 						self.state_set_stats[i].append(value.item())
 
 						if len(self.state_set_stats[i]) > 1:
-							plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i])
-							plt.title("State " + str(i))
-							plt.savefig(self.plots_path + self.network_name + '_state_' + str(i) + '.png')
-							plt.clf()
+							if i<=1:
+								color = (200, 0, 0)
+							elif i<=3:
+								color = (65, 65, 65)
+							else:
+								color = (45, 110, 10)
+								
+							plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], label = "state " + str(i), color=color)
+
+					plt.title("State Values")
+					plt.savefig(self.plots_path + self.network_name + '_state_values' '.png')
+					plt.clf()
 
 			if (((b+1) % plot_reset) == 0):
 				self.train_global_combined_loss.clear()
