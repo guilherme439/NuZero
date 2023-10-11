@@ -116,7 +116,8 @@ class AlphaZero():
 		self.weight_size_min = []
 		self.weight_size_average = []
 
-		self.state_set_stats = [ [] for state in self.state_set ]
+		if self.state_set is not None:
+			self.state_set_stats = [ [] for state in self.state_set ]
 		
 
 	def run(self, starting_iteration=0):
