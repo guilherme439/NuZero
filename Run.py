@@ -227,17 +227,19 @@ def main():
 
             case 4: # Continue Training
 
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
+                #game_class = SCS_Game
+                #game_args = ["SCS/Game_configs/randomized_config.yml"]
+                game_class = tic_tac_toe
+                game_args = []
                 game = game_class(*game_args)
 
-                trained_network_name = "ilu_cel_se_random_continue"
-                continue_network_name = "ilu_cel_se_random_continue" # new network can have the same name as the previous
-                use_same_configs = True
+                trained_network_name = "ttt_net"
+                continue_network_name = "ttt_net_continue" # new network can have the same name as the previous
+                use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/ttt_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/ttt_search_config.ini"
 
                 ################################################
 
@@ -248,7 +250,7 @@ def main():
                 print("\n")
                 context = start_ray_local(log_to_driver)
                 continue_training(game_class, game_args, trained_network_name, continue_network_name, \
-                                  use_same_configs, new_alpha_config_path, new_search_config_path, state_set)
+                                  use_same_configs, new_train_config_path, new_search_config_path, state_set)
                 
 
             case 5: # Run with debug set

@@ -300,14 +300,12 @@ class AlphaZero():
 				for param in model.parameters():
 					all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0)
 
-				# For some reason Ray waits here and not somewhere else
-				print("\nRay is finishing its setup...")
 				self.weight_size_max.append(max(abs(all_weights)))
 				self.weight_size_min.append(min(abs(all_weights)))
 				self.weight_size_average.append(torch.mean(abs(all_weights)))
 				del all_weights
 			
-			print("\nTesting untrained network...\n\n")
+			print("\nTesting untrained network.") # For graphing purposes
 			if test_mode == "policy" or test_mode == "both":
 				p1_policy_results = self.run_tests("1", num_wr_testing_games, state_cache, "policy")
 				p2_policy_results = self.run_tests("2", num_wr_testing_games, state_cache, "policy")
@@ -322,7 +320,7 @@ class AlphaZero():
 					self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
 					self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
 
-		print("\nRay is ready.\n")
+		print("\n\n\nRay is ready.")
 		print("\n--------------------------------\n")
 
 		if early_fill > 0:
