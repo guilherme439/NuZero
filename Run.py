@@ -231,9 +231,9 @@ def main():
                 game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = "ilu_cel_se_random"
+                trained_network_name = "ilu_cel_se_random_continue"
                 continue_network_name = "ilu_cel_se_random_continue" # new network can have the same name as the previous
-                use_same_configs = False
+                use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
                 new_alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
