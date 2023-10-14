@@ -141,8 +141,11 @@ def main():
                 if args.name is not None and args.name != "":
                     network_name = args.name
 
-                num_actions = game.get_num_actions()
-                model = MLP_Net(num_actions)
+                #num_actions = game.get_num_actions()
+                #model = MLP_Net(num_actions)
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Ort_DTNet(in_channels, policy_channels, 350)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -152,7 +155,7 @@ def main():
             case 1: # Run on local machine
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -164,7 +167,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 350)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 350)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
