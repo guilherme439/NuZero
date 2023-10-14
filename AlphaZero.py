@@ -320,8 +320,7 @@ class AlphaZero():
 					self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
 					self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
 
-		print("\n\n\nRay is ready.")
-		print("\n--------------------------------\n")
+		
 
 		if early_fill > 0:
 			print("\n\n\n\nEarly Buffer Fill\n")
@@ -376,7 +375,7 @@ class AlphaZero():
 						self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])		
 
 			if (((b+1) % plot_frequency) == 0):
-				
+				print("\n\nPloting graphs...")
 				if self.plot_weights:
 
 					model = self.latest_network.get_model()
@@ -524,6 +523,8 @@ class AlphaZero():
 					plt.title("State Values")
 					plt.savefig(self.plots_path + self.network_name + '_state_values' '.png')
 					plt.clf()
+
+				print("Ploting done.\n")
 
 			if (((b+1) % plot_reset) == 0):
 				self.train_global_combined_loss.clear()

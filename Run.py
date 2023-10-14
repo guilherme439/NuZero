@@ -145,7 +145,7 @@ def main():
                 #model = MLP_Net(num_actions)
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet(in_channels, policy_channels, 350)
+                model = Ort_DTNet(in_channels, policy_channels, 64)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -167,7 +167,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 350)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 300)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -230,19 +230,17 @@ def main():
 
             case 4: # Continue Training
 
-                #game_class = SCS_Game
-                #game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
-                game_class = tic_tac_toe
-                game_args = []
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = "ttt_net_continue"
-                continue_network_name = "ttt_net_continue" # new network can have the same name as the previous
+                trained_network_name = ""
+                continue_network_name = "" # new network can have the same name as the previous
                 use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/ttt_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/ttt_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 ################################################
 
