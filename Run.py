@@ -233,10 +233,8 @@ def main():
                 game_args = []
                 game = game_class(*game_args)
 
-                #trained_network_name = "soldier_value_factor_continue_local"
-                #continue_network_name = "soldier_value_factor_continue_local" # new network can have the same name as the previous
                 trained_network_name = "ttt_net_continue"
-                continue_network_name = "ttt_net_continue"
+                continue_network_name = "ttt_net_continue" # new network can have the same name as the previous
                 use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
