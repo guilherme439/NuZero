@@ -899,7 +899,9 @@ class AlphaZero():
 
 				probs /= np.sum(probs)
 
-
+			print("\nLate heavy probs:")
+			print(probs)
+			
 			average_value_loss = 0
 			average_policy_loss = 0
 			average_combined_loss = 0
@@ -912,7 +914,7 @@ class AlphaZero():
 			bar = PrintBar('Training ', num_samples, 15)
 			for _ in range(num_samples):
 				if batch_extraction == 'local':
-					if probs == []:
+					if probs:
 						args = [len(replay_buffer), batch_size, replace]
 					else:
 						args = [len(replay_buffer), batch_size, replace, probs]

@@ -271,7 +271,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 256, 2)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 4)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
