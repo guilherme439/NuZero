@@ -7,7 +7,7 @@ class Training_Config(Config):
 
         self.optimization = dict \
         (
-        state_cache = "per_game"		# disabled | per_game | per_actor
+        state_cache = "disabled"		# disabled | per_game | per_actor
         # Wether to keep a cache within each actor/game of previously seen states, to avoid using slow network inference.
         # Consumes a lot of memory so it is only worth using if the game being played repeats states frequently.
         )
@@ -25,23 +25,30 @@ class Training_Config(Config):
         early_fill = 1000,
         num_games_per_batch = 200,
         num_batches = 40,
+        early_testing = True,
+        )
+        
 
-        testing_mode = "policy",        # policy | mcts
-        num_wr_testing_games = 100,
-
-        test_set = False,
-        num_test_set_games = 50
+        self.saving = dict \
+        (
+        save_frequency = 1,
+        storage_frequency = 1,
         )
 
 
-        self.frequency = dict \
+        self.testing = dict \
         (
-        save_frequency = 1,
-        test_frequency = 1,
-        debug_frequency = 1,
-        storage_frequency = 1,
-        plot_frequency = 1,
-        plot_reset = 250,
+        policy_test_frequency = 10,
+        mcts_test_frequency = 80,
+        num_policy_test_games = 100,
+        num_mcts_test_games = 100,
+        )
+
+
+        self.plotting = dict \
+        (
+        plot_frequency = 50,
+        plot_reset = 0,
         )
 
 
@@ -62,7 +69,7 @@ class Training_Config(Config):
         policy_loss = "CEL",            # CEL | KLD | MSE
         normalize_CEL = False,          # Cross entropy loss normalization
         skip_target = 'policy',         # policy | value
-        skip_frequency = 1000,          # How often loss should be calculated ignoring the "skip_target"
+        skip_frequency = 0,             # How often loss should be calculated ignoring the "skip_target"
         learning_method = "epochs"      # epochs | samples
         )
 
@@ -72,7 +79,9 @@ class Training_Config(Config):
         (
         batch_size = 32,
         learning_epochs = 8,
-        plot_epoch = False
+        plot_epoch = False,
+        test_set = False,
+        num_test_set_games = 0
         )
 
 

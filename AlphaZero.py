@@ -88,7 +88,6 @@ class AlphaZero():
         # ------------------------------------------------------ #
 
 		self.plot_loss = True
-		self.plot_wr = True
 		self.plot_weights = True
 
 		self.epochs_value_loss = []
@@ -135,27 +134,26 @@ class AlphaZero():
 		state_cache = self.train_config.optimization["state_cache"]
 
 		num_games_per_batch = self.train_config.running["num_games_per_batch"]
-		test_mode = self.train_config.running["testing_mode"]
 		num_batches = self.train_config.running["num_batches"]
 		early_fill = self.train_config.running["early_fill"]
-		num_wr_testing_games = self.train_config.running["num_wr_testing_games"]
+		early_testing = self.train_config.running["early_testing"]
 
-		# Test set requires playing extra games
-		test_set = self.train_config.running["test_set"]
-		num_test_set_games = self.train_config.running["num_test_set_games"]
+		save_frequency = self.train_config.saving["save_frequency"]
+		storage_frequency = self.train_config.saving["storage_frequency"]
 
-		save_frequency = self.train_config.frequency["save_frequency"]
-		test_frequency = self.train_config.frequency["test_frequency"]
-		debug_frequency = self.train_config.frequency["debug_frequency"]
-		storage_frequency = self.train_config.frequency["storage_frequency"]
-		plot_frequency = self.train_config.frequency["plot_frequency"]
-		plot_reset = self.train_config.frequency["plot_reset"]
+		policy_test_frequency = self.train_config.testing["policy_test_frequency"]
+		mcts_test_frequency = self.train_config.testing["mcts_test_frequency"]
+		num_policy_test_games = self.train_config.testing["num_policy_test_games"]
+		num_mcts_test_games = self.train_config.testing["num_mcts_test_games"]
+		
+		plot_frequency = self.train_config.plotting["plot_frequency"]
+		plot_reset = self.train_config.plotting["plot_reset"]
 
 		skip_target = self.train_config.learning['skip_target']
 		skip_frequency = self.train_config.learning['skip_frequency']
 
-		if test_frequency % save_frequency != 0:
-			print("\nInvalid values for save and/or test frequency.\nThe \"test_frequency\" value must be divisible by the \"save_frequency\" value.")
+		if (policy_test_frequency % save_frequency != 0) or (mcts_test_frequency % save_frequency != 0) :
+			print("\nInvalid values for save or test frequency.\nBoth \"policy_test_frequency\" and \"mcts_test_frequency\" values must be divisible by the \"save_frequency\" value.")
 			return
 		
 		# ------------------------------------------------------ #
@@ -198,22 +196,25 @@ class AlphaZero():
 		ray.get(self.network_storage.save_network.remote(self.latest_network))
 		self.latest_network.model_to_device()
 
+		test_set = False
+		self.test_buffer = None
+
 		if learning_method == "epochs":
 			batch_size = self.train_config.epochs["batch_size"]
 			learning_epochs = self.train_config.epochs["learning_epochs"]
 			plot_epoch = self.train_config.epochs["plot_epoch"]
+			test_set = self.train_config.epochs["test_set"]
+			if test_set:
+				num_test_set_games = self.train_config.epochs["num_test_set_games"]
+				batches_in_replay_buffer = replay_window_size / num_games_per_batch
+				test_buffer_window = int(batches_in_replay_buffer * num_test_set_games)
+				self.test_buffer = Replay_Buffer.remote(test_buffer_window, batch_size)
+				# test_buffer_window is such that there is the same number of batches in both the replay and test buffer.	
 		elif learning_method == "samples":
 			batch_size = self.train_config.samples["batch_size"]
 
 		self.replay_buffer = Replay_Buffer.remote(replay_window_size, batch_size)
-
-		if test_set:
-			batches_in_replay_buffer = replay_window_size / num_games_per_batch
-			test_buffer_window = int(batches_in_replay_buffer * num_test_set_games)
-			self.test_buffer = Replay_Buffer.remote(test_buffer_window, batch_size)
-			# test_buffer_window is such that there is the same number of batches in both the replay and test buffer.
-		else:
-			self.test_buffer = None
+			
 
 		# ------------------------------------------------------ #
         # ------------------ OPTIMIZER SETUP ------------------- #
@@ -242,7 +243,6 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
-		print("\n\n--------------------------------\n")
 
 		print("\nRunning for " + str(num_batches) + " batches of " + str(num_games_per_batch) + " games each.")
 		if state_cache != "disabled":
@@ -253,7 +253,10 @@ class AlphaZero():
 		model = self.latest_network.get_model()
 		model_dict = model.state_dict()
 
+		print("\n\n--------------------------------\n")
+
 		if starting_iteration != 0:
+			print("NOTE: when continuing training both optimizer state and replay buffer are reset.\n")
 			if self.plot_data_load_path != None:
 				# Load all the plot data
 				with open(self.plot_data_load_path, 'rb') as file:
@@ -305,26 +308,29 @@ class AlphaZero():
 				self.weight_size_average.append(torch.mean(abs(all_weights)))
 				del all_weights
 			
-			print("\nTesting untrained network.") # For graphing purposes
-			if test_mode == "policy" or test_mode == "both":
-				p1_policy_results = self.run_tests("1", num_wr_testing_games, state_cache, "policy")
-				p2_policy_results = self.run_tests("2", num_wr_testing_games, state_cache, "policy")
-				for player in (0,1):
-					self.p1_policy_wr_stats[player].append(p1_policy_results[player])
-					self.p2_policy_wr_stats[player].append(p2_policy_results[player])
+			if early_testing:
+				print("\nEarly testing of the untrained network.") # For graphing purposes
+				if policy_test_frequency:
+					p1_policy_results = self.run_tests("1", num_policy_test_games, state_cache, "policy")
+					p2_policy_results = self.run_tests("2", num_policy_test_games, state_cache, "policy")
+					for player in (0,1):
+						self.p1_policy_wr_stats[player].append(p1_policy_results[player])
+						self.p2_policy_wr_stats[player].append(p2_policy_results[player])
 
-			if test_mode == "mcts" or test_mode == "both":
-				p1_mcts_results = self.run_tests("1", num_wr_testing_games, state_cache, "mcts")
-				p2_mcts_results = self.run_tests("2", num_wr_testing_games, state_cache, "mcts")
-				for player in (0,1):
-					self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
-					self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
+				if mcts_test_frequency:
+					p1_mcts_results = self.run_tests("1", num_mcts_test_games, state_cache, "mcts")
+					p2_mcts_results = self.run_tests("2", num_mcts_test_games, state_cache, "mcts")
+					for player in (0,1):
+						self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
+						self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
 
 		
 
 		if early_fill > 0:
 			print("\n\n\n\nEarly Buffer Fill\n")
 			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
+
+		print("\n\n--------------------------------\n")
 
 		updates = 0
 		batches_to_run = range(starting_iteration, num_batches)
@@ -346,7 +352,7 @@ class AlphaZero():
 				print(ray.get(self.test_buffer.played_games.remote()))
 			
 			loss_flag = 0 # 0 -> None | 1 -> Policy | 2 -> Value
-			if (((b+1) % skip_frequency) == 0):
+			if skip_frequency and (((b+1) % skip_frequency) == 0):
 				if skip_target == "policy":
 					loss_flag = 1
 				elif skip_target == "value":
@@ -356,28 +362,60 @@ class AlphaZero():
 			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set, loss_flag)
 			updates +=1
 
-			if (((b+1) % storage_frequency) == 0):
+			if storage_frequency and (((b+1) % storage_frequency) == 0):
 				iteration_storage_future = self.network_storage.save_network.remote(self.latest_network)			
 			
-			if (((b+1) % test_frequency) == 0) and updated:
-				if test_mode == "policy" or test_mode == "both":
-					p1_policy_results = self.run_tests("1", num_wr_testing_games, state_cache, "policy")
-					p2_policy_results = self.run_tests("2", num_wr_testing_games, state_cache, "policy")
-					for player in (0,1):
-						self.p1_policy_wr_stats[player].append(p1_policy_results[player])
-						self.p2_policy_wr_stats[player].append(p2_policy_results[player])
+			if policy_test_frequency and (((b+1) % policy_test_frequency) == 0) and updated:
+				p1_policy_results = self.run_tests("1", num_policy_test_games, state_cache, "policy")
+				p2_policy_results = self.run_tests("2", num_policy_test_games, state_cache, "policy")
+				for player in (0,1):
+					self.p1_policy_wr_stats[player].append(p1_policy_results[player])
+					self.p2_policy_wr_stats[player].append(p2_policy_results[player])
 
-				if test_mode == "mcts" or test_mode == "both":
-					p1_mcts_results = self.run_tests("1", num_wr_testing_games, state_cache, "mcts")
-					p2_mcts_results = self.run_tests("2", num_wr_testing_games, state_cache, "mcts")
-					for player in (0,1):
-						self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
-						self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])		
+			if mcts_test_frequency and (((b+1) % mcts_test_frequency) == 0) and updated:				
+				p1_mcts_results = self.run_tests("1", num_mcts_test_games, state_cache, "mcts")
+				p2_mcts_results = self.run_tests("2", num_mcts_test_games, state_cache, "mcts")
+				for player in (0,1):
+					self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
+					self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
 
-			if (((b+1) % plot_frequency) == 0):
+			if plot_frequency and (((b+1) % plot_frequency) == 0):
 				print("\n\nPloting graphs...")
-				if self.plot_weights:
 
+				if len(self.p1_policy_wr_stats[0]) > 1:
+					plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_policy_wr_stats[1], label = "P2")
+					plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_policy_wr_stats[0], label = "P1")
+					plt.title("Policy -> Win rates as Player 1")
+					plt.legend()
+					plt.savefig(self.plots_path + self.network_name + '_p1_policy_wr.png')
+					plt.clf()
+
+
+					plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_policy_wr_stats[0], label = "P1")
+					plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_policy_wr_stats[1], label = "P2")
+					plt.title("Policy -> Win rates as Player 2")
+					plt.legend()
+					plt.savefig(self.plots_path + self.network_name + '_p2_policy_wr.png')
+					plt.clf()
+
+				if len(self.p1_mcts_wr_stats[0]) > 1:
+					plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_mcts_wr_stats[1], label = "P2")
+					plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
+					plt.title("MCTS -> Win rates as Player 1")
+					plt.legend()
+					plt.savefig(self.plots_path + self.network_name + '_p1_mcts_wr.png')
+					plt.clf()
+
+
+					plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_mcts_wr_stats[0], label = "P1")
+					plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_mcts_wr_stats[1], label = "P2")
+					plt.title("MCTS -> Win rates as Player 2")
+					plt.legend()
+					plt.savefig(self.plots_path + self.network_name + '_p2_mcts_wr.png')
+					plt.clf()
+
+
+				if self.plot_weights:
 					model = self.latest_network.get_model()
 					
 					all_weights = torch.Tensor().cpu()
@@ -403,40 +441,6 @@ class AlphaZero():
 					plt.title("Average Weight")
 					plt.savefig(self.plots_path + self.network_name + '_weight_average.png')
 					plt.clf()
-
-				if self.plot_wr:				
-					
-					if (test_mode == "policy" or test_mode == "both") and len(self.p1_policy_wr_stats[0]) > 1:
-						plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_policy_wr_stats[1], label = "P2")
-						plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_policy_wr_stats[0], label = "P1")
-						plt.title("Policy -> Win rates as Player 1")
-						plt.legend()
-						plt.savefig(self.plots_path + self.network_name + '_p1_policy_wr.png')
-						plt.clf()
-
-
-						plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_policy_wr_stats[0], label = "P1")
-						plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_policy_wr_stats[1], label = "P2")
-						plt.title("Policy -> Win rates as Player 2")
-						plt.legend()
-						plt.savefig(self.plots_path + self.network_name + '_p2_policy_wr.png')
-						plt.clf()
-
-					if (test_mode == "mcts" or test_mode == "both") and len(self.p1_mcts_wr_stats[0]) > 1:
-						plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_mcts_wr_stats[1], label = "P2")
-						plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
-						plt.title("MCTS -> Win rates as Player 1")
-						plt.legend()
-						plt.savefig(self.plots_path + self.network_name + '_p1_mcts_wr.png')
-						plt.clf()
-
-
-						plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_mcts_wr_stats[0], label = "P1")
-						plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_mcts_wr_stats[1], label = "P2")
-						plt.title("MCTS -> Win rates as Player 2")
-						plt.legend()
-						plt.savefig(self.plots_path + self.network_name + '_p2_mcts_wr.png')
-						plt.clf()
 
 				if self.plot_loss:
 
@@ -526,12 +530,10 @@ class AlphaZero():
 
 				print("Ploting done.\n")
 
-			if (((b+1) % plot_reset) == 0):
-				self.train_global_combined_loss.clear()
-				self.train_global_policy_loss.clear()
-				self.train_global_value_loss.clear()
+			if plot_reset and (((b+1) % plot_reset) == 0):
+				self.reset_plots()
 
-			if (((b+1) % save_frequency) == 0):
+			if save_frequency and (((b+1) % save_frequency) == 0):
 				save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"
 				torch.save(self.latest_network.get_model().state_dict(), save_path)
 				
@@ -573,8 +575,8 @@ class AlphaZero():
 			print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB" )
 			# psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
-			
-			ray.get(iteration_storage_future) # wait for the network to be stored before next iteration	
+			if storage_frequency and (((b+1) % storage_frequency) == 0):
+				ray.get(iteration_storage_future) # wait for the network to be stored before next iteration	
 			
 		return
 			
@@ -662,7 +664,7 @@ class AlphaZero():
 			game_index = 2
 
 		
-
+		print("\n\nTesting as p" + player_choice + " using " + test_mode)
 		#bar = ChargingBar(text, max=num_games)
 		bar = PrintBar(text, num_games, 15)
 		#bar.next(0)
@@ -751,8 +753,8 @@ class AlphaZero():
 			
 			if  batch_size > replay_size:
 				print("Batch size too large.\n" + 
-					"If you want to use batche_size with more moves than the first batch of games played " + 
-					"you need to use, the \"early_fill\" config to fill the batch with random moves at the beggining.\n")
+					"If you want to use batch_size with more moves than the first batch of games played " + 
+					"you need to use, the \"early_fill\" config to fill the replay buffer with random games at the start.\n")
 				exit()
 			else:
 				number_of_batches = replay_size // batch_size
@@ -880,6 +882,7 @@ class AlphaZero():
 
 			if batch_extraction == 'local':
 				future_buffer = self.replay_buffer.get_buffer.remote()
+
 			batch = []
 			probs = []
 			if late_heavy:
@@ -894,7 +897,7 @@ class AlphaZero():
 					total += fraction
 					probs.append(total)
 
-				probs /= np.sum(probs)   
+				probs /= np.sum(probs)
 
 
 			average_value_loss = 0
@@ -1055,5 +1058,29 @@ class AlphaZero():
 		
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
+	def reset_plots(self):
+		self.epochs_value_loss = []
+		self.epochs_policy_loss = []
+		self.epochs_combined_loss = []
 
+		self.tests_value_loss = []
+		self.tests_policy_loss = []
+		self.tests_combined_loss = []
+
+		self.train_global_value_loss = []
+		self.train_global_policy_loss = []
+		self.train_global_combined_loss = []
+
+		self.test_global_value_loss = []
+		self.test_global_policy_loss = []
+		self.test_global_combined_loss = []
+
+		self.p1_policy_wr_stats = [[],[]]
+		self.p2_policy_wr_stats = [[],[]]
+		self.p1_mcts_wr_stats = [[],[]]
+		self.p2_mcts_wr_stats = [[],[]]
+
+		self.weight_size_max = []
+		self.weight_size_min = []
+		self.weight_size_average = []
 

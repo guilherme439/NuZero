@@ -131,10 +131,10 @@ def main():
                 game_args = []
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/ttt_training_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/ttt_search_config.ini"
 
-                network_name = "ttt_net"
+                network_name = "ttt_example_net"
 
                 ################################################
 
@@ -167,7 +167,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 300)
+                model = Hex_DTNet(in_channels, policy_channels, 300)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -231,7 +231,7 @@ def main():
             case 4: # Continue Training
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
                 trained_network_name = ""
@@ -271,7 +271,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 300)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 4)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -437,13 +437,26 @@ def main():
 
             case 6:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
 
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 256)
+                nn, search_config = load_trained_network(game, "mirrored_ae_cel_local", 1)
+
+                all_weights = torch.Tensor().cpu()
+                for param in nn.get_model().parameters():
+                    print(param)
+                    #all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
+
+                #print(all_weights)
+
+                state = game.generate_state_image()
+
+                policy, value = nn.inference(state, False, 2)
+
+                print("\n\n")
+                #print(policy)
+                print("\n\n")
 
                 
 

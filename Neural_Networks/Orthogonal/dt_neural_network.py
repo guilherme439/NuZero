@@ -33,8 +33,8 @@ class DTNet(nn.Module):
         if recall:
             recur_layers.append(conv_recall)
 
-        for i in range(len(num_blocks)):
-            recur_layers.append(self._make_layer(block, width, num_blocks[i], stride=1))
+        for b in range(num_blocks):
+            recur_layers.append(block(self.width, self.width, stride=1))
 
         
         self.projection = nn.Sequential(proj_conv, nn.ReLU())
@@ -65,39 +65,27 @@ class DTNet(nn.Module):
             nn.Tanh()
         )
 
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
-        layers = []
-        for strd in strides:
-            layers.append(block(self.width, planes, strd))
-            self.width = planes * block.expansion
-        return nn.Sequential(*layers)
-
     def forward(self, x, iters_to_do, interim_thought=None, **kwargs):
         initial_thought = self.projection(x)
 
         if interim_thought is None:
             interim_thought = initial_thought
 
-        #all_outputs = []
         for i in range(iters_to_do):
             if self.recall:
                 interim_thought = torch.cat([interim_thought, x], 1)
             interim_thought = self.recur_block(interim_thought)
-            policy_out = self.policy_head(interim_thought)
-            value_out = self.value_head(interim_thought)
-            out = (policy_out, value_out)
-            #all_outputs.append(out)
 
-        #if self.training:
-            #return out, interim_thought
+        policy_out = self.policy_head(interim_thought)
+        value_out = self.value_head(interim_thought)
+        out = (policy_out, value_out)
 
         return out
 
 
-def dt_net_2d(in_channels, policy_channels, width, **kwargs):
-    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=False)
+def dt_net_2d(in_channels, policy_channels, width, blocks):
+    return DTNet(in_channels, policy_channels, BasicBlock, blocks, width=width, recall=False)
 
 
-def dt_net_recall_2d(in_channels, policy_channels, width, **kwargs):
-    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=True)
+def dt_net_recall_2d(in_channels, policy_channels, width, blocks):
+    return DTNet(in_channels, policy_channels, BasicBlock, blocks, width=width, recall=True)

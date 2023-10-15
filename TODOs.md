@@ -23,17 +23,19 @@
 
 ### Tester
 
+
 ### SCS Game
 - Convert board to numpy array (allows indexing with tuples) [medium, low] {1}
 
 ### Graphs
+
 
 ### Rendering and Iterface
 - SCS marker creator interface
 - Implement a user interface to play games vs trained AI [hard, low]
 
 ### Structure
-
+- Create "Utility" folder for all the files with useful stuff like "stats_utilities.py" and "loss_functions.py"
 
 
 <!---------------------------------------------------------------------------------------------------------------------------------------->

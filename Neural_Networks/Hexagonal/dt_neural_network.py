@@ -34,7 +34,7 @@ class DTNet(nn.Module):
         if recall:
             recur_layers.append(conv_recall)
 
-        for b in num_blocks:
+        for b in range(num_blocks):
             recur_layers.append(block(self.width, self.width, stride=1))
 
         
@@ -72,27 +72,23 @@ class DTNet(nn.Module):
         if interim_thought is None:
             interim_thought = initial_thought
 
-        #all_outputs = []
+
         for i in range(iters_to_do):
             if self.recall:
                 interim_thought = torch.cat([interim_thought, x], 1)
             interim_thought = self.recur_block(interim_thought)
+        
 
-            policy_out = self.policy_head(interim_thought)
-            value_out = self.value_head(interim_thought)
-            out = (policy_out, value_out)
-            #all_outputs.append(out)
-        
-        #if self.training:
-            #return out, interim_thought
-        
+        policy_out = self.policy_head(interim_thought)
+        value_out = self.value_head(interim_thought)
+        out = (policy_out, value_out)
         
         return out
 
 
-def dt_net_2d(in_channels, policy_channels, width, **kwargs):
-    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=False)
+def dt_net_2d(in_channels, policy_channels, width, num_blocks):
+    return DTNet(in_channels, policy_channels, BasicBlock, num_blocks, width=width, recall=False)
 
 
-def dt_net_recall_2d(in_channels, policy_channels, width, **kwargs):
-    return DTNet(in_channels, policy_channels, BasicBlock, [2], width=width, recall=True)
+def dt_net_recall_2d(in_channels, policy_channels, width, num_blocks):
+    return DTNet(in_channels, policy_channels, BasicBlock, num_blocks, width=width, recall=True)
