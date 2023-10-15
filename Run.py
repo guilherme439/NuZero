@@ -145,7 +145,7 @@ def main():
                 #model = MLP_Net(num_actions)
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet(in_channels, policy_channels, 64)
+                model = Ort_DTNet(in_channels, policy_channels, 64, 1)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -167,7 +167,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 256, 6)
+                model = Hex_DTNet(in_channels, policy_channels, 256, 3)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -271,7 +271,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 4)
+                model = Hex_DTNet(in_channels, policy_channels, 256, 2)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
