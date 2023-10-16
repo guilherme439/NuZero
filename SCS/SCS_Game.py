@@ -1354,9 +1354,9 @@ class SCS_Game():
                     for p, reinforcement_schedule in schedule.items():
                         num_turns = len(reinforcement_schedule)
                         if num_turns != (self.turns + 1):
-                            print("\nError in config.\n \
-                                  Reinforcement schedule should have \'turns + 1\' entries.\n \
-                                  In order to account for initial troop placement (turn 0).")
+                            print("\nError in config.\n" +
+                                  "Reinforcement schedule should have \'turns + 1\' entries.\n" +
+                                  "In order to account for initial troop placement (turn 0).")
                             exit()
                         player = int(p[-1])
                         player_index = player - 1
