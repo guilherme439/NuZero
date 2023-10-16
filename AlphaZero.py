@@ -522,7 +522,7 @@ class AlphaZero():
 							else:
 								color = (45/255, 110/255, 10/255)
 								
-							plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], label = "state " + str(i), color=color)
+							plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], color=color)
 
 					plt.title("State Values")
 					plt.savefig(self.plots_path + self.network_name + '_state_values' '.png')
@@ -1061,11 +1061,11 @@ class AlphaZero():
 
 		invalid_loss = False
 		if torch.any(torch.isnan(value_loss)):
-			print("Value Loss is nan.")
+			print("\nValue Loss is nan.")
 			invalid_loss = True
 
 		if torch.any(torch.isnan(policy_loss)):
-			print("Policy Loss is nan.")
+			print("\nPolicy Loss is nan.")
 			invalid_loss = True
 		
 		if invalid_loss:

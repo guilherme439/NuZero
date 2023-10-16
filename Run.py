@@ -11,7 +11,7 @@ import glob
 import re
 
 import torch
-import numpy
+import numpy as np
 
 from progress.bar import ChargingBar
 from PrintBar import PrintBar
@@ -441,7 +441,7 @@ def main():
                 game = game_class(*game_args)
 
 
-                nn, search_config = load_trained_network(game, "soldier_value_factor_continue_local", 830)
+                nn, search_config = load_trained_network(game, "adam_se_mse_mirror", 130)
 
                 #all_weights = torch.Tensor().cpu()
                 #for param in nn.get_model().parameters():
@@ -449,7 +449,20 @@ def main():
                     #all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
 
                 #print(all_weights)
-
+                valid_actions_mask = game.possible_actions()
+                valid_actions_mask = valid_actions_mask.flatten()
+                n_valids = np.sum(valid_actions_mask)
+                probs = valid_actions_mask/n_valids
+                action_i = np.random.choice(game.num_actions, p=probs)
+                action_coords = np.unravel_index(action_i, game.action_space_shape)
+                game.step_function(action_coords)
+                valid_actions_mask = game.possible_actions()
+                valid_actions_mask = valid_actions_mask.flatten()
+                n_valids = np.sum(valid_actions_mask)
+                probs = valid_actions_mask/n_valids
+                action_i = np.random.choice(game.num_actions, p=probs)
+                action_coords = np.unravel_index(action_i, game.action_space_shape)
+                game.step_function(action_coords)
                 state = game.generate_state_image()
 
                 policy, value = nn.inference(state, False, 2)
@@ -457,6 +470,7 @@ def main():
                 print("\n\n")
                 #print(policy)
                 print(torch.sum(policy))
+                print(value)
                 print("\n\n")
 
                 
