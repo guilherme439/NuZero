@@ -28,7 +28,7 @@
 - Convert board to numpy array (allows indexing with tuples) [medium, low] {1}
 
 ### Graphs
-
+- Allow spliting of more graphs other than policy
 
 ### Rendering and Iterface
 - SCS marker creator interface

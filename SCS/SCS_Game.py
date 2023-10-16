@@ -1151,7 +1151,7 @@ class SCS_Game():
             else: # This else belongs to the "for" loop not the "if" statement
                 units_remaining = self.n_reinforcements - represented_units
                 for empty_unit in range(units_remaining):
-                    unit_planes = torch.zeros((self.N_UNIT_STATS * 2, self.rows, self.columns))
+                    unit_planes = torch.zeros((self.N_UNIT_STATS * 2, self.rows, self.columns),  )
                     if player_reinforcements[player] is None:
                         player_reinforcements[player] = unit_planes
                     else:
@@ -1169,20 +1169,20 @@ class SCS_Game():
         for v in self.victory_p1:
             x = v[0]
             y = v[1]
-            p1_victory[x][y] = 1
+            p1_victory[x][y] = 1.0
 
         for v in self.victory_p2:
             x = v[0]
             y = v[1]
-            p2_victory[x][y] = 1
+            p2_victory[x][y] = 1.0
 
         p1_victory = torch.unsqueeze(p1_victory, 0)
         p2_victory = torch.unsqueeze(p2_victory, 0)
 
 
         # Unit Representation Channels #
-        p1_units = torch.zeros(self.N_UNIT_STATS * self.stacking_limit * self.N_UNIT_STATUSES, self.rows, self.columns)
-        p2_units = torch.zeros(self.N_UNIT_STATS * self.stacking_limit * self.N_UNIT_STATUSES, self.rows, self.columns)
+        p1_units = torch.zeros((self.N_UNIT_STATS * self.stacking_limit * self.N_UNIT_STATUSES, self.rows, self.columns))
+        p2_units = torch.zeros((self.N_UNIT_STATS * self.stacking_limit * self.N_UNIT_STATUSES, self.rows, self.columns))
         p_units = [p1_units, p2_units]
         for p in [0,1]: 
             # for each player check each unit status
@@ -1204,7 +1204,7 @@ class SCS_Game():
         target_tile_plane = torch.zeros((1, self.rows, self.columns))
         if self.target_tile is not None:
             (x, y) = self.target_tile.position
-            target_tile_plane[0][x][y] = 1
+            target_tile_plane[0][x][y] = 1.0
 
         # Attackers channels #
         attackers = torch.zeros((self.stacking_limit, self.rows, self.columns))
@@ -1212,7 +1212,7 @@ class SCS_Game():
             (x, y) = unit.position
             tile = self.board[x][y]
             stacking_lvl = tile.get_stacking_level(unit)
-            attackers[stacking_lvl][x][y] = 1
+            attackers[stacking_lvl][x][y] = 1.0
 
         # Sub-Phase Channel #
         sub_phase_index = self.current_sub_phase
@@ -1222,15 +1222,15 @@ class SCS_Game():
         
         # Turn Channel #
         turn_percent = self.current_turn/self.turns
-        turn_plane = torch.full((self.rows, self.columns), turn_percent, dtype=torch.float32)
+        turn_plane = torch.full((self.rows, self.columns), turn_percent)
         turn_plane = torch.unsqueeze(turn_plane, 0)
 
         # Player Channel #
-        player_plane = np.ones((self.rows,self.columns), dtype=np.int32)
+        player_plane = torch.ones((self.rows,self.columns))
         if self.current_player == 2:
-            player_plane.fill(-1)
+            player_plane = torch.full((self.rows,self.columns), fill_value=-1)
 
-        player_plane = torch.unsqueeze(torch.as_tensor(player_plane,dtype=torch.float32), 0)
+        player_plane = torch.unsqueeze(player_plane, 0)
 
         # Final operations #
         stack_list = []

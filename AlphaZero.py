@@ -147,7 +147,7 @@ class AlphaZero():
 		num_mcts_test_games = self.train_config.testing["num_mcts_test_games"]
 		
 		plot_frequency = self.train_config.plotting["plot_frequency"]
-		plot_reset = self.train_config.plotting["plot_reset"]
+		policy_split = self.train_config.plotting["policy_split"]
 
 		skip_target = self.train_config.learning['skip_target']
 		skip_frequency = self.train_config.learning['skip_frequency']
@@ -530,8 +530,21 @@ class AlphaZero():
 
 				print("Ploting done.\n")
 
-			if plot_reset and (((b+1) % plot_reset) == 0):
-				self.reset_plots()
+			if policy_split and ((b+1) == policy_split):
+				num_points = len(self.train_global_policy_loss)
+
+				if num_points > 1:
+					x = range(num_points)
+					plt.plot(x, self.train_global_policy_loss, label = "Training")
+					if test_set:
+						plt.plot(x, self.test_global_policy_loss, label = "Testing")
+
+					plt.title("before split global policy loss")
+					plt.legend()
+					plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
+					plt.clf()
+
+				self.train_global_policy_loss.clear()
 
 			if save_frequency and (((b+1) % save_frequency) == 0):
 				save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"
@@ -901,7 +914,7 @@ class AlphaZero():
 
 			print("\nLate heavy probs:")
 			print(probs)
-			
+
 			average_value_loss = 0
 			average_policy_loss = 0
 			average_combined_loss = 0
@@ -914,7 +927,7 @@ class AlphaZero():
 			bar = PrintBar('Training ', num_samples, 15)
 			for _ in range(num_samples):
 				if batch_extraction == 'local':
-					if probs:
+					if len(probs) == 0:
 						args = [len(replay_buffer), batch_size, replace]
 					else:
 						args = [len(replay_buffer), batch_size, replace, probs]
@@ -1046,6 +1059,18 @@ class AlphaZero():
 		policy_loss /= batch_size
 		combined_loss = policy_loss + value_loss
 
+		invalid_loss = False
+		if torch.any(torch.isnan(value_loss)):
+			print("Value Loss is nan.")
+			invalid_loss = True
+
+		if torch.any(torch.isnan(policy_loss)):
+			print("Policy Loss is nan.")
+			invalid_loss = True
+		
+		if invalid_loss:
+			exit()
+
 		if loss_flag == 0:
 			loss = combined_loss
 		elif loss_flag == 1:
@@ -1060,29 +1085,5 @@ class AlphaZero():
 		
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
-	def reset_plots(self):
-		self.epochs_value_loss = []
-		self.epochs_policy_loss = []
-		self.epochs_combined_loss = []
 
-		self.tests_value_loss = []
-		self.tests_policy_loss = []
-		self.tests_combined_loss = []
-
-		self.train_global_value_loss = []
-		self.train_global_policy_loss = []
-		self.train_global_combined_loss = []
-
-		self.test_global_value_loss = []
-		self.test_global_policy_loss = []
-		self.test_global_combined_loss = []
-
-		self.p1_policy_wr_stats = [[],[]]
-		self.p2_policy_wr_stats = [[],[]]
-		self.p1_mcts_wr_stats = [[],[]]
-		self.p2_mcts_wr_stats = [[],[]]
-
-		self.weight_size_max = []
-		self.weight_size_min = []
-		self.weight_size_average = []
 

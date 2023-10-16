@@ -7,7 +7,7 @@ from scipy.special import softmax
 def KLDivergence(input, target):
     ''' Calculates the Kullback-Leibler divergence loss. Expects to NEITHER input nor target to be in log-space.'''
     input = nn.functional.log_softmax(input, dim=0)
-    kld = nn.KLDivLoss(reduction="batchmean")
+    kld = nn.KLDivLoss()
     return kld(input, target)
 	
 def MSError(input, target):

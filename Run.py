@@ -234,8 +234,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = ""
-                continue_network_name = "" # new network can have the same name as the previous
+                trained_network_name = "adam_se_mse_mirror"
+                continue_network_name = "adam_se_mse_mirror" # new network can have the same name as the previous
                 use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
@@ -245,7 +245,7 @@ def main():
                 ################################################
 
                 state_set = None
-                #state_set = create_state_set(game)
+                state_set = create_state_set(game)
 
 
                 print("\n")
@@ -441,11 +441,11 @@ def main():
                 game = game_class(*game_args)
 
 
-                nn, search_config = load_trained_network(game, "mirrored_ae_cel_local", 1)
+                nn, search_config = load_trained_network(game, "soldier_value_factor_continue_local", 830)
 
-                all_weights = torch.Tensor().cpu()
-                for param in nn.get_model().parameters():
-                    print(param)
+                #all_weights = torch.Tensor().cpu()
+                #for param in nn.get_model().parameters():
+                    #print(param)
                     #all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
 
                 #print(all_weights)
@@ -456,6 +456,7 @@ def main():
 
                 print("\n\n")
                 #print(policy)
+                print(torch.sum(policy))
                 print("\n\n")
 
                 
