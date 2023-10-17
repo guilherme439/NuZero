@@ -245,7 +245,7 @@ def main():
                 ################################################
 
                 state_set = None
-                state_set = create_state_set(game)
+                #state_set = create_state_set(game)
 
 
                 print("\n")

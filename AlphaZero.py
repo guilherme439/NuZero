@@ -1069,6 +1069,10 @@ class AlphaZero():
 			invalid_loss = True
 		
 		if invalid_loss:
+			print("\n\n")
+			print(predicted_values)
+			print("\n\n")
+			print(predicted_policies)
 			exit()
 
 		if loss_flag == 0:
