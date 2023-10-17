@@ -73,18 +73,25 @@ class Explorer():
         visit_counts = [(child.visit_count, action) for action, child in node.children.items()]
 
         if self.training:
-            epsilon = np.random.random()
-            if epsilon < self.config.exploration["epsilon_random_exploration"]:
-                valid_actions_mask = game.possible_actions().flatten()
-                n_valids = np.sum(valid_actions_mask)
-                probs = valid_actions_mask/n_valids
-                action_i = np.random.choice(game.get_num_actions(), p=probs)
-
-            elif game.get_length() < self.config.exploration["number_of_softmax_moves"]:
+            if game.get_length() < self.config.exploration["number_of_softmax_moves"]:
                 action_i = self.softmax_action(visit_counts)
-
             else:
-                action_i = self.max_action(visit_counts)
+                epsilon_softmax = np.random.random()
+                epsilon_random = np.random.random()
+                softmax_threshold = self.config.exploration["epsilon_random_exploration"]
+                random_threshold = self.config.exploration["epsilon_random_exploration"]
+
+                if epsilon_softmax < softmax_threshold:
+                    action_i = self.softmax_action(visit_counts)
+
+                elif epsilon_random < random_threshold:
+                    valid_actions_mask = game.possible_actions().flatten()
+                    n_valids = np.sum(valid_actions_mask)
+                    probs = valid_actions_mask/n_valids
+                    action_i = np.random.choice(game.get_num_actions(), p=probs)
+
+                else:
+                    action_i = self.max_action(visit_counts)
         else:
             action_i = self.max_action(visit_counts)
 

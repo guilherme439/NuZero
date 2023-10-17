@@ -135,7 +135,7 @@ class AlphaZero():
 
 		num_games_per_batch = self.train_config.running["num_games_per_batch"]
 		num_batches = self.train_config.running["num_batches"]
-		early_fill = self.train_config.running["early_fill"]
+		early_fill_games = self.train_config.running["early_fill"]
 		early_testing = self.train_config.running["early_testing"]
 
 		save_frequency = self.train_config.saving["save_frequency"]
@@ -326,9 +326,9 @@ class AlphaZero():
 
 		
 
-		if early_fill > 0:
+		if early_fill_games > 0:
 			print("\n\n\n\nEarly Buffer Fill\n")
-			self.run_selfplay(early_fill, False, state_cache, text="Filling initial games")
+			self.run_selfplay(early_fill_games, False, state_cache, text="Filling initial games", early_fill=True)
 
 		print("\n\n--------------------------------\n")
 
@@ -593,7 +593,7 @@ class AlphaZero():
 			
 		return
 			
-	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play"):
+	def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play", early_fill=False):
 		start = time.time()
 
 		pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
@@ -608,6 +608,13 @@ class AlphaZero():
 
 		num_chunks = num_games_per_batch // chunk_size
 		rest = num_games_per_batch % chunk_size
+
+		search_config = deepcopy(self.search_config)
+		if early_fill:
+			softmax_exploration = self.train_config.running["early_softmax_exploration"]
+			random_exploration = self.train_config.running["early_random_exploration"]
+			search_config.exploration["epsilon_softmax_exploration"] = softmax_exploration
+			search_config.exploration["epsilon_random_exploration"] = random_exploration
 
 		stats_list = []
 		args_list = []
@@ -624,7 +631,7 @@ class AlphaZero():
 						self.network_storage,
 						self.game_class,
 						self.game_args,
-						self.search_config,
+						search_config,
 						pred_iterations,
 						state_cache
 						)

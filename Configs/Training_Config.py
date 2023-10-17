@@ -23,6 +23,8 @@ class Training_Config(Config):
         self.running = dict \
         (
         early_fill = 1000,
+        early_softmax_exploration = 1,
+        early_random_exploration = 0,
         num_games_per_batch = 200,
         num_batches = 40,
         early_testing = True,

@@ -30,8 +30,9 @@ class Search_Config(Config):
 
         self.exploration = dict \
         (
-        number_of_softmax_moves = 5,
-        epsilon_random_exploration = 0.0001,
+        number_of_softmax_moves = 2,
+        epsilon_softmax_exploration = 0.001,
+        epsilon_random_exploration = 0.001,
         value_factor = 1.0,
         root_exploration_destribution = "gamma", # gamma | beta | normal
         root_exploration_fraction = 0.2,
