@@ -49,14 +49,14 @@ class AlphaZero():
 
 		self.game_args = game_args  # Args for the game's __init__()
 		self.game_class = game_class
-		game = game_class(*game_args)
+		self.game = game_class(*game_args)
 
 		current_directory = os.getcwd()
 		print("\nCurrent working directory: " + str(current_directory))
 
 		self.network_name = net_name
 
-		self.game_folder_name = game.get_name()
+		self.game_folder_name = self.game.get_name()
 		self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
 		if not os.path.exists(self.model_folder_path):
 			os.mkdir(self.model_folder_path)
@@ -69,7 +69,7 @@ class AlphaZero():
 		self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
 		self.plot_data_load_path = plot_data_path
 
-		self.latest_network = Torch_NN(game, model)
+		self.latest_network = Torch_NN(self.game, model)
 			
 		self.search_config = Search_Config()
 		self.search_config.load(search_config_path)
@@ -358,6 +358,7 @@ class AlphaZero():
 				elif skip_target == "value":
 					loss_flag = 2
 
+
 			print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
 			self.train_network(optimizer, scheduler, batch_size, learning_method, test_set, loss_flag)
 			updates +=1
@@ -477,7 +478,6 @@ class AlphaZero():
 							plt.clf()
 
 					num_points = len(self.train_global_value_loss)
-
 					if num_points > 1:
 						x = range(num_points)
 						plt.plot(x, self.train_global_value_loss, label = "Training")
@@ -489,6 +489,9 @@ class AlphaZero():
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_value_loss.png')
 						plt.clf()
 
+					num_points = len(self.train_global_policy_loss)
+					if num_points > 1:
+						x = range(num_points)
 						plt.plot(x, self.train_global_policy_loss, label = "Training")
 						if test_set:
 							plt.plot(x, self.test_global_policy_loss, label = "Testing")
@@ -498,6 +501,9 @@ class AlphaZero():
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_policy_loss.png')
 						plt.clf()
 
+					num_points = len(self.train_global_combined_loss)
+					if num_points > 1:
+						x = range(num_points)
 						plt.plot(x, self.train_global_combined_loss, label = "Training")
 						if test_set:
 							plt.plot(x, self.test_global_combined_loss, label = "Testing")
@@ -1052,16 +1058,15 @@ class AlphaZero():
 			predicted_value = predicted_values[i]
 			predicted_policy = predicted_policies[i]
 			predicted_policy = torch.flatten(predicted_policy)
-			
-			sample_loss = policy_loss_function(predicted_policy, target_policy)
-			if normalize_policy:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-				sample_loss /= math.log(len(target_policy))
 
-			policy_loss += sample_loss
-
+			policy_loss += policy_loss_function(predicted_policy, target_policy)
 			value_loss += value_loss_function(predicted_value, target_value)
 			
-			
+		# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value grows with log(target_size)
+		num_actions = self.game.get_num_actions()
+		if normalize_policy:
+			policy_loss /= math.log(num_actions)
+
 		value_loss /= batch_size
 		policy_loss /= batch_size
 		combined_loss = policy_loss + value_loss
@@ -1094,6 +1099,7 @@ class AlphaZero():
 		optimizer.step()
 		scheduler.step()
 		
+
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
 

@@ -3,6 +3,7 @@ import os
 import psutil
 import time
 import random
+import math
 import pickle
 import ray
 import copy
@@ -161,13 +162,13 @@ def main():
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
-                network_name = "local_net"
+                network_name = "local_test_net"
 
                 ################################################
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 256, 4)
+                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -271,7 +272,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 4)
+                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -473,6 +474,25 @@ def main():
                 print(value)
                 print("\n\n")
 
+
+            case 7:
+                from torch import nn
+
+                cross_entropy = nn.CrossEntropyLoss()
+                size = 525
+                #print(math.log(size))
+                #input = torch.rand(size)
+                input = torch.zeros(size)
+                input[284] = 0
+
+                #target = torch.full((size,), fill_value=1, dtype=torch.float32)
+                #target[284] = 300
+                target = torch.rand(size)
+                target = nn.functional.softmax(target, dim=0)
+                #print(input)
+                #print(target)
+                loss = cross_entropy(input, target)
+                print(loss)
                 
 
 
