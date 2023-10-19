@@ -20,13 +20,13 @@ class MLP_Network(nn.Module):
         self.general_module = nn.Sequential(
             nn.Flatten(),
             nn.LazyLinear(64),
-            nn.LeakyReLU(),
+            nn.SiLU(),
             nn.Linear(in_features=64, out_features=64),
-            nn.LeakyReLU(),
+            nn.SiLU(),
             nn.Linear(in_features=64, out_features=64),
-            nn.LeakyReLU(),
+            nn.SiLU(),
             nn.Linear(in_features=64, out_features=64),
-            nn.LeakyReLU(),
+            nn.SiLU(),
             nn.Linear(in_features=64, out_features=64),
         )
 
@@ -35,9 +35,9 @@ class MLP_Network(nn.Module):
         # Policy Head
         self.policy_head = nn.Sequential(
             nn.Linear(in_features=64, out_features=32),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Linear(in_features=32, out_features=16),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Linear(in_features=16, out_features=out_features),
         )
         
@@ -46,9 +46,9 @@ class MLP_Network(nn.Module):
         # Value Head
         self.value_head = nn.Sequential(
             nn.Linear(in_features=64, out_features=32),
-            nn.Hardtanh(),
+            nn.Tanh(),
             nn.Linear(in_features=32, out_features=16),
-            nn.Hardtanh(),
+            nn.Tanh(),
             nn.Linear(in_features=16, out_features=1),
             nn.Tanh()
         )

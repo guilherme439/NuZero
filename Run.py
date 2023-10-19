@@ -261,8 +261,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
 
                 network_name = "local_net"
 
@@ -272,7 +272,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet(in_channels, policy_channels, 256, 4)
+                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4, depth_wise_value=True)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -442,37 +442,43 @@ def main():
                 game = game_class(*game_args)
 
 
-                nn, search_config = load_trained_network(game, "adam_se_mse_mirror", 130)
+                #nn, search_config = load_trained_network(game, "adam_se_mse_mirror", 130)
 
-                #all_weights = torch.Tensor().cpu()
-                #for param in nn.get_model().parameters():
-                    #print(param)
-                    #all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4)
 
-                #print(all_weights)
-                valid_actions_mask = game.possible_actions()
-                valid_actions_mask = valid_actions_mask.flatten()
-                n_valids = np.sum(valid_actions_mask)
-                probs = valid_actions_mask/n_valids
-                action_i = np.random.choice(game.num_actions, p=probs)
-                action_coords = np.unravel_index(action_i, game.action_space_shape)
-                game.step_function(action_coords)
-                valid_actions_mask = game.possible_actions()
-                valid_actions_mask = valid_actions_mask.flatten()
-                n_valids = np.sum(valid_actions_mask)
-                probs = valid_actions_mask/n_valids
-                action_i = np.random.choice(game.num_actions, p=probs)
-                action_coords = np.unravel_index(action_i, game.action_space_shape)
-                game.step_function(action_coords)
+                nn = Torch_NN(game, model)
+
+
+                play_actions = 0
+                for _ in range(play_actions):
+                    valid_actions_mask = game.possible_actions()
+                    valid_actions_mask = valid_actions_mask.flatten()
+                    n_valids = np.sum(valid_actions_mask)
+                    probs = valid_actions_mask/n_valids
+                    action_i = np.random.choice(game.num_actions, p=probs)
+                    action_coords = np.unravel_index(action_i, game.action_space_shape)
+                    game.step_function(action_coords)
+
+                
                 state = game.generate_state_image()
 
                 policy, value = nn.inference(state, False, 2)
+                
 
                 print("\n\n")
                 #print(policy)
                 print(torch.sum(policy))
                 print(value)
-                print("\n\n")
+                print("\n\n----------------\n\n")
+
+                all_weights = torch.Tensor().cpu()
+                for param in nn.get_model().parameters():
+                    #print(param)
+                    all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
+
+                print(all_weights)
 
 
             case 7:

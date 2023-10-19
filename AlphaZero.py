@@ -537,8 +537,8 @@ class AlphaZero():
 				print("Ploting done.\n")
 
 			if policy_split and ((b+1) == policy_split):
+				print("\nSpliting policy graph...")
 				num_points = len(self.train_global_policy_loss)
-
 				if num_points > 1:
 					x = range(num_points)
 					plt.plot(x, self.train_global_policy_loss, label = "Training")
@@ -551,6 +551,7 @@ class AlphaZero():
 					plt.clf()
 
 				self.train_global_policy_loss.clear()
+				print("Spliting done.")
 
 			if save_frequency and (((b+1) % save_frequency) == 0):
 				save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"

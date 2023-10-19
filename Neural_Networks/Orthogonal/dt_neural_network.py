@@ -1,12 +1,12 @@
 """ 
-Adapted and simplified from the Deepthinking repository.
+Adapted from the Deepthinking repository.
 """
 import math
 import torch
 
 from torch import nn
 
-from .blocks import BasicBlock2D as BasicBlock
+from .blocks import *
 
 # Ignore statemenst for pylint:
 #     Too many branches (R0912), Too many statements (R0915), No member (E1101),
@@ -17,24 +17,26 @@ from .blocks import BasicBlock2D as BasicBlock
 class DTNet(nn.Module):
     """DeepThinking Network 2D model class"""
 
-    def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, **kwargs):
+    def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, depth_wise_value=True, **kwargs):
         super().__init__()
+        data_type = torch.float64
+
         self.recurrent = True
 
         self.recall = recall
         self.width = int(width)
         proj_conv = nn.Conv2d(in_channels, width, kernel_size=3,
-                              stride=1, padding=1, bias=False)
+                              stride=1, padding=1, bias=False, dtype=data_type)
 
         conv_recall = nn.Conv2d(width + in_channels, width, kernel_size=3,
-                                padding=1, stride=1, bias=False)
+                                padding=1, stride=1, bias=False, dtype=data_type)
 
         recur_layers = []
         if recall:
             recur_layers.append(conv_recall)
 
         for b in range(num_blocks):
-            recur_layers.append(block(self.width, self.width, stride=1))
+            recur_layers.append(block(self.width, self.width, stride=1, dtype=data_type))
 
         
         self.projection = nn.Sequential(proj_conv, nn.ReLU())
@@ -42,28 +44,55 @@ class DTNet(nn.Module):
 
 
         ## POLICY HEAD
-        # number of filters should be close to the dim of the output but not smaller (I think)
-        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) 
+                
+        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) # Filter reduction before last layer
+        # number of filters should be close to the dim of the output but not smaller
         
         self.policy_head = nn.Sequential(
-            nn.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=3, padding=1, stride=1, bias=False),
+            nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, padding=1, stride=1, bias=False, dtype=data_type),
             nn.ReLU(),
-            nn.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=3, padding=1, stride=1, bias=False),
+            nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, padding=1, stride=1, bias=False, dtype=data_type),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=3, padding=1, stride=1, bias=False, dtype=data_type),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=3, padding=1, stride=1, bias=False, dtype=data_type),
         )
 
 
         ## VALUE HEAD
-        depth_of_first_stack = 32
-        depth_of_final_stack = 1
+        if depth_wise_value:
+            reduction_depth = 64
+            self.value_head = nn.Sequential(
+                nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, padding="same", stride=1, groups=width, bias=False, dtype=data_type),
+                nn.Tanh(),
+                nn.Conv2d(in_channels=width, out_channels=width, kernel_size=3, padding="same", stride=1, groups=width, bias=False, dtype=data_type),
+                nn.Tanh(),
+                nn.Conv2d(in_channels=width, out_channels=reduction_depth, kernel_size=3, padding="same", stride=1, bias=False, dtype=data_type),
+                nn.Tanh(),
+                nn.Conv2d(in_channels=reduction_depth, out_channels=1, kernel_size=3, padding="same", stride=1, bias=False, dtype=data_type),
+                nn.AdaptiveAvgPool3d(1),
+                nn.Flatten(),
+                nn.Tanh()
+            )
+        else:
+            depth_conv_layers = [256, 64 , 8 , 1]
 
-        self.value_head = nn.Sequential(
-            nn.Conv2d(in_channels=width, out_channels=depth_of_first_stack, kernel_size=3, padding=1, stride=1, bias=False),
-            nn.Hardtanh(),
-            nn.Conv2d(in_channels=depth_of_first_stack, out_channels=depth_of_final_stack, kernel_size=3, padding=1, stride=1, bias=False),
-            nn.AdaptiveAvgPool3d(1),
-            nn.Flatten(),
-            nn.Tanh()
-        )
+            value_head_layers = []
+            current_depth = width
+            for depth in depth_conv_layers:
+                value_head_layers.append(nn.Conv2d(in_channels=current_depth, out_channels=depth, kernel_size=3,
+                                                   padding="same", stride=1, bias=False, dtype=data_type))
+                value_head_layers.append(nn.Tanh())
+                current_depth = depth
+
+            value_head_layers.append(nn.AdaptiveAvgPool3d(1))
+            value_head_layers.append(nn.Flatten())
+            value_head_layers.append(nn.Tanh())
+
+            self.value_head = nn.Sequential(*value_head_layers)
+
+
+        
 
     def forward(self, x, iters_to_do, interim_thought=None, **kwargs):
         initial_thought = self.projection(x)
@@ -83,9 +112,11 @@ class DTNet(nn.Module):
         return out
 
 
-def dt_net_2d(in_channels, policy_channels, width, blocks):
-    return DTNet(in_channels, policy_channels, BasicBlock, blocks, width=width, recall=False)
+def dt_net_2d(in_channels, policy_channels, width, blocks, depth_wise_value=True):
+    return DTNet(in_channels, policy_channels, BasicBlock2D, blocks, width=width, recall=False, depth_wise_value=depth_wise_value)
 
 
-def dt_net_recall_2d(in_channels, policy_channels, width, blocks):
-    return DTNet(in_channels, policy_channels, BasicBlock, blocks, width=width, recall=True)
+def dt_net_recall_2d(in_channels, policy_channels, width, blocks, depth_wise_value=True):
+    return DTNet(in_channels, policy_channels, BasicBlock2D, blocks, width=width, recall=True, depth_wise_value=depth_wise_value)
+
+

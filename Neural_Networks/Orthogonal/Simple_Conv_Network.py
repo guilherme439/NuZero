@@ -41,7 +41,7 @@ class Simple_Conv_Network(nn.Module):
 
         self.policy_head = nn.Sequential(
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=self.num_filters, out_channels=policy_filters),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=policy_filters, out_channels=policy_channels),
         )
         
@@ -53,7 +53,7 @@ class Simple_Conv_Network(nn.Module):
 
         self.value_head = nn.Sequential(
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=self.num_filters, out_channels=processing_filters),
-            nn.Hardtanh(),
+            nn.Tanh(),
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=processing_filters, out_channels=depth_of_final_stack),
             nn.AdaptiveAvgPool3d(1),
             nn.Flatten(),

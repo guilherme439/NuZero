@@ -68,7 +68,7 @@ class ResNet(nn.Module):
         self.value_head = nn.Sequential(
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=self.num_filters, out_channels=depth_of_first_stack),
             nn.BatchNorm2d(num_features=depth_of_first_stack),
-            nn.Hardtanh(),
+            nn.Tanh(),
             nn.Conv2d(kernel_size=self.kernel_size, padding="same", in_channels=depth_of_first_stack, out_channels=depth_of_final_stack),
             nn.AdaptiveAvgPool3d(1),
             nn.Flatten(),

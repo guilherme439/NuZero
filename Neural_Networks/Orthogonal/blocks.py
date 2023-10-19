@@ -12,14 +12,14 @@ class BasicBlock2D(nn.Module):
 
     expansion = 1
 
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(self, in_channels, out_channels, stride=1, dtype=torch.float32):
         super().__init__()
         
         self.conv1 = nn.Conv2d(in_channels = in_channels, out_channels = out_channels,
-                                        kernel_size = 3, padding=1, stride = 1, bias=False)
+                                        kernel_size = 3, padding=1, stride = 1, bias=False, dtype=dtype)
 
         self.conv2 = nn.Conv2d(in_channels = in_channels, out_channels = out_channels,
-                                        kernel_size = 3, padding=1, stride = 1, bias=False)
+                                        kernel_size = 3, padding=1, stride = 1, bias=False, dtype=dtype)
         
         self.shortcut = nn.Sequential()
 

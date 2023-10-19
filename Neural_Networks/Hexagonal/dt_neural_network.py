@@ -45,8 +45,12 @@ class DTNet(nn.Module):
         ## POLICY HEAD
         # number of filters should be close to the dim of the output but not smaller (I think)
         policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) 
-        
+
         self.policy_head = nn.Sequential(
+            hexagdly.Conv2d(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False),
+            nn.ReLU(),
+            hexagdly.Conv2d(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False),
+            nn.ReLU(),
             hexagdly.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=1, stride=1, bias=False),
             nn.ReLU(),
             hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False),
@@ -54,17 +58,22 @@ class DTNet(nn.Module):
 
 
         ## VALUE HEAD
-        depth_of_first_stack = 32
-        depth_of_final_stack = 1
 
-        self.value_head = nn.Sequential(
-            hexagdly.Conv2d(in_channels=width, out_channels=depth_of_first_stack, kernel_size=1, stride=1, bias=False),
-            nn.Hardtanh(),
-            hexagdly.Conv2d(in_channels=depth_of_first_stack, out_channels=depth_of_final_stack, kernel_size=1, stride=1, bias=False),
-            nn.AdaptiveAvgPool3d(1),
-            nn.Flatten(),
-            nn.Tanh()
-        )
+        depth_conv_layers = [256, 64 , 8 , 1]
+
+        value_head_layers = []
+        current_depth = width
+        for depth in depth_conv_layers:
+            value_head_layers.append(hexagdly.Conv2d(in_channels=current_depth, out_channels=depth, kernel_size=1, stride=1, bias=False))
+            value_head_layers.append(nn.Tanh())
+            current_depth = depth
+
+        value_head_layers.append(nn.AdaptiveAvgPool3d(1))
+        value_head_layers.append(nn.Flatten())
+        value_head_layers.append(nn.Tanh())
+
+        self.value_head = nn.Sequential(*value_head_layers)
+
 
     def forward(self, x, iters_to_do, interim_thought=None, **kwargs):
         initial_thought = self.projection(x)
