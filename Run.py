@@ -261,8 +261,8 @@ def main():
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net"
 
