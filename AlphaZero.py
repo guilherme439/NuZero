@@ -926,9 +926,6 @@ class AlphaZero():
 
 				probs /= np.sum(probs)
 
-			print("\nLate heavy probs:")
-			print(probs)
-
 			average_value_loss = 0
 			average_policy_loss = 0
 			average_combined_loss = 0

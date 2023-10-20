@@ -297,16 +297,16 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 method = "policy"
 
                 # testing options
                 AI_player = "2"
-                recurrent_iterations = 3
+                recurrent_iterations = 2
 
                 # network options
-                net_name = "soldier_value_factor_continue"
-                model_iteration = 240
+                net_name = "short_updates_low_value_continue"
+                model_iteration = 50
 
                 # TODO: Add possibilty of using second network
 
@@ -347,17 +347,17 @@ def main():
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
-                method = "random"
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                method = "mcts"
 
                 # testing options
                 num_games = 100
                 AI_player = "2"
-                recurrent_iterations = 3
+                recurrent_iterations = 2
 
                 # network options
-                net_name = "soldier_value_factor_continue"
-                model_iteration = 244
+                net_name = "short_updates_low_value_continue"
+                model_iteration = 50
 
                 # TODO: Add possibilty of using second network
 
@@ -528,6 +528,7 @@ def main():
 def create_state_set(game):
     renderer = SCS_Renderer()
 
+
     state_set = []
     game.set_simple_game_state(6, [1], [(0,1)], [2])
     state_set.append(game.generate_state_image())
@@ -543,6 +544,7 @@ def create_state_set(game):
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
+    
     game.reset_env()
     game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
@@ -552,11 +554,25 @@ def create_state_set(game):
     game.set_simple_game_state(6, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
+    
 
+    '''
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(4,3)], [1])
+    game.set_simple_game_state(6, [1,1], [(2,2),(2,1)], [2,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(3,0)], [1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+    '''
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(4,4)], [1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+    
 
     game.reset_env()
     return state_set
@@ -784,6 +800,7 @@ def load_trained_network(game, net_name, model_iteration):
     with open(pickle_path, 'rb') as file:
         model = pickle.load(file)
     model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
+    
 
     nn = Torch_NN(game, model)
 
