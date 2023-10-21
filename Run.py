@@ -168,7 +168,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4)
+                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4, depth_wise_value=True)
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -545,6 +545,7 @@ def create_state_set(game):
     #renderer.display_board(game)
 
     
+
     game.reset_env()
     game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
