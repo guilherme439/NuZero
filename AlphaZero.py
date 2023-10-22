@@ -225,6 +225,7 @@ class AlphaZero():
 
 		weight_decay = self.train_config.optimizer["weight_decay"]
 		momentum = self.train_config.optimizer["momentum"]
+		nesterov = self.train_config.optimizer["nesterov"]
 
 		scheduler_boundaries = self.train_config.optimizer["scheduler_boundaries"]
 		scheduler_gamma = self.train_config.optimizer["scheduler_gamma"]
@@ -232,7 +233,7 @@ class AlphaZero():
 		if optimizer_name == "Adam":
 			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
 		elif optimizer_name == "SGD":
-			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
+			optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
 		else:
 			optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
 			print("Bad optimizer config.\nUsing default optimizer (Adam)...")
@@ -1019,7 +1020,7 @@ class AlphaZero():
 		normalize_policy = False
 		match policy_loss_choice:
 			case "CEL":
-				policy_loss_function = nn.CrossEntropyLoss()
+				policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.05)
 				if normalize_CEL:
 					normalize_policy = True
 			case "KLD":

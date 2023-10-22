@@ -545,7 +545,7 @@ def create_state_set(game):
     #renderer.display_board(game)
 
     
-
+    #'''
     game.reset_env()
     game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
@@ -556,7 +556,7 @@ def create_state_set(game):
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
-
+    #'''
     '''
     game.reset_env()
     game.set_simple_game_state(6, [1,1], [(2,2),(2,1)], [2,1])
