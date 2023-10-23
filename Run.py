@@ -126,6 +126,12 @@ def main():
         if args.log_driver:
             log_to_driver = True
 
+        ##############################################################################################################
+        # ---------------------------------------------------------------------------------------------------------- #
+        # ------------------------------------------   TRAINING-PRESETS   ------------------------------------------ #
+        # ---------------------------------------------------------------------------------------------------------- #
+        ##############################################################################################################
+
         match args.training_preset:
             case 0: # Tic_tac_toe example
                 game_class = tic_tac_toe
@@ -287,11 +293,40 @@ def main():
                 # Define your setup here
                 exit()
 
-
+    
     elif args.testing_preset is not None:
+
+        ##############################################################################################################
+        # ---------------------------------------------------------------------------------------------------------- #
+        # ------------------------------------------   TESTING-PRESETS   ------------------------------------------- #
+        # ---------------------------------------------------------------------------------------------------------- #
+        ##############################################################################################################
+
         match args.testing_preset:
-            case 0: # Example
-                pass
+            case 0: # Tic Tac Toe Example
+                ray.init()
+
+                number_of_testers = 5
+
+                game_class = tic_tac_toe
+                game_args = []
+                method = "mcts"
+
+                # testing options
+                num_games = 200
+                AI_player = "1"
+                recurrent_iterations = 2
+
+                # network options
+                net_name = "best_ttt_config"
+                model_iteration = 600
+
+                ################################################
+                
+                game = game_class(*game_args)
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                
+                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
 
             case 1: # Render Game
                 rendering_mode = "interactive"  # passive | interactive
@@ -348,10 +383,10 @@ def main():
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
-                method = "mcts"
+                method = "policy"
 
                 # testing options
-                num_games = 100
+                num_games = 1000
                 AI_player = "2"
                 recurrent_iterations = 2
 
@@ -499,6 +534,30 @@ def main():
                 #print(target)
                 loss = cross_entropy(input, target)
                 print(loss)
+
+            case 8:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game = game_class(*game_args)
+
+                # network options
+                net_name = "short_updates_low_value_continue"
+                model_iteration = 50
+                recurrent_iterations = 2
+
+                ##########################################################################
+
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                
+                game_folder = game.get_name() + "/"
+                model_folder = game_folder + "models/" + net_name + "/" 
+
+
+                file_name = model_folder + "model_and_game_config.txt"
+                with open(file_name, "w") as file:
+                    file.write(game_args.__str__())
+                    file.write("\n\n\n\n----------------------------------\n\n")
+                    file.write(nn.get_model().__str__())
                 
 
 
@@ -508,7 +567,7 @@ def main():
         mode_answer = input("\nDo you wish to continue training a previous network or train a new one?(insert the number)\
                              \n 1 -> Training\
                              \n 2 -> Testing\
-                             \n 3 -> Image creation\
+                             \n 3 -> Image creation (WIP)\
                              \n\nNumber: ")
         
         match int(mode_answer):
@@ -588,7 +647,74 @@ def images_mode():
     return
 
 def testing_mode():
-    return
+    game_class, game_args = choose_game()
+    game = game_class(*game_args)
+    game_folder_name = game.get_name()
+
+    test_mode_answer = input("\nSelect what kind of testing you wish to do.(1 or 2)\
+                                \n1 -> Visualize a game\
+                                \n2 -> Take statistics from playing many games\n\n")
+    
+    if test_mode_answer == "1":
+        rendering_mode_answer = input("\nDo you wish to render a game while it is being played or analyse a game after it is played?.(1 or 2)\
+                                       \n1 -> Render game\
+                                       \n2 -> Analyse game\n\n")
+        if rendering_mode_answer == "1":
+            rendering_mode = "passive"
+        elif rendering_mode_answer == "2":
+            rendering_mode = "interative"
+        else:
+            print("\nBad answer.")
+            exit()
+
+        
+        method = choose_method()
+
+        # testing options
+        AI_player = "2"
+        recurrent_iterations = 2
+
+        # network options
+        net_name = "short_updates_low_value_continue"
+        model_iteration = 50
+
+        # TODO: Add possibilty of using second network
+
+        ################################################
+
+        game = game_class(*game_args)
+        nn, search_config = load_trained_network(game, net_name, model_iteration)
+        
+        if rendering_mode == "passive":
+            tester = Tester(render=True)
+        elif rendering_mode == "interactive":
+            tester = Tester(print=True)
+
+        if method == "mcts":
+            winner, _ = tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=False, recurrent_iterations=recurrent_iterations)
+        elif method == "policy":
+            winner, _ = tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=recurrent_iterations)
+        elif method == "random":
+            winner, _ = tester.random_vs_random(game)
+
+        if winner == 0:
+            winner_text = "Draw!"
+        else:
+            winner_text = "Player " + str(winner) + " won!"
+        
+        print("\n\nLength: " + str(game.get_length()) + "\n")
+        print(winner_text)
+        
+        if rendering_mode == "interactive":
+            time.sleep(0.5)
+
+            renderer = SCS_Renderer()
+            renderer.analyse(game)
+
+
+
+    elif test_mode_answer == "2":
+        continuing = False
 
 def training_mode():
     game_class, game_args = choose_game()
@@ -746,6 +872,29 @@ def choose_model(game):
 
     return model
 
+def choose_method():
+    method_answer = input("\nTest using mcts, raw policy or random agent?.(1 or 2)\
+                               \n1 -> MCTS\
+                               \n2 -> Policy\
+                               \n3 -> Random\n\n")
+    if method_answer == "1":
+        method = "mcts"
+    elif method_answer == "2":
+        method = "policy"
+    elif method_answer == "3":
+        method = "random"
+    else:
+        print("\nBad answer.")
+        exit()
+
+    return method
+
+def choose_trained_network():
+    network_name, interation, recurrent_iterations = None
+
+
+    return network_name, interation, recurrent_iterations
+
 ##########################################################################
 # ----------------------------               --------------------------- #
 # ---------------------------    UTILITIES    -------------------------- #
@@ -800,6 +949,7 @@ def load_trained_network(game, net_name, model_iteration):
 
     with open(pickle_path, 'rb') as file:
         model = pickle.load(file)
+
     model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
     
 

@@ -43,7 +43,7 @@ class DTNet(nn.Module):
 
 
         ## POLICY HEAD
-        # number of filters should be close to the dim of the output but not smaller (I think)
+        # number of filters should be close to the dim of the output but not smaller
         policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) 
 
         self.policy_head = nn.Sequential(

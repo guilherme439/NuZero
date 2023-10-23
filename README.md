@@ -16,8 +16,7 @@ AlphaZero + DeepThinking + WarGames
 
 ### Features in development
 
-* [ ] Fully Assyncronous Training as described in the [AlphaZero paper](link_to_paper)
-* [ ] CLI interactive mode for new users.
+* [ ] Fully Assyncronous Training as described in the [AlphaZero paper](https://www.semanticscholar.org/paper/A-general-reinforcement-learning-algorithm-that-and-Silver-Hubert/f9717d29840f4d8f1cc19d1b1e80c5d12ec40608)
 * [ ] 
 
 ### Future features
@@ -27,12 +26,8 @@ AlphaZero + DeepThinking + WarGames
 
 ### Current issues
 
-* [ ] Put the issues on github
 * [ ] Bad GPU performance
 * [ ] Others...
-
-## Code structure
-
 
 
 
@@ -46,19 +41,37 @@ cd NuZero
 pip install -r requirements.txt
 ```
 
+
+### Interactive
+
+To start using the system, you can choose to use interactive mode by running:
+```bash
+python Run.py --interactive
+```
+This will show you a series of prompts that will allow you to start training/testing by selecting from one of the available games, networks and configurations.
+
 ### Training
+
+In order to start training with a specific configuration, the training presets should be used.
+Training presets are defined inside ```Run.py ```. 
 
 ```bash
 python Run.py --training-preset 0 
 ```
 
+As an example, currently training preset 0  trains a recurrent network for tic tac toe, using an optimized configuration, while the remaining presets are defined for SCS games.
+
+
 ### Testing
+To test a trained network just use/define a testing preset. Currently preset 0 tests and provides statistics for a pretrained tic tac toe model, while presets 1 and 2 are used to visualize or get statistics from SCS games.
+
 ```bash
 python Run.py --testing-preset 1
 ```
 
 
-### Configs
+## Configs
+In order to train the networks, both Training and Search configurations are required. These are located in Configs/Config_files/Training/ or Search/ respectively.
 
 
 
