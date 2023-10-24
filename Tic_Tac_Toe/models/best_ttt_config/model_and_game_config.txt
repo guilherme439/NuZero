@@ -1,0 +1,39 @@
+[]
+
+
+
+----------------------------------
+
+DTNet(
+  (projection): Sequential(
+    (0): Conv2d(2, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): ReLU()
+  )
+  (recur_block): Sequential(
+    (0): Sequential(
+      (0): BasicBlock2D(
+        (conv1): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (conv2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (shortcut): Sequential()
+      )
+      (1): BasicBlock2D(
+        (conv1): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (conv2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+        (shortcut): Sequential()
+      )
+    )
+  )
+  (policy_head): Sequential(
+    (0): Conv2d(64, 1, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): ReLU()
+    (2): Conv2d(1, 1, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+  )
+  (value_head): Sequential(
+    (0): Conv2d(64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): Hardtanh(min_val=-1.0, max_val=1.0)
+    (2): Conv2d(32, 1, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (3): AdaptiveAvgPool3d(output_size=1)
+    (4): Flatten(start_dim=1, end_dim=-1)
+    (5): Tanh()
+  )
+)
