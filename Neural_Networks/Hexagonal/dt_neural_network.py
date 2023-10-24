@@ -43,9 +43,10 @@ class DTNet(nn.Module):
 
 
         ## POLICY HEAD
+        
+        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) # Filter reduction before last layer
         # number of filters should be close to the dim of the output but not smaller
-        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) 
-
+        
         self.policy_head = nn.Sequential(
             hexagdly.Conv2d(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False),
             nn.ReLU(),

@@ -19,3 +19,6 @@ SLURM/Scripts/*
 
 *.insyncdl
 *.log
+
+
+!Tic_Tac_Toe/models/best_ttt_config/

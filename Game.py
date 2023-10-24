@@ -1,11 +1,18 @@
 class Game():
-    #TODO: Incomplete and not an actual abstract class yet
 
     # Abstract class so that you know what methods to implement in your game
     def __init__(self):
         print("init_not implemented")
         pass
     
+    def get_name(self):
+        print("get_action_space_shape not implemented")
+        pass
+
+    def state_shape(self):
+        print("state_shape() not implemented")
+        pass
+
     def get_action_space_shape(self):
         print("get_action_space_shape not implemented")
         pass
@@ -16,14 +23,6 @@ class Game():
 
     def get_current_player(self):
         print("get_current_player not implemented")
-        pass
-
-    def store_player(self):
-        print("store_player not implemented")
-        pass
-
-    def store_state(self):
-        print("store_state not implemented")
         pass
 
     def is_terminal(self):
@@ -42,6 +41,14 @@ class Game():
     def get_lenght(self):
         # game lenght (usually is the number of moves)
         print("get_lenght not implemented")
+        pass
+
+    def store_player(self):
+        print("store_player not implemented")
+        pass
+
+    def store_state(self):
+        print("store_state not implemented")
         pass
 
     def possible_actions(self):
@@ -75,12 +82,7 @@ class Game():
         print("make_target not implemented")
         pass
 
-    def state_shape(self):
-        # used when creating a network for the game being played
-        print("state_shape() not implemented")
-        pass
 
     def print_board(self):
         # not necessary
-        
         pass

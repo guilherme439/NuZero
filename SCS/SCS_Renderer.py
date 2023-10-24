@@ -24,6 +24,7 @@ class Color(Enum):
     LIGHT_BLUE = (40, 110, 230)
     BLUE = (0, 40, 90)
     BLACK = (0, 0, 0)
+    LIGHT_BROWN = (143, 100, 46)
 
     def rgb(self):
         return self.value
@@ -310,7 +311,7 @@ class SCS_Renderer():
         x_offset = board_x + hexagon_side + board_border_thickness
         y_offset = board_y + hexagon_short_side + board_border_thickness
         
-
+        pygame.draw.rect(screen, Color.LIGHT_BROWN.rgb(), border_rectangle)
         pygame.draw.rect(screen, Color.BROWN.rgb(), border_rectangle, board_border_thickness)
         
         board = game.get_board()

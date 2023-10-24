@@ -1091,7 +1091,7 @@ class SCS_Game():
 ##########################################################################
 
     def generate_state_image(self):
-        data_type = torch.float64
+        data_type = torch.float32
 
         # Terrain Channels #
         atack_modifiers = torch.ones((self.rows, self.columns), dtype=data_type)

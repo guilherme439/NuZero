@@ -29,7 +29,7 @@ from Node import Node
 
 '''
 
-# The explorer runs searches. (explorer sounds better than searcher)
+# The explorer runs searches.
 class Explorer():  
 
     def __init__(self, search_config, training, recurrent_iterations=1):
@@ -78,7 +78,7 @@ class Explorer():
             else:
                 epsilon_softmax = np.random.random()
                 epsilon_random = np.random.random()
-                softmax_threshold = self.config.exploration["epsilon_random_exploration"]
+                softmax_threshold = self.config.exploration["epsilon_softmax_exploration"]
                 random_threshold = self.config.exploration["epsilon_random_exploration"]
 
                 if epsilon_softmax < softmax_threshold:

@@ -59,14 +59,14 @@ Training presets are defined inside ```Run.py ```.
 python Run.py --training-preset 0 
 ```
 
-As an example, currently training preset 0  trains a recurrent network for tic tac toe, using an optimized configuration, while the remaining presets are defined for SCS games.
+As an example, training preset 0 trains a recurrent network for tic tac toe, using an optimized configuration, while the remaining presets are defined for SCS games.
 
 
 ### Testing
 To test a trained network just use/define a testing preset. Currently preset 0 tests and provides statistics for a pretrained tic tac toe model, while presets 1 and 2 are used to visualize or get statistics from SCS games.
 
 ```bash
-python Run.py --testing-preset 1
+python Run.py --testing-preset 0
 ```
 
 

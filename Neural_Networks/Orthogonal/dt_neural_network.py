@@ -19,7 +19,7 @@ class DTNet(nn.Module):
 
     def __init__(self, in_channels, policy_channels, block, num_blocks, width, recall=True, depth_wise_value=True, **kwargs):
         super().__init__()
-        data_type = torch.float64
+        data_type = torch.float32
 
         self.recurrent = True
 

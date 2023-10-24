@@ -162,7 +162,7 @@ def main():
             case 1: # Run on local machine
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -174,7 +174,17 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4, depth_wise_value=True)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+
+                #'''
+                for param in model.parameters():
+                    r = np.random.random()
+                    if r < 0.5:
+                        torch.nn.init.xavier_uniform_(param)
+                    else:
+                        torch.nn.init.uniform_(param, a=-0.01, b=0.01)
+                    
+                #'''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -238,12 +248,12 @@ def main():
             case 4: # Continue Training
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
-                trained_network_name = "adam_se_mse_mirror"
-                continue_network_name = "adam_se_mse_mirror" # new network can have the same name as the previous
-                use_same_configs = False
+                trained_network_name = "unbalanced_new_config_continue"
+                continue_network_name = "unbalanced_new_config_continue" # new network can have the same name as the previous
+                use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
                 new_train_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -252,7 +262,7 @@ def main():
                 ################################################
 
                 state_set = None
-                #state_set = create_state_set(game)
+                state_set = create_state_set(game)
 
 
                 print("\n")
@@ -264,7 +274,7 @@ def main():
             case 5: # Run with debug set
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -278,7 +288,17 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4, depth_wise_value=True)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+
+                #'''
+                for param in model.parameters():
+                    r = np.random.random()
+                    if r < 0.5:
+                        torch.nn.init.xavier_uniform_(param)
+                    else:
+                        torch.nn.init.uniform_(param, a=-0.01, b=0.01)
+                    
+                #'''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -332,16 +352,16 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
-                method = "policy"
+                game_args = ["SCS/Game_configs/automatic_config.yml"]
+                method = "mcts"
 
                 # testing options
                 AI_player = "2"
                 recurrent_iterations = 2
 
                 # network options
-                net_name = "short_updates_low_value_continue"
-                model_iteration = 50
+                net_name = "unbalanced_new_config_continue"
+                model_iteration = 67
 
                 # TODO: Add possibilty of using second network
 
@@ -382,12 +402,39 @@ def main():
                 number_of_testers = 5
 
                 game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                method = "random"
+
+                # testing options
+                num_games = 100
+                AI_player = "2"
+                recurrent_iterations = 5
+
+                # network options
+                net_name = "short_updates_low_value_continue"
+                model_iteration = 50
+
+                # TODO: Add possibilty of using second network
+
+                ################################################
+                
+                game = game_class(*game_args)
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                
+                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+
+            case 3: # Other tests
+                ray.init()
+
+                number_of_testers = 5
+
+                game_class = SCS_Game
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 method = "policy"
 
                 # testing options
-                num_games = 1000
-                AI_player = "2"
+                num_games = 100
+                AI_player = "1"
                 recurrent_iterations = 2
 
                 # network options
@@ -402,6 +449,39 @@ def main():
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 
                 test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+
+            case 4: # Statistics for Multiple Games
+                ray.init()
+
+                number_of_testers = 5
+
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game = game_class(*game_args)
+
+                method = "random"
+
+                # testing options
+                num_games = 100
+                AI_player = "2"
+                recurrent_iterations = 5
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+
+                nn = Torch_NN(game, model)
+
+                search_config_path = "Configs/Config_Files/Search/local_search_config.ini"
+                search_config = Search_Config()
+                search_config.load(search_config_path)
+
+                ################################################
+
+                
+                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+
+
 
             case _:
                 print("Unknown testing preset.")
@@ -471,7 +551,7 @@ def main():
                 print("\nSoftmax Policy:\n" + str(softmax(policy)) + "\n\n")
                 print("Value: " + str(value.item()) + "\n\n")
 
-            case 6:
+            case 6: # Test initialization
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
@@ -481,8 +561,17 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet_recall(in_channels, policy_channels, 256, 4)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
 
+                #'''
+                for param in model.parameters():
+                    random = np.random.random()
+                    if random < 0.5:
+                        torch.nn.init.xavier_uniform_(param)
+                    else:
+                        torch.nn.init.uniform_(param, a=-0.01, b=0.01)
+                    
+                #'''
                 nn = Torch_NN(game, model)
 
 
@@ -499,7 +588,7 @@ def main():
                 
                 state = game.generate_state_image()
 
-                policy, value = nn.inference(state, False, 2)
+                policy, value = nn.inference(state, False, 15)
                 
 
                 print("\n\n")
@@ -507,7 +596,7 @@ def main():
                 print(torch.sum(policy))
                 print(value)
                 print("\n\n----------------\n\n")
-
+                
                 all_weights = torch.Tensor().cpu()
                 for param in nn.get_model().parameters():
                     #print(param)
@@ -522,17 +611,17 @@ def main():
                 cross_entropy = nn.CrossEntropyLoss()
                 size = 525
                 #print(math.log(size))
-                #input = torch.rand(size)
-                input = torch.zeros(size)
-                input[284] = 0
+                #input_tensor = torch.rand(size)
+                input_tensor = torch.zeros(size)
+                input_tensor[284] = 0
 
                 #target = torch.full((size,), fill_value=1, dtype=torch.float32)
                 #target[284] = 300
                 target = torch.rand(size)
                 target = nn.functional.softmax(target, dim=0)
-                #print(input)
+                #print(input_tensor)
                 #print(target)
-                loss = cross_entropy(input, target)
+                loss = cross_entropy(input_tensor, target)
                 print(loss)
 
             case 8:
@@ -564,9 +653,9 @@ def main():
     elif args.interactive:
         print("\nStarted interactive mode!\n")
         
-        mode_answer = input("\nDo you wish to continue training a previous network or train a new one?(insert the number)\
-                             \n 1 -> Training\
-                             \n 2 -> Testing\
+        mode_answer = input("\nWhat do you wish to do?(insert the number)\
+                             \n 1 -> Train a network\
+                             \n 2 -> Test a trained network\
                              \n 3 -> Image creation (WIP)\
                              \n\nNumber: ")
         
@@ -604,7 +693,7 @@ def create_state_set(game):
     #renderer.display_board(game)
 
     
-    #'''
+    '''
     game.reset_env()
     game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
@@ -615,8 +704,8 @@ def create_state_set(game):
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
-    #'''
     '''
+    #'''
     game.reset_env()
     game.set_simple_game_state(6, [1,1], [(2,2),(2,1)], [2,1])
     state_set.append(game.generate_state_image())
@@ -626,7 +715,7 @@ def create_state_set(game):
     game.set_simple_game_state(6, [1], [(3,0)], [1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-    '''
+    #'''
 
     game.reset_env()
     game.set_simple_game_state(6, [1], [(4,4)], [1])
@@ -649,16 +738,19 @@ def images_mode():
 def testing_mode():
     game_class, game_args = choose_game()
     game = game_class(*game_args)
-    game_folder_name = game.get_name()
+    game_name = game.get_name()
 
-    test_mode_answer = input("\nSelect what kind of testing you wish to do.(1 or 2)\
+    if game_name == "Tic_Tac_Toe":
+        test_mode_answer = "2"
+    else:
+        test_mode_answer = input("\nSelect what kind of testing you wish to do.(1 or 2)\
                                 \n1 -> Visualize a game\
                                 \n2 -> Take statistics from playing many games\n\n")
-    
+        
     if test_mode_answer == "1":
         rendering_mode_answer = input("\nDo you wish to render a game while it is being played or analyse a game after it is played?.(1 or 2)\
-                                       \n1 -> Render game\
-                                       \n2 -> Analyse game\n\n")
+                                    \n1 -> Render game\
+                                    \n2 -> Analyse game\n\n")
         if rendering_mode_answer == "1":
             rendering_mode = "passive"
         elif rendering_mode_answer == "2":
@@ -669,16 +761,13 @@ def testing_mode():
 
         
         method = choose_method()
+        net_name, model_iteration, recurrent_iterations = choose_trained_network()
 
-        # testing options
-        AI_player = "2"
-        recurrent_iterations = 2
-
-        # network options
-        net_name = "short_updates_low_value_continue"
-        model_iteration = 50
-
-        # TODO: Add possibilty of using second network
+        player_answer = input("\nWhat player will the AI take?(1 or 2)\
+                            \n1 -> Player 1\
+                            \n2 -> Player 2\n\n")
+        
+        AI_player = player_answer
 
         ################################################
 
@@ -711,10 +800,26 @@ def testing_mode():
             renderer = SCS_Renderer()
             renderer.analyse(game)
 
-
-
     elif test_mode_answer == "2":
-        continuing = False
+        
+        method = choose_method()
+        net_name, model_iteration, recurrent_iterations = choose_trained_network()
+
+        player_answer = input("\nWhat player will the AI take?(1 or 2)\
+                            \n1 -> Player 1\
+                            \n2 -> Player 2\n\n")
+        AI_player = player_answer
+
+        num_games = int(input("\nHow many games you wish to play?"))
+        number_of_testers = int(input("\nHow many processes/actors you wish to use?"))
+
+        ################################################
+        ray.init()
+
+        game = game_class(*game_args)
+        nn, search_config = load_trained_network(game, net_name, model_iteration)
+        
+        test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
 
 def training_mode():
     game_class, game_args = choose_game()
@@ -723,7 +828,8 @@ def training_mode():
 
     continue_answer = input("\nDo you wish to continue training a previous network or train a new one?(1 or 2)\
                                 \n1 -> Continue training\
-                                \n2 -> New Network\n\n")
+                                \n2 -> New Network\
+                                \n\nNumber: ")
     
     if continue_answer == "1":
         continuing = True
@@ -767,12 +873,12 @@ def training_mode():
 
         model = choose_model(game)
 
-        alpha_config_path = "Configs/Config_files/default_alpha_config.ini"
-        search_config_path = "Configs/Config_files/default_search_config.ini"
+        alpha_config_path = "Configs/Config_files/local_train_config.ini"
+        search_config_path = "Configs/Config_files/local_search_config.ini"
         print("\nThe default config paths are:\n " + alpha_config_path + "\n " + search_config_path)
 
-        change_configs = input("\nDo you wish to use these configs?(y/n)")
-        if change_configs == "y":
+        use_default_configs = input("\nDo you wish to use these configs?(y/n)")
+        if use_default_configs == "n":
             print("\nYou will new to provide new configs.")
             alpha_config_path = input("\nAlpha config path: ")
             search_config_path = input("\nSearch config path: ")
@@ -834,7 +940,7 @@ def choose_model(game):
             policy_channels = game.get_action_space_shape()[0]
 
             num_filters = input("\nNumber of filters: ")  
-            kernel_size = input("\nKernel size (int): ")  
+            kernel_size = input("Kernel size (int): ")  
 
             if hexagonal:
                 model = Hex_ConvNet(in_channels, policy_channels, int(kernel_size), int(num_filters))
@@ -846,8 +952,8 @@ def choose_model(game):
             policy_channels = game.get_action_space_shape()[0]
 
             num_blocks = input("\nNumber of residual blocks: ")
-            num_filters = input("\nNumber of filters: ")  
-            kernel_size = input("\nKernel size (int): ")  
+            num_filters = input("Number of filters: ")  
+            kernel_size = input("Kernel size (int): ")  
 
             if hexagonal:
                 model = Hex_ResNet(in_channels, policy_channels, int(num_blocks), int(kernel_size), int(num_filters))
@@ -873,10 +979,11 @@ def choose_model(game):
     return model
 
 def choose_method():
-    method_answer = input("\nTest using mcts, raw policy or random agent?.(1 or 2)\
+    method_answer = input("\nTest using mcts, raw policy or random agent?\
                                \n1 -> MCTS\
                                \n2 -> Policy\
-                               \n3 -> Random\n\n")
+                               \n3 -> Random\
+                               \n\nNumber: ")
     if method_answer == "1":
         method = "mcts"
     elif method_answer == "2":
@@ -890,10 +997,13 @@ def choose_method():
     return method
 
 def choose_trained_network():
-    network_name, interation, recurrent_iterations = None
-
-
-    return network_name, interation, recurrent_iterations
+    network_name = input("\n\nName of the trained network: ")
+    model_iteration_answer = input("\nModel iteration number: ")
+    recurrent_answer = input("\n(This will be ignored if the network is not recurrent)\n" +
+                                  "Number of recurrent iterations: ")
+    model_iteration = int(model_iteration_answer)
+    recurrent_iterations = int(recurrent_answer)
+    return network_name, model_iteration, recurrent_iterations
 
 ##########################################################################
 # ----------------------------               --------------------------- #
@@ -990,6 +1100,7 @@ def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=N
             actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
         elif method == "mcts":
             actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
+
 
     time.sleep(1)
 

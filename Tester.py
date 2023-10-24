@@ -280,6 +280,7 @@ class Tester():
             if (done):
                 winner = game.get_winner()
                 break
+
             
         return winner, {}
 
@@ -327,7 +328,7 @@ class Tester():
             if (done):
                 winner = game.get_winner()
                 break
-
+        
         return winner, {}
 
     def ttt_vs_AI_with_policy(self, AI_player, nn, recurrent_iterations=1):
