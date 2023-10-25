@@ -485,7 +485,7 @@ class AlphaZero():
 						if test_set:
 							plt.plot(x, self.test_global_value_loss, label = "Testing")
 
-						plt.title("global value loss")
+						plt.title("Global Value loss")
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_value_loss.png')
 						plt.clf()
@@ -497,7 +497,7 @@ class AlphaZero():
 						if test_set:
 							plt.plot(x, self.test_global_policy_loss, label = "Testing")
 
-						plt.title("global policy loss")
+						plt.title("Global Policy loss")
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_policy_loss.png')
 						plt.clf()
@@ -509,7 +509,7 @@ class AlphaZero():
 						if test_set:
 							plt.plot(x, self.test_global_combined_loss, label = "Testing")
 
-						plt.title("global combined loss")
+						plt.title("Global Combined loss")
 						plt.legend()
 						plt.savefig(self.plots_path + "_" + self.network_name + '_global_total_loss.png')
 						plt.clf()

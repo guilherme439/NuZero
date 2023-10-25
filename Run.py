@@ -179,7 +179,7 @@ def main():
                 #'''
                 for param in model.parameters():
                     r = np.random.random()
-                    if r < 0.5:
+                    if r < 0.2:
                         torch.nn.init.xavier_uniform_(param)
                     else:
                         torch.nn.init.uniform_(param, a=-0.01, b=0.01)
@@ -561,7 +561,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 4)
 
                 #'''
                 for param in model.parameters():
@@ -588,7 +588,7 @@ def main():
                 
                 state = game.generate_state_image()
 
-                policy, value = nn.inference(state, False, 15)
+                policy, value = nn.inference(state, False, 5)
                 
 
                 print("\n\n")
@@ -611,8 +611,8 @@ def main():
                 cross_entropy = nn.CrossEntropyLoss()
                 size = 525
                 #print(math.log(size))
-                #input_tensor = torch.rand(size)
-                input_tensor = torch.zeros(size)
+                input_tensor = torch.rand(size)
+                #input_tensor = torch.zeros(size)
                 input_tensor[284] = 0
 
                 #target = torch.full((size,), fill_value=1, dtype=torch.float32)
