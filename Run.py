@@ -289,8 +289,8 @@ def main():
 
                 #'''
                 for param in model.parameters():
-                    #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                    torch.nn.init.xavier_uniform_(param, gain=0.6)
+                    torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                    #torch.nn.init.xavier_uniform_(param, gain=0.6)
                     
                 #'''
 
