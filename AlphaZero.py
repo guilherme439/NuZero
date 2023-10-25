@@ -28,13 +28,13 @@ from Shared_network_storage import Shared_network_storage
 
 from RemoteTester import RemoteTester
 
-from stats_utilities import *
+from Utils.stats_utilities import *
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
-from PrintBar import PrintBar
+from Utils.PrintBar import PrintBar
 
-from loss_functions import *
+from Utils.loss_functions import *
 
 
 class AlphaZero():
@@ -775,6 +775,32 @@ class AlphaZero():
 
 		print("\nAfter Self-Play there are a total of " + str(replay_size) + " positions in the replay buffer.")
 		print("Total number of games: " + str(n_games))
+
+		# ----------- Loss functions -----------
+
+		value_loss_choice = self.train_config.learning["value_loss"]
+		policy_loss_choice = self.train_config.learning["policy_loss"]
+		normalize_CEL = self.train_config.learning["normalize_cel"]
+
+		normalize_policy = False
+		match policy_loss_choice:
+			case "CEL":
+				policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.05)
+				if normalize_CEL:
+					normalize_policy = True
+			case "KLD":
+				policy_loss_function = KLDivergence
+			case "MSE":
+				policy_loss_function = MSError
+		
+		match value_loss_choice:
+			case "SE":
+				value_loss_function = SquaredError
+			case "AE":
+				value_loss_function = AbsoluteError
+		
+		# --------------------------------------
+
 		
 		if learning_method == "epochs":
 			learning_epochs = self.train_config.epochs["learning_epochs"]
@@ -849,7 +875,9 @@ class AlphaZero():
 						batch = ray.get(self.replay_buffer.get_slice.remote(start_index, next_index))
 					
 				
-					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations, loss_flag)
+					value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
+															 policy_loss_function, value_loss_function, normalize_policy,
+															 batch, batch_size, train_iterations, loss_flag)
 
 					epoch_value_loss += value_loss
 					epoch_policy_loss += policy_loss
@@ -869,7 +897,9 @@ class AlphaZero():
 
 						batch = test_buffer[start_index:next_index]
 					
-						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(batch, batch_size, train_iterations, loss_flag)
+						test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(
+																				policy_loss_function, value_loss_function, normalize_policy,
+																				batch, batch_size, train_iterations, loss_flag)
 
 						t_epoch_value_loss += test_value_loss
 						t_epoch_policy_loss += test_policy_loss
@@ -949,7 +979,9 @@ class AlphaZero():
 				else:
 					batch = ray.get(self.replay_buffer.get_sample.remote(batch_size, replace, probs))
 
-				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler, batch, batch_size, train_iterations, loss_flag)
+				value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
+															 policy_loss_function, value_loss_function, normalize_policy,
+															 batch, batch_size, train_iterations, loss_flag)
 
 				average_value_loss += value_loss
 				average_policy_loss += policy_loss
@@ -1009,31 +1041,7 @@ class AlphaZero():
 
 		return value_loss.item(), policy_loss.item(), combined_loss.item()
 
-	def batch_update_weights(self, optimizer, scheduler, batch, batch_size, train_iterations, loss_flag):
-		
-		value_loss_choice = self.train_config.learning["value_loss"]
-		policy_loss_choice = self.train_config.learning["policy_loss"]
-		normalize_CEL = self.train_config.learning["normalize_cel"]
-
-		policy_loss_function = None
-		value_loss_function = None
-		normalize_policy = False
-		match policy_loss_choice:
-			case "CEL":
-				policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.05)
-				if normalize_CEL:
-					normalize_policy = True
-			case "KLD":
-				policy_loss_function = KLDivergence
-			case "MSE":
-				policy_loss_function = MSError
-		
-		match value_loss_choice:
-			case "SE":
-				value_loss_function = SquaredError
-			case "AE":
-				value_loss_function = AbsoluteError
-		
+	def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, batch_size, train_iterations, loss_flag):
 		
 		self.latest_network.get_model().train()
 		optimizer.zero_grad()

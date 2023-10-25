@@ -24,13 +24,6 @@ Units:
     movement: 2
     image_path: "SCS/Images/soldier.png"
 
-  Tank:
-    id: 2
-    attack: 2
-    defense: 2
-    movement: 4
-    image_path: "SCS/Images/tank.jpg"
-
 
 ###
 Reinforcements:

@@ -35,7 +35,7 @@
 - Implement a user interface to play games vs trained AI [hard, low]
 
 ### Structure
-- Create "Utility" folder for all the files with useful stuff like "stats_utilities.py" and "loss_functions.py"
+
 
 
 <!---------------------------------------------------------------------------------------------------------------------------------------->

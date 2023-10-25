@@ -15,7 +15,7 @@ import torch
 import numpy as np
 
 from progress.bar import ChargingBar
-from PrintBar import PrintBar
+from Utils.PrintBar import PrintBar
 
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
@@ -43,7 +43,7 @@ from AlphaZero import AlphaZero
 from Tester import Tester
 from RemoteTester import RemoteTester
 
-from stats_utilities import *
+from Utils.stats_utilities import *
 
 from Gamer import Gamer
 from Replay_Buffer import Replay_Buffer
@@ -178,11 +178,8 @@ def main():
 
                 #'''
                 for param in model.parameters():
-                    r = np.random.random()
-                    if r < 0.2:
-                        torch.nn.init.xavier_uniform_(param)
-                    else:
-                        torch.nn.init.uniform_(param, a=-0.01, b=0.01)
+                    #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                    torch.nn.init.xavier_uniform_(param, gain=0.6)
                     
                 #'''
 
@@ -280,7 +277,7 @@ def main():
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
-                network_name = "local_net"
+                network_name = "local_net_test"
 
                 ################################################
 
@@ -292,11 +289,8 @@ def main():
 
                 #'''
                 for param in model.parameters():
-                    r = np.random.random()
-                    if r < 0.5:
-                        torch.nn.init.xavier_uniform_(param)
-                    else:
-                        torch.nn.init.uniform_(param, a=-0.01, b=0.01)
+                    #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                    torch.nn.init.xavier_uniform_(param, gain=0.6)
                     
                 #'''
 
@@ -353,15 +347,15 @@ def main():
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/automatic_config.yml"]
-                method = "mcts"
+                method = "policy"
 
                 # testing options
                 AI_player = "2"
                 recurrent_iterations = 2
 
                 # network options
-                net_name = "unbalanced_new_config_continue"
-                model_iteration = 67
+                net_name = "short_updates_low_value_continue"
+                model_iteration = 30
 
                 # TODO: Add possibilty of using second network
 
@@ -553,7 +547,7 @@ def main():
 
             case 6: # Test initialization
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
+                game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
 
 
@@ -561,21 +555,18 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 4)
+                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
 
                 #'''
                 for param in model.parameters():
-                    random = np.random.random()
-                    if random < 0.5:
-                        torch.nn.init.xavier_uniform_(param)
-                    else:
-                        torch.nn.init.uniform_(param, a=-0.01, b=0.01)
+                    #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                    torch.nn.init.xavier_uniform_(param, gain=0.6)
                     
                 #'''
                 nn = Torch_NN(game, model)
 
 
-                play_actions = 0
+                play_actions = 23
                 for _ in range(play_actions):
                     valid_actions_mask = game.possible_actions()
                     valid_actions_mask = valid_actions_mask.flatten()
@@ -588,7 +579,7 @@ def main():
                 
                 state = game.generate_state_image()
 
-                policy, value = nn.inference(state, False, 5)
+                policy, value = nn.inference(state, False, 20)
                 
 
                 print("\n\n")
