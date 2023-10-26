@@ -88,7 +88,7 @@ class AlphaZero():
         # ------------------------------------------------------ #
 
 		self.plot_loss = True
-		self.plot_weights = True
+		self.plot_weights = False
 
 		self.epochs_value_loss = []
 		self.epochs_policy_loss = []
