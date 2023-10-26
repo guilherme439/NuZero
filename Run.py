@@ -10,9 +10,10 @@ import copy
 import argparse
 import glob
 import re
-
 import torch
+
 import numpy as np
+import matplotlib.pyplot as plt
 
 from progress.bar import ChargingBar
 from Utils.PrintBar import PrintBar
@@ -413,7 +414,7 @@ def main():
                     renderer = SCS_Renderer()
                     renderer.analyse(game)
 
-            case 2: # Statistics for Multiple Games
+            case 2: # Statistics for multiple games
                 ray.init()
 
                 number_of_testers = 5
@@ -440,34 +441,49 @@ def main():
                 
                 test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
 
-            case 3: # Other tests
+            case 3: # Graphs for several itarations (extrapolation testing)
                 ray.init()
 
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config_large.yml"]
                 method = "policy"
 
                 # testing options
                 num_games = 100
                 AI_player = "1"
-                recurrent_iterations = 2
 
                 # network options
                 net_name = "short_updates_low_value_continue"
                 model_iteration = 50
 
-                # TODO: Add possibilty of using second network
+                #---
+                recurrent_iterations_list = [10, 11, 12, 14, 16, 18, 20]
+                figpath = "extraoplation_p" + AI_player
 
                 ################################################
                 
                 game = game_class(*game_args)
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 
-                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
 
-            case 4: # Statistics for Multiple Games
+                p1_wr_list = []
+                p2_wr_list = []
+                for rec_iter in recurrent_iterations_list:
+                    p1_wr, p2_wr, _ = test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, rec_iter, False)
+                    p1_wr_list.append(p1_wr)
+                    p2_wr_list.append(p2_wr)
+
+
+                plt.plot(range(len(p1_wr_list)), p1_wr_list, label = "P1")
+                plt.plot(range(len(p2_wr_list)), p2_wr_list, label = "P2")
+                plt.title(method.upper() + " -> Win rates as Player " + AI_player)
+                plt.legend()
+                plt.savefig(figpath)
+                plt.clf()
+
+            case 4: # Test untrained networks
                 ray.init()
 
                 number_of_testers = 5
@@ -479,9 +495,9 @@ def main():
                 method = "random"
 
                 # testing options
-                num_games = 100
+                num_games_per_test = 100
                 AI_player = "2"
-                recurrent_iterations = 5
+                recurrent_iterations = 2
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -1216,6 +1232,8 @@ def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=N
     print("Draw percentage: " + format(draw_percentage, '.4'))
     print("Comparative Win ratio(p1/p2): " + cmp_1_string)
     print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
+
+    return p1_winrate, p2_winrate, draw_percentage
 
 def str_to_class(classname):
     return getattr(sys.modules[__name__], classname)

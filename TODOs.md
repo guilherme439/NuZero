@@ -31,7 +31,7 @@
 - Allow spliting of more graphs other than policy
 
 ### Rendering and Iterface
-- SCS marker creator interface
+- SCS marker creator interface [hard, low]
 - Implement a user interface to play games vs trained AI [hard, low]
 
 ### Structure
