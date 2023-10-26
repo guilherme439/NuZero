@@ -12,7 +12,7 @@
 #SBATCH --job-name=forgot_name
 
 
-CUDA_VISIBLE_DEVICES=-1 python Run.py --training-preset 5 --name "not_a_name" --log-driver
+CUDA_VISIBLE_DEVICES=-1 python Run.py --training-preset 5 --name "not_a_name"
 
 
 

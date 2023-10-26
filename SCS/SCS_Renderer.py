@@ -38,12 +38,18 @@ class SCS_Renderer():
         # Set the width and height of the output window, in pixels
         self.WINDOW_WIDTH = 1200
         self.WINDOW_HEIGHT = 1000
-        pygame.init()
+
+        self.initialize_pygame()
         
+    def initialize_pygame(self):
+        pygame.display.init()
+        pygame.fastevent.init()
+        pygame.font.init()
+        pygame.scrap.init()
 
     # Passively render a game while it is being played, using a remote storage for communication
     def render(self):
-        pygame.init()
+        self.initialize_pygame()
 
         # A remote game storage is used to update the game being displayed
         game = ray.get(self.game_storage.get_item.remote())
@@ -97,7 +103,7 @@ class SCS_Renderer():
     
     # Interactively render an already played game using arrow keys
     def analyse(self, game):
-        pygame.init()
+        self.initialize_pygame()
 
         render_game = game.clone() # scratch game for rendering
         
