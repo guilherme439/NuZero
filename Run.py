@@ -789,7 +789,7 @@ def create_solo_state_set(game):
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1,1], [(2,4)], [2])
+    game.set_simple_game_state(6, [1], [(2,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 

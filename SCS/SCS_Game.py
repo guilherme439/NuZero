@@ -793,7 +793,7 @@ class SCS_Game():
         self.lenght = 0 # artificial game states don't have previous actions
 
         if len(unit_ids_list) != len(unit_position_list) or len(unit_ids_list) != len(player_list):
-            print("All lists must have the same length.\nExiting")
+            print("set_simple_game_state()\nAll lists must have the same length.\nExiting")
             exit()
 
         # Create the units and place them at the specified position
