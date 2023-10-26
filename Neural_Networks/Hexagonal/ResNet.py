@@ -7,93 +7,62 @@ import os
 
 from torch import nn
 
+from .blocks import * 
+
 
 class ResNet(nn.Module):
 
-    def __init__(self, in_channels, policy_channels, num_blocks=4, kernel_size=1, num_filters=256):
+    def __init__(self, in_channels, policy_channels, kernel_size=1, num_filters=256, num_blocks=4, batch_norm=False, policy_head="conv", value_head="reduce"):
 
-        super(ResNet, self).__init__()
+        super().__init__()
         self.recurrent = False
 
-        self.kernel_size = kernel_size
-        self.num_filters = num_filters
-        self.num_blocks = num_blocks
-        self.first_block_list = []
-        self.second_block_list = []
-        self.all_blocks_list = []
+        # Input Module
+        input_layers = []
+        input_layers.append(hexagdly.Conv2d(kernel_size=kernel_size, in_channels=in_channels, out_channels=num_filters, bias=False))
+        if batch_norm:
+            input_layers.append(nn.BatchNorm2d(num_features=num_filters))
+        input_layers.append(nn.ReLU())
 
-        # General Module
-        self.input_block = nn.Sequential(
-            hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=in_channels, out_channels=self.num_filters, bias=False),
-            nn.BatchNorm2d(num_features=self.num_filters),
-            nn.ReLU()
-        )
-
-        for block in range(self.num_blocks):
-            first_block = nn.Sequential(
-                hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=self.num_filters, out_channels=self.num_filters, bias=False),
-                nn.BatchNorm2d(num_features=self.num_filters),
-                nn.ReLU(),
-            )
-            self.first_block_list.append(first_block)
-
-            second_block = nn.Sequential(
-                hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=self.num_filters, out_channels=self.num_filters, bias=False),
-                nn.BatchNorm2d(num_features=self.num_filters),
-            )
-
-            self.second_block_list.append(second_block)
-
-            self.all_blocks_list.append(first_block)
-            self.all_blocks_list.append(second_block)
+        self.input_block = nn.Sequential(*input_layers)
 
 
-        self.residual_blocks = nn.Sequential(*self.all_blocks_list)
+        # Processing module
+        residual_blocks_list = []
+        for b in range(num_blocks):
+            residual_blocks_list.append(BasicBlock(num_filters, batch_norm=batch_norm))
 
-        # Policy Head
-        policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) # number of filters should be close to the dim of the output but not smaller (I think)
+        self.residual_blocks = nn.Sequential(*residual_blocks_list)
+
+
+        # Output Module
+        ## POLICY HEAD
+        match policy_head:
+            case "conv":
+                self.policy_head = Conv_PolicyHead(num_filters, policy_channels, batch_norm=batch_norm)
+            case _:
+                print("Unknown choice")
+                exit()
         
-        self.policy_head = nn.Sequential(
-            hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=self.num_filters, out_channels=policy_filters, bias=False),
-            nn.BatchNorm2d(num_features=policy_filters),
-            nn.ReLU(),
-            hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=policy_filters, out_channels=policy_channels, bias=False),
-        )
-
-
-        # Value Head
-        depth_of_first_stack = 32
-        depth_of_final_stack = 1
-
-        self.value_head = nn.Sequential(
-            hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=self.num_filters, out_channels=depth_of_first_stack, bias=False),
-            nn.BatchNorm2d(num_features=depth_of_first_stack),
-            nn.Tanh(),
-            hexagdly.Conv2d(kernel_size=self.kernel_size, in_channels=depth_of_first_stack, out_channels=depth_of_final_stack, bias=False),
-            nn.AdaptiveAvgPool3d(1),
-            nn.Flatten(),
-            nn.Tanh()
-        )
+        ## VALUE HEAD
+        match value_head:
+            case "reduce":
+                self.value_head = Reduce_ValueHead(num_filters, activation="relu", batch_norm=batch_norm)
+            case "dense":
+                self.value_head = Dense_ValueHead(num_filters, batch_norm=batch_norm)
+            case _:
+                print("Unknown choice")
+                exit()
     
 
 
     def forward(self, x):
+        projection = self.input_block(x)
 
-        processed_input = self.input_block(x)
+        processed_data = self.residual_blocks(projection)
 
-        last_block_out = processed_input
-        for block_index in range(self.num_blocks):
-            x = self.first_block_list[block_index](last_block_out)
-            x = self.second_block_list[block_index](x)
-
-            skip_connection = x + last_block_out
-
-            re_lu = nn.ReLU()
-            last_block_out = re_lu(skip_connection)
-
-        
-        policy = self.policy_head(last_block_out)
-        value = self.value_head(last_block_out)
+        policy = self.policy_head(processed_data)
+        value = self.value_head(processed_data)
         
         return policy, value
     

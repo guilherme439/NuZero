@@ -25,11 +25,9 @@ from Neural_Networks.Orthogonal.ResNet import ResNet as Ort_ResNet
 from Neural_Networks.Orthogonal.dt_neural_network import dt_net_2d as Ort_DTNet
 from Neural_Networks.Orthogonal.dt_neural_network import dt_net_recall_2d as Ort_DTNet_recall
 
-from Neural_Networks.Hexagonal.Simple_Conv_Network import Simple_Conv_Network as Hex_ConvNet
+from Neural_Networks.Hexagonal.ConvNet import ConvNet as Hex_ConvNet
 from Neural_Networks.Hexagonal.ResNet import ResNet as Hex_ResNet
-from Neural_Networks.Hexagonal.dt_neural_network import dt_net_2d as Hex_DTNet
-from Neural_Networks.Hexagonal.dt_neural_network import dt_net_recall_2d as Hex_DTNet_recall
-
+from Neural_Networks.Hexagonal.RecurrentNet import RecurrentNet as Hex_RecurrentNet
 
 from SCS.SCS_Game import SCS_Game
 from SCS.SCS_Renderer import SCS_Renderer
@@ -159,91 +157,8 @@ def main():
                 alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
                 alpha_zero.run()
 
-            case 1: # Run on local machine
+            case 1: # Continue training
                 
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
-                game = game_class(*game_args)
-
-                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
-
-                network_name = "local_test_net"
-
-                ################################################
-
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
-
-                #'''
-                for param in model.parameters():
-                    #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                    torch.nn.init.xavier_uniform_(param, gain=0.6)
-                    
-                #'''
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-
-                print("\n")
-                context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
-                alpha_zero.run()
-
-            case 2: # Run on local machine within a cluster
-                    # Local machine runs on local files and remote nodes use git repository
-
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
-                game = game_class(*game_args)
-
-    
-                alpha_config_path="Configs/Config_Files/Training/rnl1_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/rnl1_search_config.ini"
-
-                network_name = "rnl_net"
-
-                ################################################
-
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 256)
-                
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-
-                print("\n")
-                context = start_ray_rnl(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
-                alpha_zero.run()
-
-            case 3: # Run on remote cluster using ray jobs API
-                # The runtime environment is specified when launching the job
-                
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
-                game = game_class(*game_args)
-                
-                alpha_config_path="Configs/Config_Files/Training/cluster_alpha_config.ini"
-                search_config_path="Configs/Config_Files/Search/cluster_search_config.ini"
-                
-                network_name = "cluster_net"
-
-                ################################################
-
-                in_channels = game.state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet(in_channels, policy_channels, 256)
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-                          
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
-                alpha_zero.run()
-
-            case 4: # Continue Training
-
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
@@ -259,19 +174,17 @@ def main():
                 ################################################
 
                 state_set = None
-                state_set = create_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
                 continue_training(game_class, game_args, trained_network_name, continue_network_name, \
                                   use_same_configs, new_train_config_path, new_search_config_path, state_set)
-                
 
-            case 5: # Run with debug set
-                
+            case 2:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -281,16 +194,126 @@ def main():
 
                 ################################################
 
-                state_set = create_state_set(game)
+                state_set = create_solo_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+                #model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
+                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
-                for param in model.parameters():
-                    torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                    #torch.nn.init.xavier_uniform_(param, gain=0.6)
+                for name, param in model.named_parameters():
+                    if ".weight" not in name:
+                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                    
+                #'''
+
+                if args.name is not None and args.name != "":
+                    network_name = args.name
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero.run()
+
+            case 3:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game = game_class(*game_args)
+
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+
+                network_name = "local_net_test"
+
+                ################################################
+
+                state_set = create_solo_state_set(game)
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                #model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
+                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
+
+                #'''
+                for name, param in model.named_parameters():
+                    if ".weight" not in name:
+                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                    
+                #'''
+
+                if args.name is not None and args.name != "":
+                    network_name = args.name
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero.run()
+
+
+            case 4:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game = game_class(*game_args)
+
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+
+                network_name = "local_net_test"
+
+                ################################################
+
+                state_set = create_solo_state_set(game)
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
+
+                #'''
+                for name, param in model.named_parameters():
+                    if ".weight" not in name:
+                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                    
+                #'''
+
+                if args.name is not None and args.name != "":
+                    network_name = args.name
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero.run()
+                
+
+            case 5: # Run with debug set
+                
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game = game_class(*game_args)
+
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+
+                network_name = "local_net_test"
+
+                ################################################
+
+                state_set = create_solo_state_set(game)
+
+                in_channels = game.state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="dense")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
+
+                #'''
+                for name, param in model.named_parameters():
+                    if ".weight" not in name:
+                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                        torch.nn.init.xavier_uniform_(param, gain=0.6)
                     
                 #'''
 
@@ -462,7 +485,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+                model =Hex_RecurrentNet(in_channels, policy_channels, 256, 2)
 
                 nn = Torch_NN(game, model)
 
@@ -555,18 +578,20 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_DTNet_recall(in_channels, policy_channels, 256, 2)
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
-                for param in model.parameters():
-                    #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                    torch.nn.init.xavier_uniform_(param, gain=0.6)
+                for name, param in model.named_parameters():
+                    if ".weight" not in name:
+                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                        torch.nn.init.xavier_uniform_(param, gain=0.6)
                     
                 #'''
                 nn = Torch_NN(game, model)
 
 
-                play_actions = 23
+                play_actions = 9
                 for _ in range(play_actions):
                     valid_actions_mask = game.possible_actions()
                     valid_actions_mask = valid_actions_mask.flatten()
@@ -579,7 +604,7 @@ def main():
                 
                 state = game.generate_state_image()
 
-                policy, value = nn.inference(state, False, 20)
+                policy, value = nn.inference(state, False, 10)
                 
 
                 print("\n\n")
@@ -664,7 +689,7 @@ def main():
     
     return
 
-def create_state_set(game):
+def create_mirrored_state_set(game):
     renderer = SCS_Renderer()
 
 
@@ -684,7 +709,7 @@ def create_state_set(game):
     #renderer.display_board(game)
 
     
-    '''
+    
     game.reset_env()
     game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
@@ -695,8 +720,37 @@ def create_state_set(game):
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
-    '''
-    #'''
+
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(4,4)], [1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+    
+
+    game.reset_env()
+    return state_set
+
+def create_unbalanced_state_set(game):
+    renderer = SCS_Renderer()
+
+
+    state_set = []
+    game.set_simple_game_state(6, [1], [(0,1)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(4,4)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    
     game.reset_env()
     game.set_simple_game_state(6, [1,1], [(2,2),(2,1)], [2,1])
     state_set.append(game.generate_state_image())
@@ -706,10 +760,46 @@ def create_state_set(game):
     game.set_simple_game_state(6, [1], [(3,0)], [1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-    #'''
 
     game.reset_env()
     game.set_simple_game_state(6, [1], [(4,4)], [1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+    
+
+    game.reset_env()
+    return state_set
+
+def create_solo_state_set(game):
+    renderer = SCS_Renderer()
+
+    state_set = []
+    game.set_simple_game_state(6, [1], [(1,0)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(0,1)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(2,2)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1,1], [(2,4)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(3,4)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(6, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
@@ -958,7 +1048,7 @@ def choose_model(game):
             filters = input("\nNumber of filters to use internally:")      
 
             if hexagonal:
-                model = Hex_DTNet(in_channels, policy_channels, int(filters))
+                model = Hex_RecurrentNet(in_channels, policy_channels, int(filters))
             else:
                 model = Ort_DTNet(in_channels, policy_channels, int(filters))
                 

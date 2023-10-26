@@ -8,11 +8,11 @@ import os
 from torch import nn
 
 
-class Simple_Conv_Network(nn.Module):
+class ConvNet(nn.Module):
 
     def __init__(self, in_channels, policy_channels, kernel_size=1, num_filters=256):
 
-        super(Simple_Conv_Network, self).__init__()
+        super().__init__()
         self.recurrent = False
 
         self.kernel_size = kernel_size
