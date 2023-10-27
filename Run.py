@@ -597,8 +597,10 @@ def main():
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
+                #print(model)
                 #'''
                 for name, param in model.named_parameters():
+                    #print(name)
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
                         torch.nn.init.xavier_uniform_(param, gain=0.8)
@@ -606,7 +608,7 @@ def main():
                 #'''
                 nn = Torch_NN(game, model)
 
-
+                
                 play_actions = 9
                 for _ in range(play_actions):
                     valid_actions_mask = game.possible_actions()

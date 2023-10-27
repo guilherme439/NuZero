@@ -15,8 +15,11 @@ class depthwise_conv(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.conv_layers_list = [hexagdly.Conv2d(1, 1, kernel_size,stride, bias, debug) 
-                                 for c in range(in_channels)]
+        self.conv_layers_list = []
+        for c in range(in_channels):
+            conv = hexagdly.Conv2d(1, 1, kernel_size,stride, bias, debug)
+            self.add_module("channel"+str(c)+"_conv", conv)
+            self.conv_layers_list.append(conv)
 
 
 
