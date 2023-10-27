@@ -17,7 +17,7 @@ from .blocks import *
 
 class RecurrentNet(nn.Module):
 
-    def __init__(self, in_channels, policy_channels, width, num_blocks, recall=True, policy_head="conv", value_head="reduce"):
+    def __init__(self, in_channels, policy_channels, width, num_blocks, recall=True, policy_head="conv", value_head="reduce", value_activation="relu"):
         super().__init__()
         self.recurrent = True
         
@@ -53,7 +53,9 @@ class RecurrentNet(nn.Module):
         ## VALUE HEAD
         match value_head:
             case "reduce":
-                self.value_head = Reduce_ValueHead(width, activation="relu")
+                self.value_head = Reduce_ValueHead(width, activation=value_activation)
+            case "depth":
+                self.value_head = Depth_ValueHead(width, activation=value_activation)
             case "dense":
                 self.value_head = Dense_ValueHead(width)
             case _:

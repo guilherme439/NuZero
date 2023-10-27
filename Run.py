@@ -199,14 +199,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                #model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
-                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
 
@@ -234,14 +234,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                #model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
-                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="tanh")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
 
@@ -270,14 +270,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
 
@@ -314,7 +314,7 @@ def main():
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
 
@@ -594,14 +594,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.6)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
                 nn = Torch_NN(game, model)
@@ -624,7 +624,8 @@ def main():
                 
 
                 print("\n\n")
-                #print(policy)
+                print(policy)
+                print("\n\n")
                 print(torch.sum(policy))
                 print(value)
                 print("\n\n----------------\n\n")
@@ -661,25 +662,23 @@ def main():
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
-                # network options
-                net_name = "short_updates_low_value_continue"
-                model_iteration = 50
-                recurrent_iterations = 2
 
-                ##########################################################################
+                from Neural_Networks.Hexagonal.depthwise_conv import depthwise_conv
+                import hexagdly
 
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
-                
-                game_folder = game.get_name() + "/"
-                model_folder = game_folder + "models/" + net_name + "/" 
+                in_channels = game.state_shape()[0]
 
+                hexag_conv = hexagdly.Conv2d(in_channels, 256, kernel_size=1, bias=False)
 
-                file_name = model_folder + "model_and_game_config.txt"
-                with open(file_name, "w") as file:
-                    file.write(game_args.__str__())
-                    file.write("\n\n\n\n----------------------------------\n\n")
-                    file.write(nn.get_model().__str__())
-                
+                dConv = depthwise_conv(256, 256, kernel_size=1, bias=False)
+
+                state = game.generate_state_image()
+
+                out = hexag_conv(state)
+                out = dConv(out)
+
+                print(out.size())
+                print(out)
 
 
     elif args.interactive:

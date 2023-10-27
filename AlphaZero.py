@@ -160,6 +160,10 @@ class AlphaZero():
         # ------------------- BACKUP FILES --------------------- #
         # ------------------------------------------------------ #
 		
+		# dummy forward pass to initialize the weights
+		game = self.game_class(*self.game_args)
+		self.latest_network.inference(game.generate_state_image(), False, 1)
+
 		# write model summary and game args to file
 		file_name = self.model_folder_path + "model_and_game_config.txt"
 		with open(file_name, "w") as file:
@@ -295,10 +299,6 @@ class AlphaZero():
 			torch.save(model_dict, save_path)
 
 			if self.plot_weights:
-				# Dummy forward pass to initialize the weights
-				game = self.game_class(*self.game_args)
-				self.latest_network.inference(game.generate_state_image(), False, 1)
-
 				# Weight graphs
 				all_weights = torch.Tensor().cpu()
 				for param in model.parameters():

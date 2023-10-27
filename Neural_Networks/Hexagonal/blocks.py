@@ -7,6 +7,8 @@ import torch.nn.functional as F
 
 import hexagdly
 
+from .depthwise_conv import depthwise_conv
+
 
 class BasicBlock(nn.Module):
 
@@ -36,15 +38,17 @@ class BasicBlock(nn.Module):
 ##################################################################################################
 
 class Reduce_ValueHead(nn.Module):
+    '''Several conv layers that progressively reduce the amount of filters,
+       followed by an average pooling layer'''
 
     def __init__(self, width, activation, batch_norm=False):
         super().__init__()
         
-        depth_conv_layers = [64 , 8 , 1]
+        conv_filters = [64 , 8 , 1]
 
         value_head_layers = []
         current_depth = width
-        for depth in depth_conv_layers:
+        for depth in conv_filters:
             conv = hexagdly.Conv2d(in_channels=current_depth, out_channels=depth, kernel_size=1, stride=1, bias=False)
             value_head_layers.append(conv)
             if depth != 1:
@@ -64,14 +68,51 @@ class Reduce_ValueHead(nn.Module):
         value_head_layers.append(nn.Flatten())
         value_head_layers.append(nn.Tanh())
 
-        self.value_head = nn.Sequential(*value_head_layers)
+        self.layers = nn.Sequential(*value_head_layers)
 
 
 
     def forward(self, x):
-        out = self.value_head(x)
+        out = self.layers(x)
         return out
     
+# ------------------------------ #
+
+class Depth_ValueHead(nn.Module):
+
+    def __init__(self, width, activation, batch_norm=False):
+        super().__init__()
+
+
+        num_depth_layers = 3
+        layer_list = []
+
+        for l in range(num_depth_layers):
+            layer_list.append(depthwise_conv(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False))
+            if batch_norm:
+                layer_list.append(nn.BatchNorm2d(num_features=width))
+
+            if activation == "tanh":
+                layer_list.append(nn.Tanh())
+            elif activation == "relu":
+                layer_list.append(nn.ReLU())
+            else:
+                print("Unknown activation.")
+                exit()
+
+        layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=1, kernel_size=1, stride=1, bias=False))
+
+        layer_list.append(nn.AdaptiveAvgPool3d(1))
+        layer_list.append(nn.Flatten())
+        layer_list.append(nn.Tanh())
+
+        self.layers = nn.Sequential(*layer_list)
+
+
+
+    def forward(self, x):
+        out = self.layers(x)
+        return out
     
 # ------------------------------ #
  
@@ -80,25 +121,25 @@ class Dense_ValueHead(nn.Module):
     def __init__(self, width, conv_channels=32, batch_norm=False):
         super().__init__()        
         
-        layers = []
+        layer_list = []
         
-        layers.append(hexagdly.Conv2d(in_channels=width, out_channels=conv_channels, kernel_size=1, stride=1, bias=False))
+        layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=conv_channels, kernel_size=1, stride=1, bias=False))
         if batch_norm:
-            layers.append(nn.BatchNorm2d(num_features=conv_channels))
-        layers.append(nn.Flatten())
-        layers.append(nn.ReLU())
-        layers.append(nn.LazyLinear(256, bias=False))
-        layers.append(nn.ReLU())
-        layers.append(nn.Linear(in_features=256, out_features=1, bias=False))
-        layers.append(nn.Tanh())
+            layer_list.append(nn.BatchNorm2d(num_features=conv_channels))
+        layer_list.append(nn.Flatten())
+        layer_list.append(nn.ReLU())
+        layer_list.append(nn.LazyLinear(256, bias=False))
+        layer_list.append(nn.ReLU())
+        layer_list.append(nn.Linear(in_features=256, out_features=1, bias=False))
+        layer_list.append(nn.Tanh())
         
 
-        self.value_head = nn.Sequential(*layers)
+        self.layers = nn.Sequential(*layer_list)
 
 
 
     def forward(self, x):
-        out = self.value_head(x)
+        out = self.layers(x)
         return out
     
 
@@ -109,22 +150,29 @@ class Conv_PolicyHead(nn.Module):
     def __init__(self, width, policy_channels, batch_norm=False):
         super().__init__()
         
+
+        first_reduction = 128
+
         policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) # Filter reduction before last layer
         # number of filters should be close to the dim of the output but not smaller
         
-        layers = []
-        
-        layers.append(hexagdly.Conv2d(in_channels=width, out_channels=policy_filters, kernel_size=1, stride=1, bias=False))
-        if batch_norm:
-            layers.append(nn.BatchNorm2d(num_features=policy_filters))
-        layers.append(nn.ReLU())
-        layers.append(hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False))
+        layer_list = []
 
-        self.policy_head = nn.Sequential(*layers)
+        layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=first_reduction, kernel_size=1, stride=1, bias=False))
+        if batch_norm:
+            layer_list.append(nn.BatchNorm2d(num_features=first_reduction))
+        layer_list.append(nn.ReLU())
+        layer_list.append(hexagdly.Conv2d(in_channels=first_reduction, out_channels=policy_filters, kernel_size=1, stride=1, bias=False))
+        if batch_norm:
+            layer_list.append(nn.BatchNorm2d(num_features=policy_filters))
+        layer_list.append(nn.ReLU())
+        layer_list.append(hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False))
+
+        self.layers = nn.Sequential(*layer_list)
 
 
 
     def forward(self, x):
-        out = self.policy_head(x)
+        out = self.layers(x)
         return out
     
