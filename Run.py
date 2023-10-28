@@ -52,6 +52,7 @@ from ray.runtime_env import RuntimeEnv
 
 from scipy.special import softmax
 
+
 '''
 ~/Desktop/ray_tmp/session_latest/runtime_resources/working_dir_files
 
@@ -199,7 +200,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="combined", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
@@ -234,7 +235,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
@@ -594,10 +595,10 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
-                #print(model)
+                print(model)
                 #'''
                 for name, param in model.named_parameters():
                     #print(name)
@@ -626,7 +627,7 @@ def main():
                 
 
                 print("\n\n")
-                print(policy)
+                #print(policy)
                 print("\n\n")
                 print(torch.sum(policy))
                 print(value)
@@ -664,23 +665,36 @@ def main():
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
-
-                from Neural_Networks.Hexagonal.depthwise_conv import depthwise_conv
-                import hexagdly
-
+                
+                #from Neural_Networks.Hexagonal.depthwise_conv import depthwise_conv
+                #import hexagdly
+                #from torch.nn import Conv2d
                 in_channels = game.state_shape()[0]
 
-                hexag_conv = hexagdly.Conv2d(in_channels, 256, kernel_size=1, bias=False)
-
-                dConv = depthwise_conv(256, 256, kernel_size=1, bias=False)
 
                 state = game.generate_state_image()
+                chunks = torch.chunk(state,in_channels, dim=1)
+
+
+                
+                hexag_conv = hexagdly.Conv2d(in_channels, 256, kernel_size=1, bias=False)
+
+                #torch_depthconv = Conv2d(256, 256, (3,3), groups=256, bias=False)
+                #my_depthconv = depthwise_conv(256, 256, kernel_size=1, bias=False)
+                #normal_conv = Conv2d(256, 256, (3,3), bias=False)
+                hexag_depth_conv = hexagdly.Conv2d(256, 256, 1, bias=False)
+
+                conv = hexag_depth_conv
+
+                #for name, param in conv.named_parameters():
+                #    print(param)
 
                 out = hexag_conv(state)
-                out = dConv(out)
+                out = conv(out)
 
                 print(out.size())
                 print(out)
+
 
 
     elif args.interactive:

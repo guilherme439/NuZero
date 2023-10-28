@@ -4,30 +4,32 @@ class Training_Config(Config):
 
     def __init__(self):
 
-
-        self.optimization = dict \
-        (
-        state_cache = "disabled"		# disabled | per_game | per_actor
-        # Wether to keep a cache within each actor/game of previously seen states, to avoid using slow network inference.
-        # Consumes a lot of memory so it is only worth using if the game being played repeats states frequently.
-        )
-
-
-        self.actors = dict \
-        (
-        num_actors = 4,
-        chunk_size = 128		# Number of games to be played until actors are replaced with new ones.
-        )
-
-
         self.running = dict \
         (
+        state_cache = "disabled",		# disabled | per_game | per_actor
+        # Wether to keep a cache within each actor/game of previously seen states, to avoid using slow network inference.
+        # Consumes a lot of memory so it is only worth using if the game being played repeats states frequently.
+        
+        num_actors = 4,
         early_fill = 1000,
         early_softmax_exploration = 1,
         early_random_exploration = 0,
+    	# Number of games to be played until actors are replaced with new ones.
+        )
+
+
+        self.sequential = dict \
+        (
         num_games_per_batch = 200,
         num_batches = 40,
-        early_testing = True,
+        )
+
+
+        self.asynchronous = dict \
+        (
+        training_steps = 1e5,
+        early_delay = 6000,
+        update_delay = 1600,
         )
         
 
@@ -40,6 +42,7 @@ class Training_Config(Config):
 
         self.testing = dict \
         (
+        early_testing = True,
         policy_test_frequency = 10,
         mcts_test_frequency = 80,
         num_policy_test_games = 100,

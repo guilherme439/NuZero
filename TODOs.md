@@ -43,8 +43,7 @@
 ## Details
 
 ### Continuous training
-- Mudar o codigo para cada gamer jogar até que o buffer tenha N jogos.
-- Lançar X Gamers e um Trainer e treinar/jogar até chegar a um certo numero de training steps 
+- Meter Gamers a jogar 
 
 
 <!---------------------------------------------------------------------------------------------------------------------------------------->

@@ -28,6 +28,8 @@ class Gamer():
             self.state_dict = None
         
         self.explorer = Explorer(search_config, True, recurrent_iterations)
+
+        self.time_to_stop = False
         
 
     def play_game(self):
@@ -89,4 +91,14 @@ class Gamer():
 
         ray.get(self.buffer.save_game.remote(game)) # each actor waits for the game to be saved before returning
         return stats
+    
+    def play_forever(self):
+        while not self.time_to_stop:
+            self.play_game()
+
+    
+
+    async def stop(self):
+        self.time_to_stop = True
+    
 
