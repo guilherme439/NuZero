@@ -25,7 +25,6 @@ from Configs.Search_Config import Search_Config
 from Gamer import Gamer
 from Replay_Buffer import Replay_Buffer
 from Shared_network_storage import Shared_network_storage
-from SelfPlay_manager import SelfPlay_manager
 
 from RemoteTester import RemoteTester
 
