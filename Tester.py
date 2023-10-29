@@ -76,11 +76,13 @@ class Tester():
 
         # --- Neural network setup --- #
         # Both players use the first neural network unless a second (nn2) is given
+        nn1.check_devices()
         p1_nn = nn1
         p2_nn = nn1
         if player_choice == "both":
             AI_player = 0
             if nn2:
+                nn2.check_devices()
                 p2_nn = nn2
 
         elif player_choice == "1":
@@ -190,15 +192,18 @@ class Tester():
 
         # --- Neural network setup --- #
         # Both players use the first neural network unless a second (nn2) is given
+        nn1.check_devices()
         p1_nn = nn1
         p2_nn = nn1
         if player_choice == "both":
             AI_player = 0
             if nn2:
+                nn2.check_devices()
                 p2_nn = nn2
 
         elif player_choice == "1":
             AI_player = 1
+            
         elif player_choice == "2":
             AI_player = 2
         else:

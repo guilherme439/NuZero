@@ -727,14 +727,15 @@ class AlphaZero():
         use_state_cache = False
         if state_cache != "disabled":
             use_state_cache = True
-        
+
+        # Whenever the network is sent between processes, it needs to be moved to cpu
+        self.latest_network.model_to_cpu() 
         if test_mode == "policy":
             args_list = [player_choice, None, self.latest_network, None, test_iterations, False]
             game_index = 1
         elif test_mode == "mcts":
             args_list = [player_choice, self.search_config, None, self.latest_network, None, test_iterations, use_state_cache, False]
             game_index = 2
-
         
         print("\n\nTesting as p" + player_choice + " using " + test_mode)
         #bar = ChargingBar(text, max=num_games)
@@ -766,6 +767,10 @@ class AlphaZero():
                 bar.next()
             
         bar.finish()
+
+        # As we will not serialize the model anymore, we move it back to its original device
+        self.latest_network.model_to_device() 
+
 
         if test_mode == "mcts":
             print_stats_list(stats_list)
