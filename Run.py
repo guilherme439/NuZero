@@ -200,7 +200,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="combined", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
@@ -235,7 +235,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''

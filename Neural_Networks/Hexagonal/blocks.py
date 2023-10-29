@@ -193,16 +193,18 @@ class Separable_ValueHead(nn.Module):
             layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False)) #depthwise
             layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # pointwise
             current_filters=filters
-            if batch_norm:
-                layer_list.append(nn.BatchNorm2d(num_features=filters))
 
-            if activation == "tanh":
-                layer_list.append(nn.Tanh())
-            elif activation == "relu":
-                layer_list.append(nn.ReLU())
-            else:
-                print("Unknown activation.")
-                exit()
+            if filters != 1:
+                if batch_norm:
+                    layer_list.append(nn.BatchNorm2d(num_features=filters))
+
+                if activation == "tanh":
+                    layer_list.append(nn.Tanh())
+                elif activation == "relu":
+                    layer_list.append(nn.ReLU())
+                else:
+                    print("Unknown activation.")
+                    exit()
 
         layer_list.append(nn.AdaptiveAvgPool3d(1))
         layer_list.append(nn.Flatten())
