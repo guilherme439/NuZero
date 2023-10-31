@@ -186,7 +186,7 @@ def main():
 
             case 2:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -200,14 +200,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="combined", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
+                        torch.nn.init.xavier_uniform_(param, gain=0.9)
                     
                 #'''
 
@@ -221,7 +221,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -235,14 +235,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reverse", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
+                        torch.nn.init.xavier_uniform_(param, gain=0.9)
                     
                 #'''
 
@@ -257,7 +257,7 @@ def main():
 
             case 4:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -271,7 +271,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="pointsep", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
@@ -294,7 +294,7 @@ def main():
             case 5: # Run with debug set
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -308,14 +308,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="depth", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
+                        torch.nn.init.xavier_uniform_(param, gain=0.9)
                     
                 #'''
 
@@ -595,7 +595,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="separable", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="combined", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 print(model)
@@ -604,7 +604,7 @@ def main():
                     #print(name)
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
+                        torch.nn.init.xavier_uniform_(param, gain=0.9)
                     
                 #'''
                 nn = Torch_NN(game, model)
@@ -725,36 +725,34 @@ def create_mirrored_state_set(game):
 
 
     state_set = []
-    game.set_simple_game_state(6, [1], [(0,1)], [2])
+    game.set_simple_game_state(7, [1], [(0,1)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
+    game.set_simple_game_state(7, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(4,4)], [2])
+    game.set_simple_game_state(7, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     
-    
     game.reset_env()
-    game.set_simple_game_state(6, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
+    game.set_simple_game_state(7, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
+    game.set_simple_game_state(7, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-    
 
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(4,4)], [1])
+    game.set_simple_game_state(7, [1], [(4,4)], [1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
@@ -767,33 +765,33 @@ def create_unbalanced_state_set(game):
 
 
     state_set = []
-    game.set_simple_game_state(6, [1], [(0,1)], [2])
+    game.set_simple_game_state(7, [1], [(0,1)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
+    game.set_simple_game_state(7, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(4,4)], [2])
+    game.set_simple_game_state(7, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     
     game.reset_env()
-    game.set_simple_game_state(6, [1,1], [(2,2),(2,1)], [2,1])
+    game.set_simple_game_state(7, [1,1], [(2,2),(2,1)], [2,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(3,0)], [1])
+    game.set_simple_game_state(7, [1], [(3,0)], [1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(4,4)], [1])
+    game.set_simple_game_state(7, [1], [(4,4)], [1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
@@ -805,32 +803,32 @@ def create_solo_state_set(game):
     renderer = SCS_Renderer()
 
     state_set = []
-    game.set_simple_game_state(6, [1], [(0,0)], [2])
+    game.set_simple_game_state(7, [1], [(0,0)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(3,0)], [2])
+    game.set_simple_game_state(7, [1], [(3,0)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(1,2)], [2])
+    game.set_simple_game_state(7, [1], [(1,2)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(4,2)], [2])
+    game.set_simple_game_state(7, [1], [(4,2)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(0,3)], [2])
+    game.set_simple_game_state(7, [1], [(0,3)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(6, [1], [(2,4)], [2])
+    game.set_simple_game_state(7, [1], [(2,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     

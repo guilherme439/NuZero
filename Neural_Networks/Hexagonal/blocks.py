@@ -83,9 +83,8 @@ class Depth_ValueHead(nn.Module):
     def __init__(self, width, activation, batch_norm=False):
         super().__init__()
 
-
-        num_depth_layers = 3
         layer_list = []
+        num_depth_layers = 3
 
         for l in range(num_depth_layers):
             layer_list.append(depthwise_conv(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False))
@@ -121,40 +120,14 @@ class Combined_ValueHead(nn.Module):
     def __init__(self, width, activation, batch_norm=False):
         super().__init__()
         
-        reduction_filters = 64
-        
-        first_stage_depth_layers = 3
-        second_stage_depth_layers = 2
         layer_list = []
-
-        filters = width
-        for l in range(first_stage_depth_layers):
-            layer_list.append(nn.Conv2d(in_channels=filters, out_channels=filters, groups=filters, kernel_size=1, stride=1, bias=False)) # Depthwise point by point conv
-            if batch_norm:
-                layer_list.append(nn.BatchNorm2d(num_features=filters))
-
-            if activation == "tanh":
-                layer_list.append(nn.Tanh())
-            elif activation == "relu":
-                layer_list.append(nn.ReLU())
-            else:
-                print("Unknown activation.")
-                exit()
+        conv_filters = [64, 8 , 1]
         
-        layer_list.append(hexagdly.Conv2d(in_channels=filters, out_channels=reduction_filters, kernel_size=1, stride=1, bias=False))
-        if activation == "tanh":
-            layer_list.append(nn.Tanh())
-        elif activation == "relu":
-            layer_list.append(nn.ReLU())
-        else:
-            print("Unknown activation.")
-            exit()
-        
-        filters = reduction_filters
-        for l in range(second_stage_depth_layers):
-            layer_list.append(nn.Conv2d(in_channels=filters, out_channels=filters, groups=filters, kernel_size=1, stride=1, bias=False))
+        current_filters = width
+        for filters in conv_filters:
+            layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False))
             if batch_norm:
-                layer_list.append(nn.BatchNorm2d(num_features=filters))
+                layer_list.append(nn.BatchNorm2d(num_features=current_filters))
 
             if activation == "tanh":
                 layer_list.append(nn.Tanh())
@@ -164,7 +137,21 @@ class Combined_ValueHead(nn.Module):
                 print("Unknown activation.")
                 exit()
 
-        layer_list.append(hexagdly.Conv2d(in_channels=filters, out_channels=1, kernel_size=1, stride=1, bias=False))
+            layer_list.append(hexagdly.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False))
+            if filters != 1:
+                if batch_norm:
+                    layer_list.append(nn.BatchNorm2d(num_features=filters))
+
+                if activation == "tanh":
+                    layer_list.append(nn.Tanh())
+                elif activation == "relu":
+                    layer_list.append(nn.ReLU())
+                else:
+                    print("Unknown activation.")
+                    exit()
+            
+            current_filters = filters
+
 
         layer_list.append(nn.AdaptiveAvgPool3d(1))
         layer_list.append(nn.Flatten())
@@ -172,6 +159,7 @@ class Combined_ValueHead(nn.Module):
 
         self.layers = nn.Sequential(*layer_list)
 
+    
 
 
     def forward(self, x):
@@ -191,6 +179,84 @@ class Separable_ValueHead(nn.Module):
         current_filters = width
         for filters in conv_filters:
             layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False)) #depthwise
+            layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # pointwise
+            current_filters=filters
+
+            if filters != 1:
+                if batch_norm:
+                    layer_list.append(nn.BatchNorm2d(num_features=filters))
+
+                if activation == "tanh":
+                    layer_list.append(nn.Tanh())
+                elif activation == "relu":
+                    layer_list.append(nn.ReLU())
+                else:
+                    print("Unknown activation.")
+                    exit()
+
+        layer_list.append(nn.AdaptiveAvgPool3d(1))
+        layer_list.append(nn.Flatten())
+        layer_list.append(nn.Tanh())
+
+        self.layers = nn.Sequential(*layer_list)
+
+
+    def forward(self, x):
+        out = self.layers(x)
+        return out
+
+# ------------------------------ #
+
+class Reverse_ValueHead(nn.Module):
+
+    def __init__(self, width, activation, batch_norm=False):
+        super().__init__()
+        
+        conv_filters = [256, 64 , 8 , 1]
+
+        layer_list = []
+        current_filters = width
+        for filters in conv_filters:
+            layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # pointwise
+            layer_list.append(depthwise_conv(in_channels=filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) #depthwise
+            current_filters=filters
+
+            if filters != 1:
+                if batch_norm:
+                    layer_list.append(nn.BatchNorm2d(num_features=filters))
+
+                if activation == "tanh":
+                    layer_list.append(nn.Tanh())
+                elif activation == "relu":
+                    layer_list.append(nn.ReLU())
+                else:
+                    print("Unknown activation.")
+                    exit()
+
+        layer_list.append(nn.AdaptiveAvgPool3d(1))
+        layer_list.append(nn.Flatten())
+        layer_list.append(nn.Tanh())
+
+        self.layers = nn.Sequential(*layer_list)
+
+
+    def forward(self, x):
+        out = self.layers(x)
+        return out
+    
+# ------------------------------ #
+
+class PointSep_ValueHead(nn.Module):
+
+    def __init__(self, width, activation, batch_norm=False):
+        super().__init__()
+        
+        conv_filters = [256, 64 , 8 , 1]
+
+        layer_list = []
+        current_filters = width
+        for filters in conv_filters:
+            layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=current_filters, groups=current_filters, kernel_size=1, stride=1, bias=False)) # pointwise depthwise
             layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # pointwise
             current_filters=filters
 
@@ -254,7 +320,7 @@ class Conv_PolicyHead(nn.Module):
         super().__init__()
         
 
-        first_reduction = 128
+        first_reduction = 64
 
         policy_filters = int(math.pow(2, math.ceil(math.log(policy_channels, 2)))) # Filter reduction before last layer
         # number of filters should be close to the dim of the output but not smaller

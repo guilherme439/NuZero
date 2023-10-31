@@ -60,6 +60,10 @@ class RecurrentNet(nn.Module):
                 self.value_head = Combined_ValueHead(width, activation=value_activation)
             case "separable":
                 self.value_head = Separable_ValueHead(width, activation=value_activation)
+            case "reverse":
+                self.value_head = Reverse_ValueHead(width, activation=value_activation)
+            case "pointsep":
+                self.value_head = PointSep_ValueHead(width, activation=value_activation)
             case "dense":
                 self.value_head = Dense_ValueHead(width)
             case _:
