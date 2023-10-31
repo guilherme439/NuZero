@@ -196,7 +196,7 @@ def main():
 
                 ################################################
 
-                state_set = create_solo_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -231,7 +231,7 @@ def main():
 
                 ################################################
 
-                state_set = create_solo_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -267,7 +267,7 @@ def main():
 
                 ################################################
 
-                state_set = create_solo_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -304,7 +304,7 @@ def main():
 
                 ################################################
 
-                state_set = create_solo_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
