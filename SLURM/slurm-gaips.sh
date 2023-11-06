@@ -3,7 +3,7 @@
 
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=300:00:00
+#SBATCH --time=320:00:00
 
 ###SBATCH --mincpus=8
 #SBATCH --cpus-per-task=8
@@ -13,9 +13,6 @@
 
 
 CUDA_VISIBLE_DEVICES=-1 python Run.py --training-preset 5 --name "not_a_name"
-
-
-
 
 
 
