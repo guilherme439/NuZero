@@ -123,7 +123,7 @@ class AlphaZero():
         num_actors = self.train_config.running["num_actors"]
         early_fill_games = self.train_config.running["early_fill"]
 
-        training_steps = self.train_config.running["training_steps"]
+        training_steps = int(self.train_config.running["training_steps"])
         if running_mode == "asynchronous":
             update_delay = self.train_config.asynchronous["update_delay"]
         elif running_mode == "sequential":
