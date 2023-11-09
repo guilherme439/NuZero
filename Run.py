@@ -45,8 +45,8 @@ from RemoteTester import RemoteTester
 from Utils.stats_utilities import *
 
 from Gamer import Gamer
-from Replay_Buffer import Replay_Buffer
-from Shared_network_storage import Shared_network_storage
+from ReplayBuffer import ReplayBuffer
+from RemoteStorage import RemoteStorage
 
 from ray.runtime_env import RuntimeEnv
 
@@ -189,8 +189,8 @@ def main():
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -200,7 +200,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="combined", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="strange", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
@@ -221,7 +221,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
@@ -231,11 +231,11 @@ def main():
 
                 ################################################
 
-                state_set = create_unbalanced_state_set(game)
+                state_set = create_solo_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reverse", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
@@ -722,7 +722,6 @@ def main():
 
 def create_mirrored_state_set(game):
     renderer = SCS_Renderer()
-
 
     state_set = []
     game.set_simple_game_state(7, [1], [(0,1)], [2])

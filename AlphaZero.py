@@ -23,10 +23,10 @@ from Configs.Training_Config import Training_Config
 from Configs.Search_Config import Search_Config
 
 from Gamer import Gamer
-from Replay_Buffer import Replay_Buffer
-from Shared_network_storage import Shared_network_storage
-
+from ReplayBuffer import ReplayBuffer
+from RemoteStorage import RemoteStorage
 from RemoteTester import RemoteTester
+from TestManager import TestManager
 
 from Utils.stats_utilities import *
 from Utils.loss_functions import *
@@ -75,35 +75,20 @@ class AlphaZero():
 
         self.train_config = Training_Config()
         self.train_config.load(train_config_path)
-
-        self.n_updates = 0
-        self.decisive_count = 0
-
         
-        self.state_set=state_set
+        self.state_set = state_set
 
         # ------------------------------------------------------ #
         # ----------------------- PLOTS ------------------------ #
         # ------------------------------------------------------ #
 
-        self.plot_loss = True
-        self.plot_weights = False
-
-        self.epochs_value_loss = []
-        self.epochs_policy_loss = []
-        self.epochs_combined_loss = []
-
-        self.tests_value_loss = []
-        self.tests_policy_loss = []
-        self.tests_combined_loss = []
-
         self.train_global_value_loss = []
         self.train_global_policy_loss = []
         self.train_global_combined_loss = []
 
-        self.test_global_value_loss = []
-        self.test_global_policy_loss = []
-        self.test_global_combined_loss = []
+        self.epochs_value_loss = []
+        self.epochs_policy_loss = []
+        self.epochs_combined_loss = []
 
         self.p1_policy_wr_stats = [[],[]]
         self.p2_policy_wr_stats = [[],[]]
@@ -116,6 +101,10 @@ class AlphaZero():
 
         if self.state_set is not None:
             self.state_set_stats = [ [] for state in self.state_set ]
+
+        self.plot_loss = True
+        self.plot_weights = True
+
         
 
     def run(self, starting_iteration=0):
@@ -128,23 +117,26 @@ class AlphaZero():
 
         print("\n\n--------------------------------\n")
 
-        #NOTE: currently self-play uses the storage_network and testing uses the latest_network, they are only the same if storage_frequency=1
-
         state_cache = self.train_config.running["state_cache"]
-
 
         running_mode = self.train_config.running["running_mode"]
         num_actors = self.train_config.running["num_actors"]
         early_fill_games = self.train_config.running["early_fill"]
 
-        num_games_per_batch = self.train_config.sequential["num_games_per_batch"]
-        num_batches = self.train_config.sequential["num_batches"]
-        
-        early_testing = self.train_config.testing["early_testing"]
+        training_steps = self.train_config.running["training_steps"]
+        if running_mode == "asynchronous":
+            update_delay = self.train_config.asynchronous["update_delay"]
+        elif running_mode == "sequential":
+            num_games_per_step = self.train_config.sequential["num_games_per_step"]
 
         save_frequency = self.train_config.saving["save_frequency"]
         storage_frequency = self.train_config.saving["storage_frequency"]
 
+        pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
+        test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
+        train_iterations = self.train_config.recurrent_networks["num_train_iterations"]
+
+        early_testing = self.train_config.testing["early_testing"]
         policy_test_frequency = self.train_config.testing["policy_test_frequency"]
         mcts_test_frequency = self.train_config.testing["mcts_test_frequency"]
         num_policy_test_games = self.train_config.testing["num_policy_test_games"]
@@ -152,13 +144,8 @@ class AlphaZero():
         
         plot_frequency = self.train_config.plotting["plot_frequency"]
         policy_split = self.train_config.plotting["policy_split"]
-
-        skip_target = self.train_config.learning['skip_target']
-        skip_frequency = self.train_config.learning['skip_frequency']
-
-        if (policy_test_frequency % save_frequency != 0) or (mcts_test_frequency % save_frequency != 0) :
-            print("\nInvalid values for save or test frequency.\nBoth \"policy_test_frequency\" and \"mcts_test_frequency\" values must be divisible by the \"save_frequency\" value.")
-            return
+        value_split = self.train_config.plotting["value_split"]
+        
         
         # ------------------------------------------------------ #
         # ------------------- BACKUP FILES --------------------- #
@@ -198,30 +185,24 @@ class AlphaZero():
         replay_window_size = self.train_config.learning["replay_window_size"]
         learning_method = self.train_config.learning["learning_method"]
 
-        self.network_storage = Shared_network_storage.remote(shared_storage_size)
-
+        self.network_storage = RemoteStorage.remote(shared_storage_size)
         self.latest_network.model_to_cpu()
-        ray.get(self.network_storage.save_network.remote(self.latest_network))
+        ray.get(self.network_storage.store.remote(self.latest_network))
         self.latest_network.model_to_device()
 
-        test_set = False
-        self.test_buffer = None
-
+        plot_epochs = False
         if learning_method == "epochs":
             batch_size = self.train_config.epochs["batch_size"]
             learning_epochs = self.train_config.epochs["learning_epochs"]
-            plot_epoch = self.train_config.epochs["plot_epoch"]
-            test_set = self.train_config.epochs["test_set"]
-            if test_set:
-                num_test_set_games = self.train_config.epochs["num_test_set_games"]
-                batches_in_replay_buffer = replay_window_size / num_games_per_batch
-                test_buffer_window = int(batches_in_replay_buffer * num_test_set_games)
-                self.test_buffer = Replay_Buffer.remote(test_buffer_window, batch_size)
-                # test_buffer_window is such that there is the same number of batches in both the replay and test buffer.	
+            plot_epochs = self.train_config.epochs["plot_epoch"]	
+            if plot_epochs:
+                self.epochs_path = self.plots_path + "Epochs/"
+                if not os.path.exists(self.epochs_path):
+                    os.mkdir(self.epochs_path)
         elif learning_method == "samples":
             batch_size = self.train_config.samples["batch_size"]
 
-        self.replay_buffer = Replay_Buffer.remote(replay_window_size, batch_size)
+        self.replay_buffer = ReplayBuffer.remote(replay_window_size, batch_size)
             
 
         # ------------------------------------------------------ #
@@ -252,8 +233,17 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
+        self.test_futures = []
+        self.test_manager = TestManager.remote(self.game_class, self.game_args, 
+                                               self.train_config, self.search_config, 
+                                               self.network_storage, self.plots_path, self.state_set)
 
-        print("\nRunning for " + str(num_batches) + " batches of " + str(num_games_per_batch) + " games each.")
+        if running_mode == "sequential":
+            print("\nRunning for " + str(training_steps) + " training steps with " + str(num_games_per_step) + " games between each step.")
+        elif running_mode == "asynchronous":
+            print("\nRunning for " + str(training_steps) + " training steps with " + str(update_delay) + "s of delay between each step.")
+        if early_fill_games > 0:
+            print("\n-Playing " + str(early_fill_games) + " initial games to fill the replay buffer.")
         if state_cache != "disabled":
             print("\n-Using state dictonary as cache.")			  
         if starting_iteration != 0:
@@ -266,36 +256,7 @@ class AlphaZero():
 
         if starting_iteration != 0:
             print("NOTE: when continuing training both optimizer state and replay buffer are reset.\n")
-            if self.plot_data_load_path != None:
-                # Load all the plot data
-                with open(self.plot_data_load_path, 'rb') as file:
-                    self.epochs_value_loss = pickle.load(file)
-                    self.epochs_policy_loss = pickle.load(file)
-                    self.epochs_combined_loss = pickle.load(file)
-
-                    self.tests_value_loss = pickle.load(file)
-                    self.tests_policy_loss = pickle.load(file)
-                    self.tests_combined_loss = pickle.load(file)
-
-                    self.train_global_value_loss = pickle.load(file)
-                    self.train_global_policy_loss = pickle.load(file)
-                    self.train_global_combined_loss = pickle.load(file)
-
-                    self.test_global_value_loss = pickle.load(file)
-                    self.test_global_policy_loss = pickle.load(file)
-                    self.test_global_combined_loss = pickle.load(file)
-
-                    self.weight_size_max = pickle.load(file)
-                    self.weight_size_min = pickle.load(file)
-                    self.weight_size_average = pickle.load(file)
-
-                    self.p1_policy_wr_stats = pickle.load(file)
-                    self.p2_policy_wr_stats = pickle.load(file)
-                    self.p1_mcts_wr_stats = pickle.load(file)
-                    self.p2_mcts_wr_stats = pickle.load(file)
-
-                    if self.state_set is not None:
-                        self.state_set_stats = pickle.load(file)
+            self.load_data(self.plot_data_load_path)
         
         else:
             # Initial save (untrained network)
@@ -303,41 +264,24 @@ class AlphaZero():
             torch.save(model_dict, save_path)
 
             if self.plot_weights:
-                # Weight graphs
-                all_weights = torch.Tensor().cpu()
-                for param in model.parameters():
-                    all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0)
-
-                self.weight_size_max.append(max(abs(all_weights)))
-                self.weight_size_min.append(min(abs(all_weights)))
-                self.weight_size_average.append(torch.mean(abs(all_weights)))
-                del all_weights
+                self.update_weight_data()
+                self.plot_weight()
             
             if early_testing:
-                print("\nEarly testing of the untrained network.") # For graphing purposes
-                if policy_test_frequency:
-                    p1_policy_results = self.run_tests("1", num_policy_test_games, state_cache, "policy")
-                    p2_policy_results = self.run_tests("2", num_policy_test_games, state_cache, "policy")
-                    for player in (0,1):
-                        self.p1_policy_wr_stats[player].append(p1_policy_results[player])
-                        self.p2_policy_wr_stats[player].append(p2_policy_results[player])
+                # For graphing purposes
+                print("\nLaunched early tests.") 
+                test_policy = (policy_test_frequency != 0)
+                test_mcts = (mcts_test_frequency != 0)
+                policy_games = num_policy_test_games if test_policy else 0
+                mcts_games = num_mcts_test_games if test_mcts else 0
+                self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
 
-                if mcts_test_frequency:
-                    p1_mcts_results = self.run_tests("1", num_mcts_test_games, state_cache, "mcts")
-                    p2_mcts_results = self.run_tests("2", num_mcts_test_games, state_cache, "mcts")
-                    for player in (0,1):
-                        self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
-                        self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
+        if early_fill_games > 0:
+            print("\n\n\n\nEarly Buffer Fill\n")
+            self.run_selfplay(early_fill_games, state_cache, text="Playing initial games", early_fill=True)
 
-
-        if running_mode == "async" :
-
-            pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
-
-            training_steps = self.train_config.asynchronous["training_steps"]
-            update_delay = self.train_config.asynchronous["update_delay"]
-
-            actor_list= [Gamer.remote
+        if running_mode == "asynchronous":
+            actor_list= [Gamer.options(max_concurrency=2).remote
                         (
                         self.replay_buffer,
                         self.network_storage,
@@ -350,316 +294,108 @@ class AlphaZero():
                         for a in range(num_actors)]
             
             termination_futures = [actor.play_forever.remote() for actor in actor_list]
-            
-            for step in range(training_steps):
-                print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
-                self.train_network(optimizer, scheduler, batch_size, learning_method, False, 0)
 
-                ##############
-                # TODO: code for ploting and stuff
+        steps_to_run = range(starting_iteration, training_steps)
+        for step in steps_to_run:
+            print("\n\n\n\nStep: " + str(step+1) + "\n")
 
-                time.sleep(update_delay)
+            if running_mode == "sequential":
+                self.run_selfplay(num_games_per_step, state_cache, text="Self-Play Games")
+
+            print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
+            self.train_network(optimizer, scheduler, batch_size, learning_method)
             
-            # If you don't wish to wait for the actors to terminate their games,
-            # you can comment all the code under this line.
+
+            (futures_ready, remaining_futures) = ray.wait(self.test_futures, timeout=0.1)
+            print(str(len(remaining_futures)) + " Test results not yet ready.")
+            for future in futures_ready:
+                self.test_futures.remove(future)
+                result = ray.get(future)
+                self.update_wr_data(result)
+            
+            test_policy = (policy_test_frequency and (((step+1) % policy_test_frequency) == 0)) 
+            test_mcts = (mcts_test_frequency and (((step+1) % mcts_test_frequency) == 0))
+            policy_games = num_policy_test_games if test_policy else 0
+            mcts_games = num_mcts_test_games if test_mcts else 0
+            if policy_games or mcts_games:
+                self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
+
+            
+            # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
+            if plot_frequency and (((step+1) % plot_frequency) == 0):
+                
+                if self.plot_weights:
+                    self.update_weight_data()
+                    self.plot_weight()
+                
+                if self.state_set is not None:
+                    self.update_state_set_data(test_iterations)
+                    self.plot_state_set()
+
+                if self.plot_loss:
+                    self.plot_global_loss()
+                    if plot_epochs and learning_epochs>1:
+                        self.plot_epoch_loss()
+                    
+                self.plot_wr()
+
+            if policy_split and ((step+1) == policy_split):
+                self.split_policy_loss_graph()
+
+            if value_split and ((step+1) == value_split):
+                self.split_value_loss_graph()
+                    
+            if save_frequency and (((step+1) % save_frequency) == 0):
+                save_path = self.model_folder_path + self.network_name + "_" + str(step+1) + "_model"
+                torch.save(self.latest_network.get_model().state_dict(), save_path)
+            
+            if storage_frequency and (((step+1) % storage_frequency) == 0):
+                self.latest_network.model_to_cpu()
+                ray.get(self.network_storage.store.remote(self.latest_network))
+                self.latest_network.model_to_device()
+
+            # Save plotting data in case of a crash
+            self.save_data(self.plot_data_save_path)
+                
+            print("\nMain process memory usage: ")
+            print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
+            print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n\n" )
+            # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
+
+            if running_mode == "asynchronous":
+                divisions = 10
+                small_rest = update_delay/divisions
+                sleep_bar = PrintBar('Sleeping', divisions, 15)
+                for i in range(divisions):
+                    time.sleep(small_rest)
+                    sleep_bar.next()
+                sleep_bar.finish()
+
+        print("\nWaiting for tests to finish...")  
+        results = ray.get(self.test_futures)
+        for result in results:
+            self.update_wr_data(result)
+
+        self.plot_wr()
+        print("All tests done.\n")
+        
+        # If you don't wish to wait for the actors to terminate their games,
+        # you can comment all the code under this line.
+        if running_mode == "asynchronous":
+            print("Waiting for actors to finish their games\n")
             for actor in actor_list:
                 actor.stop.remote() # tell the actors to stop playing
 
-            ray.get(termination_futures) # wait for each of the actors to terminate the game that they are currently playing
-            
-            return
-
-
-        elif running_mode == "sequential":
+            ray.get(termination_futures) # wait for each of the actors to terminate the game that they are currently playing       
         
-            if early_fill_games > 0:
-                print("\n\n\n\nEarly Buffer Fill\n")
-                self.run_selfplay(early_fill_games, False, state_cache, text="Filling initial games", early_fill=True)
-
-            print("\n\n--------------------------------\n")
-
-            updates = 0
-            batches_to_run = range(starting_iteration, num_batches)
-            for b in batches_to_run:
-                updated = True
-
-                print("\n\n\n\nBatch: " + str(b+1) + "\n")
-                
-                self.decisive_count = 0
-                self.run_selfplay(num_games_per_batch, False, state_cache, text="Self-Play Games")
-
-                print("\nreplay buffer:")	
-                print(ray.get(self.replay_buffer.played_games.remote()))
-
-                if test_set:
-                    self.decisive_count = 0
-                    self.run_selfplay(num_test_set_games, True, text="Test-set Games")
-                    print("\ntest buffer:")
-                    print(ray.get(self.test_buffer.played_games.remote()))
-                
-                loss_flag = 0 # 0 -> None | 1 -> Policy | 2 -> Value
-                if skip_frequency and (((b+1) % skip_frequency) == 0):
-                    if skip_target == "policy":
-                        loss_flag = 1
-                    elif skip_target == "value":
-                        loss_flag = 2
-
-
-                print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
-                self.train_network(optimizer, scheduler, batch_size, learning_method, test_set, loss_flag)
-                updates +=1
-			
-                
-                if policy_test_frequency and (((b+1) % policy_test_frequency) == 0) and updated:
-                    p1_policy_results = self.run_tests("1", num_policy_test_games, state_cache, "policy")
-                    p2_policy_results = self.run_tests("2", num_policy_test_games, state_cache, "policy")
-                    for player in (0,1):
-                        self.p1_policy_wr_stats[player].append(p1_policy_results[player])
-                        self.p2_policy_wr_stats[player].append(p2_policy_results[player])
-
-                if mcts_test_frequency and (((b+1) % mcts_test_frequency) == 0) and updated:				
-                    p1_mcts_results = self.run_tests("1", num_mcts_test_games, state_cache, "mcts")
-                    p2_mcts_results = self.run_tests("2", num_mcts_test_games, state_cache, "mcts")
-                    for player in (0,1):
-                        self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
-                        self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
-
-                if plot_frequency and (((b+1) % plot_frequency) == 0):
-                    print("\n\nPloting graphs...")
-
-                    if len(self.p1_policy_wr_stats[0]) > 1:
-                        plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_policy_wr_stats[1], label = "P2")
-                        plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_policy_wr_stats[0], label = "P1")
-                        plt.title("Policy -> Win rates as Player 1")
-                        plt.legend()
-                        plt.savefig(self.plots_path + self.network_name + '_p1_policy_wr.png')
-                        plt.clf()
-
-
-                        plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_policy_wr_stats[0], label = "P1")
-                        plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_policy_wr_stats[1], label = "P2")
-                        plt.title("Policy -> Win rates as Player 2")
-                        plt.legend()
-                        plt.savefig(self.plots_path + self.network_name + '_p2_policy_wr.png')
-                        plt.clf()
-
-                    if len(self.p1_mcts_wr_stats[0]) > 1:
-                        plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_mcts_wr_stats[1], label = "P2")
-                        plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
-                        plt.title("MCTS -> Win rates as Player 1")
-                        plt.legend()
-                        plt.savefig(self.plots_path + self.network_name + '_p1_mcts_wr.png')
-                        plt.clf()
-
-
-                        plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_mcts_wr_stats[0], label = "P1")
-                        plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_mcts_wr_stats[1], label = "P2")
-                        plt.title("MCTS -> Win rates as Player 2")
-                        plt.legend()
-                        plt.savefig(self.plots_path + self.network_name + '_p2_mcts_wr.png')
-                        plt.clf()
-
-
-                    if self.plot_weights:
-                        model = self.latest_network.get_model()
-                        
-                        all_weights = torch.Tensor().cpu()
-                        for param in model.parameters():
-                            all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0)
-
-                        self.weight_size_max.append(max(abs(all_weights)))
-                        self.weight_size_min.append(min(abs(all_weights)))
-                        self.weight_size_average.append(torch.mean(abs(all_weights)))
-                        del all_weights
-
-                        plt.plot(range(len(self.weight_size_max)), self.weight_size_max)
-                        plt.title("Max Weight")
-                        plt.savefig(self.plots_path + self.network_name + '_weight_max.png')
-                        plt.clf()
-
-                        plt.plot(range(len(self.weight_size_min)), self.weight_size_min)
-                        plt.title("Min Weight")
-                        plt.savefig(self.plots_path + self.network_name + '_weight_min.png')
-                        plt.clf()
-
-                        plt.plot(range(len(self.weight_size_average)), self.weight_size_average)
-                        plt.title("Average Weight")
-                        plt.savefig(self.plots_path + self.network_name + '_weight_average.png')
-                        plt.clf()
-
-                    if self.plot_loss:
-
-                        if (learning_method == "epochs"):
-                            if plot_epoch and (learning_epochs > 1):
-
-                                plt.plot(range(learning_epochs), self.epochs_value_loss, label = "Training")
-                                if test_set:
-                                    plt.plot(range(learning_epochs), self.tests_value_loss, label = "Testing")
-
-                                plt.title("Epoch value loss")
-                                plt.legend()
-                                plt.savefig(self.plots_path + self.network_name + '_value_loss_' + str((b+1)) + '.png')
-                                plt.clf()
-
-                                
-                                plt.plot(range(learning_epochs), self.epochs_policy_loss, label = "Training")
-                                if test_set:
-                                    plt.plot(range(learning_epochs), self.tests_policy_loss, label = "Testing")
-
-                                plt.title("Epoch policy loss")
-                                plt.legend()
-                                plt.savefig(self.plots_path + self.network_name + '_policy_loss_' + str((b+1)) + '.png')
-                                plt.clf()
-
-                                
-                                plt.plot(range(learning_epochs), self.epochs_combined_loss, label = "Training")
-                                if test_set:
-                                    plt.plot(range(learning_epochs), self.tests_combined_loss, label = "Testing")
-
-                                plt.title("Epoch combined loss")
-                                plt.legend()
-                                plt.savefig(self.plots_path + self.network_name + '_total_loss_' + str((b+1)) + '.png')
-                                plt.clf()
-
-                        num_points = len(self.train_global_value_loss)
-                        if num_points > 1:
-                            x = range(num_points)
-                            plt.plot(x, self.train_global_value_loss, label = "Training")
-                            if test_set:
-                                plt.plot(x, self.test_global_value_loss, label = "Testing")
-
-                            plt.title("Global Value loss")
-                            plt.legend()
-                            plt.savefig(self.plots_path + "_" + self.network_name + '_global_value_loss.png')
-                            plt.clf()
-
-                        num_points = len(self.train_global_policy_loss)
-                        if num_points > 1:
-                            x = range(num_points)
-                            plt.plot(x, self.train_global_policy_loss, label = "Training")
-                            if test_set:
-                                plt.plot(x, self.test_global_policy_loss, label = "Testing")
-
-                            plt.title("Global Policy loss")
-                            plt.legend()
-                            plt.savefig(self.plots_path + "_" + self.network_name + '_global_policy_loss.png')
-                            plt.clf()
-
-                        num_points = len(self.train_global_combined_loss)
-                        if num_points > 1:
-                            x = range(num_points)
-                            plt.plot(x, self.train_global_combined_loss, label = "Training")
-                            if test_set:
-                                plt.plot(x, self.test_global_combined_loss, label = "Testing")
-
-                            plt.title("Global Combined loss")
-                            plt.legend()
-                            plt.savefig(self.plots_path + "_" + self.network_name + '_global_total_loss.png')
-                            plt.clf()
-
-                    if self.state_set is not None:
-                        test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
-                        for i in range(len(self.state_set)):
-                            state = self.state_set[i]
-                            _, value = self.latest_network.inference(state, False, test_iterations)
-                            self.state_set_stats[i].append(value.item())
-
-                            if len(self.state_set_stats[i]) > 1:
-                                if i<=1:
-                                    color = (200/255, 0, 0)
-                                elif i<=3:
-                                    color = (65/255, 65/255, 65/255)
-                                else:
-                                    color = (45/255, 110/255, 10/255)
-                                    
-                                plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], color=color)
-
-                        plt.title("State Values")
-                        plt.savefig(self.plots_path + self.network_name + '_state_values' '.png')
-                        plt.clf()
-
-                    print("Ploting done.\n")
-
-                if policy_split and ((b+1) == policy_split):
-                    print("\nSpliting policy graph...")
-                    num_points = len(self.train_global_policy_loss)
-                    if num_points > 1:
-                        x = range(num_points)
-                        plt.plot(x, self.train_global_policy_loss, label = "Training")
-                        if test_set:
-                            plt.plot(x, self.test_global_policy_loss, label = "Testing")
-
-                        plt.title("before split global policy loss")
-                        plt.legend()
-                        plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
-                        plt.clf()
-
-                    self.train_global_policy_loss.clear()
-                    print("Spliting done.")
-
-                if save_frequency and (((b+1) % save_frequency) == 0):
-                    save_path = self.model_folder_path + self.network_name + "_" + str(b+1) + "_model"
-                    torch.save(self.latest_network.get_model().state_dict(), save_path)
-                
-                if storage_frequency and (((b+1) % storage_frequency) == 0):
-                    self.latest_network.model_to_cpu()
-                    ray.get(self.network_storage.save_network.remote(self.latest_network))
-                    self.latest_network.model_to_device()
-
-                # Save ploting information to use when continuing training
-                with open(self.plot_data_save_path, 'wb') as file:
-                    pickle.dump(self.epochs_value_loss, file)
-                    pickle.dump(self.epochs_policy_loss, file)
-                    pickle.dump(self.epochs_combined_loss, file)
-
-                    pickle.dump(self.tests_value_loss, file)
-                    pickle.dump(self.tests_policy_loss, file)
-                    pickle.dump(self.tests_combined_loss, file)
-
-                    pickle.dump(self.train_global_value_loss, file)
-                    pickle.dump(self.train_global_policy_loss, file)
-                    pickle.dump(self.train_global_combined_loss, file)
-
-                    pickle.dump(self.test_global_value_loss, file)
-                    pickle.dump(self.test_global_policy_loss, file)
-                    pickle.dump(self.test_global_combined_loss, file)
-
-                    pickle.dump(self.weight_size_max, file)
-                    pickle.dump(self.weight_size_min, file)
-                    pickle.dump(self.weight_size_average, file)
-
-                    pickle.dump(self.p1_policy_wr_stats, file)
-                    pickle.dump(self.p2_policy_wr_stats, file)
-                    pickle.dump(self.p1_mcts_wr_stats, file)
-                    pickle.dump(self.p2_mcts_wr_stats, file)
-
-                    if self.state_set is not None:
-                        pickle.dump(self.state_set_stats, file)
-
-                    
-                print("\n\nMain process memory usage: ")
-                print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
-                print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB" )
-                # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
-
-            
+        print("All done.\nExiting")
         return
             
-    def run_selfplay(self, num_games_per_batch, test_set, state_cache, text="Self-Play", early_fill=False):
+    def run_selfplay(self, num_games_per_step, state_cache, text="Self-Play", early_fill=False):
         start = time.time()
 
         pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
-
         num_actors = self.train_config.running["num_actors"]
-        chunk_size = 1000
-
-        if test_set:
-            buffer_to_use = self.test_buffer
-        else:
-            buffer_to_use = self.replay_buffer
-
-        num_chunks = num_games_per_batch // chunk_size
-        rest = num_games_per_batch % chunk_size
 
         search_config = deepcopy(self.search_config)
         if early_fill:
@@ -670,36 +406,31 @@ class AlphaZero():
 
         stats_list = []
         args_list = []
-        #bar = ChargingBar(text, max=num_games_per_batch)
-        bar = PrintBar(text, num_games_per_batch, 15)
-        for c in range(num_chunks+1):
-            games_to_play = chunk_size
-            if c == num_chunks:
-                games_to_play = rest
+        bar = PrintBar(text, num_games_per_step, 15)
 
-            actor_list= [Gamer.remote
-                        (
-                        buffer_to_use,
-                        self.network_storage,
-                        self.game_class,
-                        self.game_args,
-                        search_config,
-                        pred_iterations,
-                        state_cache
-                        )
-                        for a in range(num_actors)]
+        actor_list= [Gamer.remote
+                    (
+                    self.replay_buffer,
+                    self.network_storage,
+                    self.game_class,
+                    self.game_args,
+                    search_config,
+                    pred_iterations,
+                    state_cache
+                    )
+                    for a in range(num_actors)]
             
-            actor_pool = ray.util.ActorPool(actor_list)
+        actor_pool = ray.util.ActorPool(actor_list)
 
-            for g in range(games_to_play):
-                actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
-            
-            time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
-            
-            for g in range(games_to_play):
-                stats = actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
-                stats_list.append(stats)
-                bar.next()
+        for g in range(num_games_per_step):
+            actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
+        
+        time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
+        
+        for g in range(num_games_per_step):
+            stats = actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
+            stats_list.append(stats)
+            bar.next()
 
         bar.finish()
         print_stats_list(stats_list)
@@ -707,109 +438,12 @@ class AlphaZero():
         end = time.time()
         total_time = end-start
         print("\n\nTotal time(m): " + format(total_time/60, '.4'))
-        print("Average time per game(s): " + format(total_time/num_games_per_batch, '.4'))
+        print("Average time per game(s): " + format(total_time/num_games_per_step, '.4'))
 
         return
 
-    def run_tests(self, player_choice, num_games, state_cache, test_mode, show_results=True, text="Testing"):	
-        start = time.time()
-        print("\n")
-
-        test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
-        num_actors = self.train_config.running["num_actors"]
-        chunk_size = 1000
-
-        stats_list = []
-        wins = [0,0]
-        num_chunks = num_games // chunk_size
-        rest = num_games % chunk_size
-
-        use_state_cache = False
-        if state_cache != "disabled":
-            use_state_cache = True
-
-        # Whenever the network is sent between processes, it needs to be moved to cpu
-        self.latest_network.model_to_cpu() 
-        if test_mode == "policy":
-            args_list = [player_choice, None, self.latest_network, None, test_iterations, False]
-            game_index = 1
-        elif test_mode == "mcts":
-            args_list = [player_choice, self.search_config, None, self.latest_network, None, test_iterations, use_state_cache, False]
-            game_index = 2
-        
-        print("\n\nTesting as p" + player_choice + " using " + test_mode)
-        #bar = ChargingBar(text, max=num_games)
-        bar = PrintBar(text, num_games, 15)
-        #bar.next(0)
-        for c in range(num_chunks+1):
-            games_to_play = chunk_size
-            if c == num_chunks:
-                games_to_play = rest
-
-            actor_list = [RemoteTester.remote() for a in range(num_actors)]
-            actor_pool = ray.util.ActorPool(actor_list)
-
-            for g in range(games_to_play):
-                game = self.game_class(*self.game_args)
-                args_list[game_index] = game
-                if test_mode == "policy":
-                    actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
-                elif test_mode == "mcts":
-                    actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
-
-            time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
-
-            for g in range(games_to_play):
-                winner, stats = actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
-                stats_list.append(stats)
-                if winner != 0:
-                    wins[winner-1] +=1
-                bar.next()
-            
-        bar.finish()
-
-        # As we will not serialize the model anymore, we move it back to its original device
-        self.latest_network.model_to_device() 
-
-
-        if test_mode == "mcts":
-            print_stats_list(stats_list)
-        
-        # STATISTICS
-        cmp_winrate_1 = 0.0
-        cmp_winrate_2 = 0.0
-        draws = num_games - wins[0] - wins[1]
-        p1_winrate = wins[0]/num_games
-        p2_winrate = wins[1]/num_games
-        draw_percentage = draws/num_games
-        cmp_2_string = "inf"
-        cmp_1_string = "inf"
-
-        if wins[0] > 0:
-            cmp_winrate_2 = wins[1]/wins[0]
-            cmp_2_string = format(cmp_winrate_2, '.4')
-        if wins[1] > 0:  
-            cmp_winrate_1 = wins[0]/wins[1]
-            cmp_1_string = format(cmp_winrate_1, '.4')
-
-
-        if show_results:
-            print("\n\nAI playing as p" + player_choice + "\n")
-            print("P1 Win ratio: " + format(p1_winrate, '.4'))
-            print("P2 Win ratio: " + format(p2_winrate, '.4'))
-            print("Draw percentage: " + format(draw_percentage, '.4'))
-            print("Comparative Win ratio(p1/p2): " + cmp_1_string)
-            print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
-
-
-        end = time.time()
-        total_time = end-start
-        print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
-        print("Average time per game(s): " + format(total_time/num_games, '.4'))
-
-        return p1_winrate, p2_winrate, draw_percentage
-
-    def train_network(self, optimizer, scheduler, batch_size, learning_method, test_set, loss_flag):
+    def train_network(self, optimizer, scheduler, batch_size, learning_method):
+        '''Executes a training step'''
         print()
         start = time.time()
 
@@ -819,11 +453,10 @@ class AlphaZero():
 
         replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
         n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=120)
-        if test_set:
-            test_size = ray.get(self.test_buffer.len.remote(), timeout=120)
 
         print("\nAfter Self-Play there are a total of " + str(replay_size) + " positions in the replay buffer.")
         print("Total number of games: " + str(n_games))
+        
 
         # ----------- Loss functions -----------
 
@@ -853,6 +486,7 @@ class AlphaZero():
         
         if learning_method == "epochs":
             learning_epochs = self.train_config.epochs["learning_epochs"]
+            plot_epoch = self.train_config.epochs["plot_epoch"]	
             
             if  batch_size > replay_size:
                 print("Batch size too large.\n" + 
@@ -863,10 +497,6 @@ class AlphaZero():
                 number_of_batches = replay_size // batch_size
                 print("Batches in replay buffer: " + str(number_of_batches))
 
-                if test_set:
-                    number_of_test_batches = test_size // batch_size
-                    print("Batches in test buffer: " + str(number_of_test_batches))
-
                 print("Batch size: " + str(batch_size))	
                 print("\n")
 
@@ -874,40 +504,25 @@ class AlphaZero():
             policy_loss = 0.0
             combined_loss = 0.0
 
-            self.epochs_value_loss.clear()
-            self.epochs_policy_loss.clear()
-            self.epochs_combined_loss.clear()
-
-            self.tests_value_loss.clear()
-            self.tests_policy_loss.clear()
-            self.tests_combined_loss.clear()
-
+            if self.plot_loss:
+                self.epochs_value_loss.clear()
+                self.epochs_policy_loss.clear()
+                self.epochs_combined_loss.clear()
             
             total_updates = learning_epochs*number_of_batches
             print("\nTotal number of updates: " + str(total_updates) + "\n")
             
             #bar = ChargingBar('Training ', max=learning_epochs)
-            bar = PrintBar('Training ', learning_epochs, 15)
+            bar = PrintBar('Training step ', learning_epochs, 15)
             for e in range(learning_epochs):
 
                 ray.get(self.replay_buffer.shuffle.remote(), timeout=120) # ray.get() beacuse we want the shuffle to be done before using buffer
-                if test_set:
-                    future_test_shuffle = self.test_buffer.shuffle.remote()
-
                 if batch_extraction == 'local':
                     future_replay_buffer = self.replay_buffer.get_buffer.remote()
-
-                if test_set:
-                    future_test_buffer = self.test_buffer.get_buffer.remote()
 
                 epoch_value_loss = 0.0
                 epoch_policy_loss = 0.0
                 epoch_combined_loss = 0.0
-
-                if test_set:
-                    t_epoch_value_loss = 0.0
-                    t_epoch_policy_loss = 0.0
-                    t_epoch_combined_loss = 0.0
 
                 #spinner = PieSpinner('\t\t\t\t\t\t  Running epoch ')
                 if batch_extraction == 'local':
@@ -926,7 +541,7 @@ class AlphaZero():
                 
                     value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
                                                                 policy_loss_function, value_loss_function, normalize_policy,
-                                                                batch, batch_size, train_iterations, loss_flag)
+                                                                batch, batch_size, train_iterations)
 
                     epoch_value_loss += value_loss
                     epoch_policy_loss += policy_loss
@@ -936,38 +551,12 @@ class AlphaZero():
                 epoch_value_loss /= number_of_batches
                 epoch_policy_loss /= number_of_batches
                 epoch_combined_loss /= number_of_batches	
-                
-                if test_set:
-                    ray.get(future_test_shuffle)
-                    test_buffer = ray.get(future_test_buffer)
-                    for t in range(number_of_test_batches):
-                        start_index = t*batch_size
-                        next_index = (t+1)*batch_size
-
-                        batch = test_buffer[start_index:next_index]
-                    
-                        test_value_loss, test_policy_loss, test_combined_loss = self.test_set_loss(
-                                                                                policy_loss_function, value_loss_function, normalize_policy,
-                                                                                batch, batch_size, train_iterations, loss_flag)
-
-                        t_epoch_value_loss += test_value_loss
-                        t_epoch_policy_loss += test_policy_loss
-                        t_epoch_combined_loss += test_combined_loss
-                        #spinner.next()
-                        
-                    t_epoch_value_loss /= number_of_test_batches
-                    t_epoch_policy_loss /= number_of_test_batches
-                    t_epoch_combined_loss /= number_of_test_batches	
 
                 if self.plot_loss:
                     self.epochs_value_loss.append(epoch_value_loss)
                     self.epochs_policy_loss.append(epoch_policy_loss)
                     self.epochs_combined_loss.append(epoch_combined_loss)
 
-                    if test_set:
-                        self.tests_value_loss.append(test_value_loss)
-                        self.tests_policy_loss.append(test_policy_loss)
-                        self.tests_combined_loss.append(test_combined_loss)
 
                 #spinner.finish()
                 bar.next()
@@ -977,11 +566,8 @@ class AlphaZero():
             self.train_global_value_loss.extend(self.epochs_value_loss)
             self.train_global_policy_loss.extend(self.epochs_policy_loss)
             self.train_global_combined_loss.extend(self.epochs_combined_loss)
+            
 
-            if test_set:
-                self.test_global_value_loss.extend(self.tests_value_loss)
-                self.test_global_policy_loss.extend(self.tests_policy_loss)
-                self.test_global_combined_loss.extend(self.tests_combined_loss)
                 
         elif learning_method == "samples":
             num_samples = self.train_config.samples["num_samples"]
@@ -1015,7 +601,7 @@ class AlphaZero():
                 replay_buffer = ray.get(future_buffer, timeout=300)
 
             #bar = ChargingBar('Training ', max=num_samples)
-            bar = PrintBar('Training ', num_samples, 15)
+            bar = PrintBar('Training step', num_samples, 15)
             for _ in range(num_samples):
                 if batch_extraction == 'local':
                     if len(probs) == 0:
@@ -1030,7 +616,7 @@ class AlphaZero():
 
                 value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
                                                                 policy_loss_function, value_loss_function, normalize_policy,
-                                                                batch, batch_size, train_iterations, loss_flag)
+                                                                batch, batch_size, train_iterations)
 
                 average_value_loss += value_loss
                 average_policy_loss += policy_loss
@@ -1040,9 +626,14 @@ class AlphaZero():
 
             bar.finish()
 
-            self.train_global_value_loss.append(average_value_loss/num_samples)
-            self.train_global_policy_loss.append(average_policy_loss/num_samples)
-            self.train_global_combined_loss.append(average_combined_loss/num_samples)
+            average_value_loss /= num_samples
+            average_policy_loss /= num_samples
+            average_combined_loss /= num_samples
+
+        
+            self.train_global_value_loss.extend([average_value_loss])
+            self.train_global_policy_loss.extend([average_policy_loss])
+            self.train_global_combined_loss.extend([average_combined_loss])
 
         else:
             print("Bad learning_method config.\nExiting")
@@ -1051,46 +642,11 @@ class AlphaZero():
         
         end = time.time()
         total_time = end-start
-        print("\n\nTraining time(s): " + format(total_time, '.4') + "\n")
+        print("\n\nTraining time(s): " + format(total_time, '.4') + "\n\n\n")
 
         return	
 
-    def test_set_loss(self, batch, batch_size, iterations, loss_flag):
-
-        normalize_loss = self.train_config.learning["normalize_loss"]
-        cross_entropy = nn.CrossEntropyLoss()
-
-        combined_loss = 0.0
-        policy_loss = 0.0
-        value_loss = 0.0
-        for (state, (target_value, target_policy)) in batch:
-            
-            predicted_policy, predicted_value = self.latest_network.inference(state, False, iterations)
-
-            target_policy = torch.tensor(target_policy).to(self.latest_network.device)
-            target_value = torch.tensor(target_value).to(self.latest_network.device)
-
-            sample_loss = cross_entropy(torch.flatten(predicted_policy), target_policy)
-            if normalize_loss:	# Policy loss is "normalized" by log(num_actions), since cross entropy's expected value is log(target_size)
-                sample_loss /= math.log(len(target_policy))
-            policy_loss += sample_loss
-
-            value_loss += ((target_value - predicted_value) ** 2)
-            #value_loss += torch.abs(target_value - predicted_value)
-            
-        value_loss /= batch_size
-        policy_loss /= batch_size
-
-        if loss_flag == 0:
-            combined_loss = policy_loss + value_loss
-        elif loss_flag == 1:
-            combined_loss = value_loss
-        elif loss_flag == 2:
-            combined_loss = policy_loss
-
-        return value_loss.item(), policy_loss.item(), combined_loss.item()
-
-    def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, batch_size, train_iterations, loss_flag):
+    def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, batch_size, train_iterations):
         
         self.latest_network.get_model().train()
         optimizer.zero_grad()
@@ -1143,12 +699,7 @@ class AlphaZero():
             print(predicted_policies)
             exit()
 
-        if loss_flag == 0:
-            loss = combined_loss
-        elif loss_flag == 1:
-            loss = value_loss
-        elif loss_flag == 2:
-            loss = policy_loss
+        loss = combined_loss
 
         # If you use pythorch's SGD optimizer, it already applies L2 weight regularization
         loss.backward()
@@ -1158,5 +709,257 @@ class AlphaZero():
 
         return value_loss.item(), policy_loss.item(), combined_loss.item()
 
+    ##########################################################################
+    # -----------------------------            ----------------------------- #
+    # ---------------------------    PLOTTING    --------------------------- #
+    # -----------------------------            ----------------------------- #
+    ##########################################################################
 
+    def plot_epoch_loss(self, step_number):
+        print("\nPlotting epochs...")
+        plt.plot(range(self.epoch_value_loss), self.epoch_value_loss)
+        plt.title("Epoch value loss")
+        plt.legend()
+        plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Value_loss.png')
+        plt.clf()
 
+        plt.plot(range(self.epoch_policy_loss), self.epcoh_policy_loss)
+        plt.title("Epoch policy loss")
+        plt.legend()
+        plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Policy_loss.png')
+        plt.clf()
+
+        plt.plot(range(self.epoch_combined_loss), self.epoch_combined_loss)
+        plt.title("Epoch combined loss")
+        plt.legend()
+        plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Combined_loss.png')
+        plt.clf()
+        print("Epoch plotting done.\n")
+
+    def plot_global_loss(self):
+        print("\nPlotting global loss...")
+        num_points = len(self.train_global_value_loss)
+        if num_points > 1:
+            x = range(num_points)
+            plt.plot(x, self.train_global_value_loss, label = "Training")
+            plt.title("Global Value loss")
+            plt.legend()
+            plt.savefig(self.plots_path + '_global_value_loss.png')
+            plt.clf()
+
+        num_points = len(self.train_global_policy_loss)
+        if num_points > 1:
+            x = range(num_points)
+            plt.plot(x, self.train_global_policy_loss, label = "Training")
+            plt.title("Global Policy loss")
+            plt.legend()
+            plt.savefig(self.plots_path + '_global_policy_loss.png')
+            plt.clf()
+
+        num_points = len(self.train_global_combined_loss)
+        if num_points > 1:
+            x = range(num_points)
+            plt.plot(x, self.train_global_combined_loss, label = "Training")
+            plt.title("Global Combined loss")
+            plt.legend()
+            plt.savefig(self.plots_path + '_global_total_loss.png')
+            plt.clf()
+
+        print("Global loss plotting done.\n")
+
+    def plot_wr(self):
+        print("\nPloting wr graphs...")
+        if len(self.p1_policy_wr_stats[0]) > 1:
+            plt.plot(range(len(self.p1_policy_wr_stats[1])), self.p1_policy_wr_stats[1], label = "P2")
+            plt.plot(range(len(self.p1_policy_wr_stats[0])), self.p1_policy_wr_stats[0], label = "P1")
+            plt.title("Policy -> Win rates as Player 1")
+            plt.legend()
+            plt.savefig(self.plots_path + 'p1_policy_wr.png')
+            plt.clf()
+
+        if len(self.p2_policy_wr_stats[0]) > 1:
+            plt.plot(range(len(self.p2_policy_wr_stats[0])), self.p2_policy_wr_stats[0], label = "P1")
+            plt.plot(range(len(self.p2_policy_wr_stats[1])), self.p2_policy_wr_stats[1], label = "P2")
+            plt.title("Policy -> Win rates as Player 2")
+            plt.legend()
+            plt.savefig(self.plots_path + 'p2_policy_wr.png')
+            plt.clf()
+
+        if len(self.p1_mcts_wr_stats[0]) > 1:
+            plt.plot(range(len(self.p1_mcts_wr_stats[1])), self.p1_mcts_wr_stats[1], label = "P2")
+            plt.plot(range(len(self.p1_mcts_wr_stats[0])), self.p1_mcts_wr_stats[0], label = "P1")
+            plt.title("MCTS -> Win rates as Player 1")
+            plt.legend()
+            plt.savefig(self.plots_path + 'p1_mcts_wr.png')
+            plt.clf()
+
+        if len(self.p2_mcts_wr_stats[0]) > 1:
+            plt.plot(range(len(self.p2_mcts_wr_stats[0])), self.p2_mcts_wr_stats[0], label = "P1")
+            plt.plot(range(len(self.p2_mcts_wr_stats[1])), self.p2_mcts_wr_stats[1], label = "P2")
+            plt.title("MCTS -> Win rates as Player 2")
+            plt.legend()
+            plt.savefig(self.plots_path + 'p2_mcts_wr.png')
+            plt.clf()
+        
+        print("Wr plotting done.\n")
+
+    def plot_weight(self):
+        print("\nPlotting weights...")
+                    
+        plt.plot(range(len(self.weight_size_max)), self.weight_size_max)
+        plt.title("Max Weight")
+        plt.savefig(self.plots_path + 'weight_max.png')
+        plt.clf()
+
+        plt.plot(range(len(self.weight_size_min)), self.weight_size_min)
+        plt.title("Min Weight")
+        plt.savefig(self.plots_path + 'weight_min.png')
+        plt.clf()
+
+        plt.plot(range(len(self.weight_size_average)), self.weight_size_average)
+        plt.title("Average Weight")
+        plt.savefig(self.plots_path + 'weight_average.png')
+        plt.clf()
+
+        print("Weight plotting done.\n")
+
+    def plot_state_set(self):
+        print("\nPlotting state set...")
+        red = (200/255, 0, 0)
+        grey = (65/255, 65/255, 65/255)
+        green = (45/255, 110/255, 10/255)
+
+        for i in range(len(self.state_set_stats)):
+            if len(self.state_set_stats[i]) > 1:
+                if i<=1:
+                    color = red
+                elif i<=3:
+                    color = grey
+                else:
+                    color = green
+                    
+                plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], color=color)
+
+        plt.title("State Values")
+        plt.savefig(self.plots_path + '_state_values.png')
+        plt.clf()
+        print("State plotting done\n")
+
+    def update_wr_data(self, result):
+        p1_policy_results, p2_policy_results, p1_mcts_results, p2_mcts_results = result
+
+        for player in (0,1):
+            if p1_policy_results != ():
+                self.p1_policy_wr_stats[player].append(p1_policy_results[player])
+
+            if p2_policy_results != ():   
+                self.p2_policy_wr_stats[player].append(p2_policy_results[player])
+
+        for player in (0,1):
+            if p1_mcts_results != ():
+                self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
+            if p2_mcts_results != ():
+                self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
+        return
+
+    def update_weight_data(self):
+        model = self.latest_network.get_model()
+        all_weights = torch.Tensor().cpu()
+        for param in model.parameters():
+            all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0)
+
+        self.weight_size_max.append(max(abs(all_weights)))
+        self.weight_size_min.append(min(abs(all_weights)))
+        self.weight_size_average.append(torch.mean(abs(all_weights)))
+        del all_weights
+
+    def update_state_set_data(self, test_iterations):
+        for i in range(len(self.state_set)):
+            state = self.state_set[i]
+            _, value = self.latest_network.inference(state, False, test_iterations)
+            self.state_set_stats[i].append(value.item())
+    
+    def split_policy_loss_graph(self):
+        print("\nSpliting policy loss graph...")
+        num_points = len(self.train_global_policy_loss)
+        if num_points > 1:
+            x = range(num_points)
+            plt.plot(x, self.train_global_policy_loss)
+            plt.title("Before split global policy loss")
+            plt.legend()
+            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
+            plt.clf()
+
+        self.train_global_policy_loss.clear()
+        print("Spliting done.\n")
+        return
+    
+    def split_value_loss_graph(self):
+        print("\nSpliting value loss graph...")
+        num_points = len(self.train_global_value_loss)
+        if num_points > 1:
+            x = range(num_points)
+            plt.plot(x, self.train_global_value_loss)
+            plt.title("Before split global value loss")
+            plt.legend()
+            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
+            plt.clf()
+
+        self.train_global_value_loss.clear()
+        print("Spliting done.")
+        return
+
+    def save_data(self, data_path):
+        # Save ploting information to use when continuing training
+        with open(data_path, 'wb') as file:
+            pickle.dump(self.epochs_value_loss, file)
+            pickle.dump(self.epochs_policy_loss, file)
+            pickle.dump(self.epochs_combined_loss, file)
+
+            pickle.dump(self.train_global_value_loss, file)
+            pickle.dump(self.train_global_policy_loss, file)
+            pickle.dump(self.train_global_combined_loss, file)
+
+            pickle.dump(self.weight_size_max, file)
+            pickle.dump(self.weight_size_min, file)
+            pickle.dump(self.weight_size_average, file)
+
+            pickle.dump(self.p1_policy_wr_stats, file)
+            pickle.dump(self.p2_policy_wr_stats, file)
+            pickle.dump(self.p1_mcts_wr_stats, file)
+            pickle.dump(self.p2_mcts_wr_stats, file)
+
+            if self.state_set is not None:
+                pickle.dump(self.state_set_stats, file)
+
+    def load_data(self, data_path):
+        # Load all the plot data
+        with open(data_path, 'rb') as file:
+            self.epochs_value_loss = pickle.load(file)
+            self.epochs_policy_loss = pickle.load(file)
+            self.epochs_combined_loss = pickle.load(file)
+
+            self.tests_value_loss = pickle.load(file)
+            self.tests_policy_loss = pickle.load(file)
+            self.tests_combined_loss = pickle.load(file)
+
+            self.train_global_value_loss = pickle.load(file)
+            self.train_global_policy_loss = pickle.load(file)
+            self.train_global_combined_loss = pickle.load(file)
+
+            self.test_global_value_loss = pickle.load(file)
+            self.test_global_policy_loss = pickle.load(file)
+            self.test_global_combined_loss = pickle.load(file)
+
+            self.weight_size_max = pickle.load(file)
+            self.weight_size_min = pickle.load(file)
+            self.weight_size_average = pickle.load(file)
+
+            self.p1_policy_wr_stats = pickle.load(file)
+            self.p2_policy_wr_stats = pickle.load(file)
+            self.p1_mcts_wr_stats = pickle.load(file)
+            self.p2_mcts_wr_stats = pickle.load(file)
+
+            if self.state_set is not None:
+                self.state_set_stats = pickle.load(file)
+    

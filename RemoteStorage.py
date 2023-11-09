@@ -1,13 +1,18 @@
 import ray
 
-@ray.remote
+@ray.remote(scheduling_strategy="SPREAD")
 class RemoteStorage():
+    '''Generic class to store a certain amount of items remotely'''
 
-    def __init__(self, precious=None):
-        self.precisous = precious # store my precious
+    def __init__(self, window_size=1):
+        self.item_list = []
+        self.window_size = window_size
 
-    def get_item(self):
-        return self.precisous
+    def get(self):
+        return self.item_list[-1]
     
-    def set_item(self, item):
-        self.precisous = item
+    def store(self, item):
+        if len(self.item_list) >= self.window_size:
+            self.item_list.pop(0)
+        
+        self.item_list.append(item)

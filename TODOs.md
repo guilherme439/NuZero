@@ -7,7 +7,6 @@
 - Consider changing INI configs to YAML. [medium, low]
 
 ### Running the system
-- Interactive mode [hard, medium]
 - Creation of custom training/testing presets based on user interactive choices, probably using preset save files[hard, low]
 
 ### Explorer
@@ -18,11 +17,10 @@
 - Implement Ray's hyperparameter search [medium/hard, low]
 
 ### Training
-- Serparar loops de treino e self-play para classes separadas para poder começar a fazer o continuous training. [hard, medium]
-- Implement continuous training option (probably with no intermidiate testing). [hard, medium]
+- Fully implement continuous training option. [hard, medium]
 
 ### Tester
-
+- Allow the tester to use state_dict per actor, and not just per game [medium, low]
 
 ### SCS Game
 - Convert board to numpy array (allows indexing with tuples) [medium, low] {1}
@@ -38,12 +36,6 @@
 
 
 
-<!---------------------------------------------------------------------------------------------------------------------------------------->
-
-## Details
-
-### Continuous training
-- Meter Gamers a jogar 
 
 
 <!---------------------------------------------------------------------------------------------------------------------------------------->

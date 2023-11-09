@@ -52,7 +52,7 @@ class SCS_Renderer():
         self.initialize_pygame()
 
         # A remote game storage is used to update the game being displayed
-        game = ray.get(self.game_storage.get_item.remote())
+        game = ray.get(self.game_storage.get.remote())
 
         # Set up the drawing window
         screen = pygame.display.set_mode([self.WINDOW_WIDTH, self.WINDOW_HEIGHT])
@@ -62,7 +62,7 @@ class SCS_Renderer():
         running=True
         while running:
 
-            game = ray.get(self.game_storage.get_item.remote())
+            game = ray.get(self.game_storage.get.remote())
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:

@@ -35,7 +35,7 @@ class Tester():
             from SCS.SCS_RemoteRenderer import SCS_RemoteRenderer
             from RemoteStorage import RemoteStorage
 
-            self.remote_storage = RemoteStorage.remote()
+            self.remote_storage = RemoteStorage.remote(window_size=1)
             self.renderer = SCS_RemoteRenderer.remote(self.remote_storage)
 
         self.slow_duration = 2
@@ -98,7 +98,7 @@ class Tester():
             print("\n")
 
         if self.render:
-            ray.get(self.remote_storage.set_item.remote(game))
+            ray.get(self.remote_storage.store.remote(game))
             self.renderer.render.remote(player_unit_images=True)
             time.sleep(3)
 
@@ -160,7 +160,7 @@ class Tester():
                 subtree_root = chosen_child
 
             if self.render:
-                ray.get(self.remote_storage.set_item.remote(game))
+                ray.get(self.remote_storage.store.remote(game))
 
 
             if (done):
@@ -186,7 +186,7 @@ class Tester():
             print("\n")
 
         if self.render:
-            ray.get(self.remote_storage.set_item.remote(game))
+            ray.get(self.remote_storage.store.remote(game))
             self.renderer.render.remote(player_unit_images=True)
             time.sleep(3)
 
@@ -280,7 +280,7 @@ class Tester():
             done = game.step_function(action_coords)
 
             if self.render:
-                ray.get(self.remote_storage.set_item.remote(game))
+                ray.get(self.remote_storage.store.remote(game))
 
             if (done):
                 winner = game.get_winner()
@@ -296,7 +296,7 @@ class Tester():
             print("\n")
 
         if self.render:
-            ray.get(self.remote_storage.set_item.remote(game))
+            ray.get(self.remote_storage.store.remote(game))
             self.renderer.render.remote()
             time.sleep(5)
 
@@ -328,7 +328,7 @@ class Tester():
             done = game.step_function(action_coords)
 
             if self.render:
-                ray.get(self.remote_storage.set_item.remote(game))
+                ray.get(self.remote_storage.store.remote(game))
 
             if (done):
                 winner = game.get_winner()

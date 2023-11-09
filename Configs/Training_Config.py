@@ -10,25 +10,23 @@ class Training_Config(Config):
         # Wether to keep a cache within each actor/game of previously seen states, to avoid using slow network inference.
         # Consumes a lot of memory so it is only worth using if the game being played repeats states frequently.
         
+        running_mode = "sequential",
         num_actors = 4,
         early_fill = 1000,
         early_softmax_exploration = 1,
         early_random_exploration = 0,
-    	# Number of games to be played until actors are replaced with new ones.
+    	training_steps = 1e5,
         )
 
 
         self.sequential = dict \
         (
-        num_games_per_batch = 200,
-        num_batches = 40,
+        num_games_per_step = 200,
         )
 
 
         self.asynchronous = dict \
         (
-        training_steps = 1e5,
-        early_delay = 6000,
         update_delay = 1600,
         )
         
@@ -43,6 +41,7 @@ class Training_Config(Config):
         self.testing = dict \
         (
         early_testing = True,
+        testing_actors = 2,
         policy_test_frequency = 10,
         mcts_test_frequency = 80,
         num_policy_test_games = 100,
@@ -53,15 +52,16 @@ class Training_Config(Config):
         self.plotting = dict \
         (
         plot_frequency = 50,
-        plot_reset = 0,
+        value_split = 0,
+        policy_split = 0,
         )
 
 
         self.recurrent_networks = dict \
         (
-        num_train_iterations = 2,
-        num_pred_iterations = 2,
-        num_test_iterations = 2
+        num_train_iterations = 4,
+        num_pred_iterations = 4,
+        num_test_iterations = 4
         )
         
         
@@ -84,9 +84,7 @@ class Training_Config(Config):
         (
         batch_size = 32,
         learning_epochs = 8,
-        plot_epoch = False,
-        test_set = False,
-        num_test_set_games = 0
+        plot_epochs = False,
         )
 
 
@@ -107,8 +105,9 @@ class Training_Config(Config):
         # SGD Optimizer
         weight_decay = 1e-5,
         momentum = 0.9,
+        nesterov = 0.1,
 
-        # Scheduler
+        # Lr Scheduler
         scheduler_boundaries = [100e3, 600e3, 1500e3],
         scheduler_gamma = 0.1
         )

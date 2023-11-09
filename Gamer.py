@@ -33,7 +33,7 @@ class Gamer():
         
 
     def play_game(self):
-        future_network = self.shared_storage.get_latest_network.remote() # ask for a copy of the latest network
+        future_network = self.shared_storage.get.remote() # ask for a copy of the latest network
 
         stats = \
         {
@@ -96,9 +96,7 @@ class Gamer():
         while not self.time_to_stop:
             self.play_game()
 
-    
-
-    async def stop(self):
+    def stop(self):
         self.time_to_stop = True
     
 
