@@ -102,8 +102,6 @@ class AlphaZero():
         if self.state_set is not None:
             self.state_set_stats = [ [] for state in self.state_set ]
 
-        self.plot_loss = True
-        self.plot_weights = True
 
         
 
@@ -122,6 +120,7 @@ class AlphaZero():
         running_mode = self.train_config.running["running_mode"]
         num_actors = self.train_config.running["num_actors"]
         early_fill_games = self.train_config.running["early_fill"]
+
 
         training_steps = int(self.train_config.running["training_steps"])
         if running_mode == "asynchronous":
@@ -145,6 +144,8 @@ class AlphaZero():
         plot_frequency = self.train_config.plotting["plot_frequency"]
         policy_split = self.train_config.plotting["policy_split"]
         value_split = self.train_config.plotting["value_split"]
+        self.plot_loss = self.train_config.plotting["plot_loss"]
+        self.plot_weights = self.train_config.plotting["plot_weights"]
         
         
         # ------------------------------------------------------ #
@@ -307,7 +308,7 @@ class AlphaZero():
             
 
             (futures_ready, remaining_futures) = ray.wait(self.test_futures, timeout=0.1)
-            print(str(len(remaining_futures)) + " Test results not yet ready.")
+            print("Awaiting results of " + str(len(remaining_futures)) + "test(s)")
             for future in futures_ready:
                 self.test_futures.remove(future)
                 result = ray.get(future)
@@ -356,11 +357,6 @@ class AlphaZero():
 
             # Save plotting data in case of a crash
             self.save_data(self.plot_data_save_path)
-                
-            print("\nMain process memory usage: ")
-            print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
-            print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n\n" )
-            # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
             if running_mode == "asynchronous":
                 divisions = 10
@@ -370,6 +366,13 @@ class AlphaZero():
                     time.sleep(small_rest)
                     sleep_bar.next()
                 sleep_bar.finish()
+
+            print("\n-------------------------------------\n")
+            print("\nMain process memory usage: ")
+            print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
+            print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n\n" )
+            print("\n-------------------------------------\n")
+            # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
         print("\nWaiting for tests to finish...")  
         results = ray.get(self.test_futures)

@@ -51,6 +51,8 @@ class Training_Config(Config):
 
         self.plotting = dict \
         (
+        plot_loss = True,  
+        plot_weights = False,  
         plot_frequency = 50,
         value_split = 0,
         policy_split = 0,
@@ -73,8 +75,6 @@ class Training_Config(Config):
         value_loss = "SE",              # SE | AE
         policy_loss = "CEL",            # CEL | KLD | MSE
         normalize_CEL = False,          # Cross entropy loss normalization
-        skip_target = 'policy',         # policy | value
-        skip_frequency = 0,             # How often loss should be calculated ignoring the "skip_target"
         learning_method = "epochs"      # epochs | samples
         )
 
