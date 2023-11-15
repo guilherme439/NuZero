@@ -282,14 +282,17 @@ class AlphaZero():
                 self.update_weight_data()
                 self.plot_weight()
             
-            if early_testing:
-                # For graphing purposes
-                print("\nLaunched early tests.") 
-                test_policy = (policy_test_frequency != 0)
-                test_mcts = (mcts_test_frequency != 0)
-                policy_games = num_policy_test_games if test_policy else 0
-                mcts_games = num_mcts_test_games if test_mcts else 0
-                self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
+            if early_testing: # For graphing purposes
+                if asynchronous_testing:
+                    print("\nLaunched early tests.") 
+                    test_policy = (policy_test_frequency != 0)
+                    test_mcts = (mcts_test_frequency != 0)
+                    policy_games = num_policy_test_games if test_policy else 0
+                    mcts_games = num_mcts_test_games if test_mcts else 0
+                    self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
+                else:
+                    result = self.test_manager.run_tests(policy_games, mcts_games, state_cache)
+                    self.update_wr_data(result)
 
         if early_fill_games > 0:
             print("\n\n\n\nEarly Buffer Fill\n")
