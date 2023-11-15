@@ -385,20 +385,21 @@ class AlphaZero():
                     sleep_bar.next()
                 sleep_bar.finish()
 
-            print("\n-------------------------------------\n")
+            print("-------------------------------------\n")
             print("\nMain process memory usage: ")
             print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
-            print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n" )
-            print("\n-------------------------------------\n")
+            print("Peak memory usage:    " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n" )
+            print("\n-------------------------------------\n\n")
             # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
-        print("\nWaiting for tests to finish...")  
-        results = ray.get(self.test_futures)
-        for result in results:
-            self.update_wr_data(result)
+        if asynchronous_testing:
+            print("\nWaiting for tests to finish...")
+            results = ray.get(self.test_futures)
+            for result in results:
+                self.update_wr_data(result)
 
-        self.plot_wr()
-        print("All tests done.\n")
+            self.plot_wr()
+            print("All tests done.\n")
         
         # If you don't wish to wait for the actors to terminate their games,
         # you can comment all the code under this line.
@@ -715,7 +716,8 @@ class AlphaZero():
     
     def calculate_loss(self, outputs, targets, batch_size, policy_loss_function, value_loss_function, normalize_policy):
         target_values, target_policies = list(zip(*targets))
-        (predicted_values, predicted_policies) = list(zip(*outputs))
+    
+        predicted_policies, predicted_values = outputs
 
         policy_loss = 0.0
         value_loss = 0.0
@@ -775,7 +777,7 @@ class AlphaZero():
         else:
             interim_thought = None
 
-        outputs, _ = self.latest_network.inference(inputs, iters_to_do=k, interim_thought=interim_thought)
+        outputs, _ = self.latest_network.inference(inputs, True, iters_to_do=k, interim_thought=interim_thought)
         return outputs
 
     ##########################################################################

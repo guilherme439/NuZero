@@ -138,6 +138,7 @@ class TestManager():
         total_time = end-start
         print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
         print("Average time per game(s): " + format(total_time/num_games, '.4'))
+        print("\n\n")
 
         return (p1_winrate, p2_winrate, draw_percentage)
         
