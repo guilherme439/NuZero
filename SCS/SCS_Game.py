@@ -97,8 +97,7 @@ class SCS_Game():
         self.target_tile = None
         self.attackers = []
 
-        self.victory_p1 = []
-        self.victory_p2 = []
+        self.victory_points = [[],[]] 
         self.n_vp = [0, 0]
 
         self.all_reinforcements = {0:[], 1:[]}
@@ -718,11 +717,13 @@ class SCS_Game():
     def check_terminal(self):
         p1_captured_points = 0
         p2_captured_points = 0
-        for point in self.victory_p1:
+        victory_p1 = self.victory_points[0]
+        victory_p2 = self.victory_points[1]
+        for point in victory_p1:
             vic_p1 = self.board[point[0]][point[1]]
             if vic_p1.player == 2:
                 p2_captured_points +=1
-        for point in self.victory_p2:
+        for point in victory_p2:
             vic_p2 = self.board[point[0]][point[1]]
             if vic_p2.player == 1:
                 p1_captured_points +=1
@@ -1168,12 +1169,12 @@ class SCS_Game():
         p1_victory = torch.zeros((self.rows, self.columns), dtype=data_type)
         p2_victory = torch.zeros((self.rows, self.columns), dtype=data_type)
 
-        for v in self.victory_p1:
+        for v in self.victory_points[0]:
             x = v[0]
             y = v[1]
             p1_victory[x][y] = 1.0
 
-        for v in self.victory_p2:
+        for v in self.victory_points[1]:
             x = v[0]
             y = v[1]
             p2_victory[x][y] = 1.0
@@ -1442,11 +1443,10 @@ class SCS_Game():
                     if method == "Randomized":
                         p1_vp = values["number_vp"]["p1"]
                         p2_vp = values["number_vp"]["p2"]
-                        self.victory_p1 = []        
-                        self.victory_p2 = []
+                        self.victory_points = [[],[]]        
 
                         p1_available_tiles = self.rows * self.p1_last_index+1
-                        p2_available_tiles = self.rows * self.p1_last_index+1
+                        p2_available_tiles = self.rows * (self.columns - (self.p2_first_index+1))
                         if p1_vp > p1_available_tiles:
                             print("Game config has too many victory points for p1.")
                             exit()
@@ -1458,23 +1458,23 @@ class SCS_Game():
                             row = np.random.choice(range(self.rows))
                             col = np.random.choice(range(self.p1_last_index+1))
                             point = (row, col)
-                            while point in self.victory_p1:
+                            while point in self.victory_points[0]:
                                 row = np.random.choice(range(self.rows))
                                 col = np.random.choice(range(self.p1_last_index+1))
                                 point = (row, col)
 
-                            self.victory_p1.append(point)
+                            self.victory_points[0].append(point)
                         
                         for _ in range(p2_vp):
                             row = np.random.choice(range(self.rows))
                             col = np.random.choice(range(self.p2_first_index, self.columns))
                             point = (row, col)
-                            while point in self.victory_p2:
+                            while point in self.victory_points[1]:
                                 row = np.random.choice(range(self.rows))
                                 col = np.random.choice(range(self.p2_first_index, self.columns))
                                 point = (row, col)
 
-                            self.victory_p2.append(point)
+                            self.victory_points[1].append(point)
 
 
                     elif method == "Detailed":
@@ -1504,11 +1504,11 @@ class SCS_Game():
                         exit()
 
                     self.n_vp = [0, 0]
-                    for point in self.victory_p1:
+                    for point in self.victory_points[0]:
                         self.board[point[0]][point[1]].victory = 1
                         self.n_vp[0] += 1
 
-                    for point in self.victory_p2:
+                    for point in self.victory_points[1]:
                         self.board[point[0]][point[1]].victory = 2
                         self.n_vp[1] += 1
 

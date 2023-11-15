@@ -715,7 +715,7 @@ class AlphaZero():
     
     def calculate_loss(self, outputs, targets, batch_size, policy_loss_function, value_loss_function, normalize_policy):
         target_values, target_policies = list(zip(*targets))
-        predicted_values, predicted_policies = list(zip(*outputs))
+        (predicted_values, predicted_policies) = list(zip(*outputs))
 
         policy_loss = 0.0
         value_loss = 0.0

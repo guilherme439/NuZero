@@ -52,6 +52,8 @@ from ray.runtime_env import RuntimeEnv
 
 from scipy.special import softmax
 
+from Agents.GoalRushAgent import GoalRushAgent
+
 
 '''
 ~/Desktop/ray_tmp/session_latest/runtime_resources/working_dir_files
@@ -665,35 +667,13 @@ def main():
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
+                start = (0,0)
+                destination = (3,3)
+                agent = GoalRushAgent(game)
+                distances, previous_nodes = agent.dijkstra(start)
+                shortest_path = agent.shortest_path_to(destination, previous_nodes)
+                print(shortest_path)
                 
-                #from Neural_Networks.Hexagonal.depthwise_conv import depthwise_conv
-                #import hexagdly
-                #from torch.nn import Conv2d
-                in_channels = game.state_shape()[0]
-
-
-                state = game.generate_state_image()
-                chunks = torch.chunk(state,in_channels, dim=1)
-
-
-                
-                hexag_conv = hexagdly.Conv2d(in_channels, 256, kernel_size=1, bias=False)
-
-                #torch_depthconv = Conv2d(256, 256, (3,3), groups=256, bias=False)
-                #my_depthconv = depthwise_conv(256, 256, kernel_size=1, bias=False)
-                #normal_conv = Conv2d(256, 256, (3,3), bias=False)
-                hexag_depth_conv = hexagdly.Conv2d(256, 256, 1, bias=False)
-
-                conv = hexag_depth_conv
-
-                #for name, param in conv.named_parameters():
-                #    print(param)
-
-                out = hexag_conv(state)
-                out = conv(out)
-
-                print(out.size())
-                print(out)
 
 
 
