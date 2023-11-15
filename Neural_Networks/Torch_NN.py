@@ -45,7 +45,7 @@ class Torch_NN():
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = self.model.to(self.device)
     
-    def inference(self, state, training, iters_to_do=2):
+    def inference(self, state, training, iters_to_do=2, interim_thought=None):
 
         if not training:
             self.model.eval()
@@ -59,9 +59,9 @@ class Torch_NN():
         else:
             if not training:
                 with torch.no_grad():
-                    p,v = self.model(state.to(self.device), iters_to_do)
+                    (p,v), _ = self.model(state.to(self.device), iters_to_do)
             else:
-                p,v = self.model(state.to(self.device), iters_to_do)
+                return self.model(state.to(self.device), iters_to_do, interim_thought)
 
         return p,v
     

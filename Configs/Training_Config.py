@@ -40,8 +40,9 @@ class Training_Config(Config):
 
         self.testing = dict \
         (
-        early_testing = True,
+        asynchronous_testing = True,
         testing_actors = 2,
+        early_testing = True,
         policy_test_frequency = 10,
         mcts_test_frequency = 80,
         num_policy_test_games = 100,
@@ -63,7 +64,8 @@ class Training_Config(Config):
         (
         num_train_iterations = 4,
         num_pred_iterations = 4,
-        num_test_iterations = 4
+        num_test_iterations = 4,
+        alpha = 0.5
         )
         
         

@@ -27,12 +27,10 @@ from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
 
-@ray.remote
 class TestManager():
-    '''Manages tests'''
-
+    '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, train_config, search_config, shared_storage, plots_path, state_set=None):
+    def __init__(self, game_class, game_args, train_config, search_config, shared_storage, state_set=None):
         self.game_class = game_class
         self.game_args = game_args
         self.train_config = train_config
@@ -64,8 +62,7 @@ class TestManager():
             p2_mcts_results = self.test_latest_nn("2", mcts_games, "mcts", state_cache)
             
         return p1_policy_results, p2_policy_results, p1_mcts_results, p2_mcts_results
-
-        
+       
     def test_latest_nn(self, player_choice, num_games, test_mode, state_cache, show_results=True):
         start = time.time()
         print("\n")

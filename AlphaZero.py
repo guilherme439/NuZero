@@ -14,8 +14,9 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from copy import deepcopy
 from torch import nn
+from copy import deepcopy
+from random import randrange
 
 from Neural_Networks.Torch_NN import Torch_NN
 
@@ -27,6 +28,7 @@ from ReplayBuffer import ReplayBuffer
 from RemoteStorage import RemoteStorage
 from RemoteTester import RemoteTester
 from TestManager import TestManager
+from RemoteTestManager import RemoteTestManager
 
 from Utils.stats_utilities import *
 from Utils.loss_functions import *
@@ -134,7 +136,10 @@ class AlphaZero():
         pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
         test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
         train_iterations = self.train_config.recurrent_networks["num_train_iterations"]
+        prog_alpha = self.train_config.recurrent_networks["alpha"]
 
+        asynchronous_testing = self.train_config.testing["asynchronous_testing"]
+        num_testers = self.train_config.testing["testing_actors"]
         early_testing = self.train_config.testing["early_testing"]
         policy_test_frequency = self.train_config.testing["policy_test_frequency"]
         mcts_test_frequency = self.train_config.testing["mcts_test_frequency"]
@@ -146,6 +151,10 @@ class AlphaZero():
         value_split = self.train_config.plotting["value_split"]
         self.plot_loss = self.train_config.plotting["plot_loss"]
         self.plot_weights = self.train_config.plotting["plot_weights"]
+
+        if running_mode == "asynchronous":
+            asynchronous_testing = True
+            # When running asynchronously, tests need to also be async.
         
         
         # ------------------------------------------------------ #
@@ -234,10 +243,15 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
-        self.test_futures = []
-        self.test_manager = TestManager.remote(self.game_class, self.game_args, 
-                                               self.train_config, self.search_config, 
-                                               self.network_storage, self.plots_path, self.state_set)
+        if asynchronous_testing:
+            self.test_futures = []
+            self.test_manager = RemoteTestManager.remote(self.game_class, self.game_args, 
+                                                         self.train_config, self.search_config, 
+                                                         self.network_storage, self.state_set)
+        else:
+            self.test_manager = TestManager(self.game_class, self.game_args, 
+                                            self.train_config, self.search_config, 
+                                            self.network_storage, self.state_set)
 
         if running_mode == "sequential":
             print("\nRunning for " + str(training_steps) + " training steps with " + str(num_games_per_step) + " games between each step.")
@@ -304,23 +318,27 @@ class AlphaZero():
                 self.run_selfplay(num_games_per_step, state_cache, text="Self-Play Games")
 
             print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
-            self.train_network(optimizer, scheduler, batch_size, learning_method)
-            
-
-            (futures_ready, remaining_futures) = ray.wait(self.test_futures, timeout=0.1)
-            print("Awaiting results of " + str(len(remaining_futures)) + "test(s)")
-            for future in futures_ready:
-                self.test_futures.remove(future)
-                result = ray.get(future)
-                self.update_wr_data(result)
+            self.train_network(optimizer, scheduler, batch_size, learning_method, prog_alpha)
             
             test_policy = (policy_test_frequency and (((step+1) % policy_test_frequency) == 0)) 
             test_mcts = (mcts_test_frequency and (((step+1) % mcts_test_frequency) == 0))
             policy_games = num_policy_test_games if test_policy else 0
             mcts_games = num_mcts_test_games if test_mcts else 0
-            if policy_games or mcts_games:
-                self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
-
+            if asynchronous_testing:
+                (futures_ready, remaining_futures) = ray.wait(self.test_futures, timeout=0.1)
+                print("Awaiting results of " + str(len(remaining_futures)) + " test(s)\n")
+                for future in futures_ready:
+                    self.test_futures.remove(future)
+                    result = ray.get(future)
+                    self.update_wr_data(result)
+                
+                if policy_games or mcts_games:
+                    self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
+            else:
+                if policy_games or mcts_games:
+                    result = self.test_manager.run_tests(policy_games, mcts_games, state_cache)
+                    self.update_wr_data(result)
+                
             
             # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
             if plot_frequency and (((step+1) % plot_frequency) == 0):
@@ -370,7 +388,7 @@ class AlphaZero():
             print("\n-------------------------------------\n")
             print("\nMain process memory usage: ")
             print("Current memory usage: " + format(process.memory_info().rss/(1024*1000), '.6') + " MB") 
-            print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n\n" )
+            print("Peak memory usage: " + format(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1000, '.6') + " MB\n" )
             print("\n-------------------------------------\n")
             # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
@@ -445,7 +463,7 @@ class AlphaZero():
 
         return
 
-    def train_network(self, optimizer, scheduler, batch_size, learning_method):
+    def train_network(self, optimizer, scheduler, batch_size, learning_method, prog_alpha):
         '''Executes a training step'''
         print()
         start = time.time()
@@ -544,7 +562,7 @@ class AlphaZero():
                 
                     value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
                                                                 policy_loss_function, value_loss_function, normalize_policy,
-                                                                batch, batch_size, train_iterations)
+                                                                batch, batch_size, train_iterations, prog_alpha)
 
                     epoch_value_loss += value_loss
                     epoch_policy_loss += policy_loss
@@ -619,7 +637,7 @@ class AlphaZero():
 
                 value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
                                                                 policy_loss_function, value_loss_function, normalize_policy,
-                                                                batch, batch_size, train_iterations)
+                                                                batch, batch_size, train_iterations, prog_alpha)
 
                 average_value_loss += value_loss
                 average_policy_loss += policy_loss
@@ -649,26 +667,64 @@ class AlphaZero():
 
         return	
 
-    def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, batch_size, train_iterations):
-        
+    def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, batch_size, train_iterations, alpha):
+        '''updates network's weights based on loss values'''
+
         self.latest_network.get_model().train()
         optimizer.zero_grad()
 
         loss = 0.0
-        policy_loss = 0.0
-        value_loss = 0.0
+        value_loss, policy_loss, combined_loss = 0.0, 0.0, 0.0
 
         states, targets = list(zip(*batch))
-        values, policies = list(zip(*targets))
-
         batch_input = torch.cat(states, 0)
 
-        predicted_policies, predicted_values = self.latest_network.inference(batch_input, True, train_iterations)
+        if self.latest_network.get_model().recurrent:
+            total_value_loss, total_policy_loss, total_combined_loss = 0.0, 0.0, 0.0
+            prog_value_loss, prog_policy_loss, prog_combined_loss = 0.0, 0.0, 0.0
+            if alpha != 1:
+                outputs, _ = self.latest_network.inference(batch_input, True, train_iterations)
+                total_value_loss, total_policy_loss, total_combined_loss = self.calculate_loss(outputs, targets, batch_size,
+                                                                                               policy_loss_function, value_loss_function, normalize_policy)
+
+            if alpha != 0:
+                outputs = self.get_output_for_prog_loss(batch_input, train_iterations)
+                prog_value_loss, prog_policy_loss, prog_combined_loss = self.calculate_loss(outputs, targets, batch_size,
+                                                                                            policy_loss_function, value_loss_function, normalize_policy)
+            
+            value_loss = (1 - alpha) * total_value_loss + alpha * prog_value_loss
+            policy_loss = (1 - alpha) * total_policy_loss + alpha * prog_policy_loss
+            combined_loss = (1 - alpha) * total_combined_loss + alpha * prog_combined_loss
+
+  
+        else:
+            outputs = self.latest_network.inference(batch_input, True, train_iterations)
+            value_loss, policy_loss, combined_loss = self.calculate_loss(outputs, targets, batch_size,
+                                                                         policy_loss_function, value_loss_function, normalize_policy)
+        
+        
+        loss = combined_loss
+
+        # If you use pythorch's SGD optimizer, it already applies L2 weight regularization
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+        
+
+        return value_loss.item(), policy_loss.item(), combined_loss.item()
+    
+    def calculate_loss(self, outputs, targets, batch_size, policy_loss_function, value_loss_function, normalize_policy):
+        target_values, target_policies = list(zip(*targets))
+        predicted_values, predicted_policies = list(zip(*outputs))
+
+        policy_loss = 0.0
+        value_loss = 0.0
+        combined_loss = 0.0
 
         for i in range(batch_size):
             
-            target_policy = torch.tensor(policies[i]).to(self.latest_network.device)
-            target_value = torch.tensor(values[i]).to(self.latest_network.device)
+            target_policy = torch.tensor(target_policies[i]).to(self.latest_network.device)
+            target_value = torch.tensor(target_values[i]).to(self.latest_network.device)
 
             predicted_value = predicted_values[i]
             predicted_policy = predicted_policies[i]
@@ -684,6 +740,8 @@ class AlphaZero():
 
         value_loss /= batch_size
         policy_loss /= batch_size
+
+
         combined_loss = policy_loss + value_loss
 
         invalid_loss = False
@@ -702,15 +760,23 @@ class AlphaZero():
             print(predicted_policies)
             exit()
 
-        loss = combined_loss
+        return value_loss, policy_loss, combined_loss
 
-        # If you use pythorch's SGD optimizer, it already applies L2 weight regularization
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-        
+    def get_output_for_prog_loss(self, inputs, max_iters):
+        # get features from n iterations to use as input
+        n = randrange(0, max_iters)
 
-        return value_loss.item(), policy_loss.item(), combined_loss.item()
+        # do k iterations using intermediate features as input
+        k = randrange(1, max_iters - n + 1)
+
+        if n > 0:
+            _, interim_thought = self.latest_network.inference(inputs, True, iters_to_do=n)
+            interim_thought = interim_thought.detach()
+        else:
+            interim_thought = None
+
+        outputs, _ = self.latest_network.inference(inputs, iters_to_do=k, interim_thought=interim_thought)
+        return outputs
 
     ##########################################################################
     # -----------------------------            ----------------------------- #

@@ -92,7 +92,7 @@ class RecurrentNet(nn.Module):
         value_out = self.value_head(interim_thought)
         out = (policy_out, value_out)
         
-        return out
+        return out, interim_thought
 
 
 

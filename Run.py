@@ -186,11 +186,11 @@ def main():
 
             case 2:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -200,7 +200,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="strange", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 #'''
@@ -422,16 +422,16 @@ def main():
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
-                method = "random"
+                method = "policy"
 
                 # testing options
                 num_games = 100
                 AI_player = "2"
-                recurrent_iterations = 5
+                recurrent_iterations = 10
 
                 # network options
-                net_name = "short_updates_low_value_continue"
-                model_iteration = 50
+                net_name = "solo_reduce"
+                model_iteration = 370
 
                 # TODO: Add possibilty of using second network
 
@@ -448,19 +448,19 @@ def main():
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config_large.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_large.yml"]
                 method = "policy"
 
                 # testing options
                 num_games = 100
-                AI_player = "1"
+                AI_player = "2"
 
                 # network options
-                net_name = "short_updates_low_value_continue"
-                model_iteration = 50
+                net_name = "solo_reduce"
+                model_iteration = 370
 
                 #---
-                recurrent_iterations_list = [10, 11, 12, 14, 16, 18, 20]
+                recurrent_iterations_list = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
                 figpath = "extraoplation_p" + AI_player
 
                 ################################################
@@ -477,8 +477,8 @@ def main():
                     p2_wr_list.append(p2_wr)
 
 
-                plt.plot(range(len(p1_wr_list)), p1_wr_list, label = "P1")
-                plt.plot(range(len(p2_wr_list)), p2_wr_list, label = "P2")
+                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
+                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
                 plt.title(method.upper() + " -> Win rates as Player " + AI_player)
                 plt.legend()
                 plt.savefig(figpath)
@@ -1187,7 +1187,7 @@ def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=N
         args_list = [None]
         game_index = 0
     elif method == "policy":
-        args_list = [AI_player, None, nn, recurrent_iterations]
+        args_list = [AI_player, None, nn, None, recurrent_iterations, False]
         game_index = 1
     elif method == "mcts":
         args_list = [AI_player, search_config, None, nn, None, recurrent_iterations, False, False]
