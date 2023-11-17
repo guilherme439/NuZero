@@ -191,8 +191,8 @@ def main():
                 game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -205,13 +205,13 @@ def main():
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
-                #'''
+                '''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
                         torch.nn.init.xavier_uniform_(param, gain=0.9)
                     
-                #'''
+                '''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -226,7 +226,7 @@ def main():
                 game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net_test"
@@ -240,13 +240,13 @@ def main():
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
-                #'''
+                '''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
                         torch.nn.init.xavier_uniform_(param, gain=0.9)
                     
-                #'''
+                '''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -429,11 +429,11 @@ def main():
                 # testing options
                 num_games = 100
                 AI_player = "2"
-                recurrent_iterations = 10
+                recurrent_iterations = 15
 
                 # network options
-                net_name = "solo_reduce"
-                model_iteration = 370
+                net_name = "solo_reduce_prog"
+                model_iteration = 100
 
                 # TODO: Add possibilty of using second network
 
@@ -458,12 +458,12 @@ def main():
                 AI_player = "2"
 
                 # network options
-                net_name = "solo_reduce"
-                model_iteration = 370
+                net_name = "solo_reduce_prog"
+                model_iteration = 100
 
                 #---
-                recurrent_iterations_list = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
-                figpath = "extraoplation_p" + AI_player
+                recurrent_iterations_list = range(20,63,3)
+                figpath = "extrapolation_p" + AI_player
 
                 ################################################
                 

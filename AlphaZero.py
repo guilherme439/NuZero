@@ -898,26 +898,26 @@ class AlphaZero():
         print("Weight plotting done.\n")
 
     def plot_state_set(self):
-        print("\nPlotting state set...")
         red = (200/255, 0, 0)
         grey = (65/255, 65/255, 65/255)
         green = (45/255, 110/255, 10/255)
 
-        for i in range(len(self.state_set_stats)):
-            if len(self.state_set_stats[i]) > 1:
-                if i<=1:
-                    color = red
-                elif i<=3:
-                    color = grey
-                else:
-                    color = green
-                    
-                plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], color=color)
+        if len(self.state_set_stats[0]) > 1:
+            print("\nPlotting state set...")
+            for i in range(len(self.state_set_stats)):
+                    if i<=1:
+                        color = red
+                    elif i<=3:
+                        color = grey
+                    else:
+                        color = green
+                        
+                    plt.plot(range(len(self.state_set_stats[i])), self.state_set_stats[i], color=color)
 
-        plt.title("State Values")
-        plt.savefig(self.plots_path + '_state_values.png')
-        plt.clf()
-        print("State plotting done\n")
+            plt.title("State Values")
+            plt.savefig(self.plots_path + '_state_values.png')
+            plt.clf()
+            print("State plotting done\n")
 
     def update_wr_data(self, result):
         p1_policy_results, p2_policy_results, p1_mcts_results, p2_mcts_results = result
