@@ -205,13 +205,13 @@ def main():
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
-                '''
+                #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.9)
+                        torch.nn.init.xavier_uniform_(param, gain=0.80)
                     
-                '''
+                #'''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -223,7 +223,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
@@ -233,20 +233,20 @@ def main():
 
                 ################################################
 
-                state_set = create_solo_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
-                '''
+                #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.9)
+                        torch.nn.init.xavier_uniform_(param, gain=0.80)
                     
-                '''
+                #'''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name

@@ -492,7 +492,7 @@ class AlphaZero():
         normalize_policy = False
         match policy_loss_choice:
             case "CEL":
-                policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.05)
+                policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.02)
                 if normalize_CEL:
                     normalize_policy = True
             case "KLD":
