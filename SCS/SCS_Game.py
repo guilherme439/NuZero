@@ -1480,14 +1480,12 @@ class SCS_Game():
                     elif method == "Detailed":
                         p1_vp = values["vp_locations"]["p1"]
                         p2_vp = values["vp_locations"]["p2"]
-                        self.victory_p1 = []        
-                        self.victory_p2 = []
+                        self.victory_points = [[],[]]        
 
                         loaded_vps = [p1_vp, p2_vp]
-                        game_vps = [self.victory_p1, self.victory_p2]
                         for player in range(len(loaded_vps)):
                             loaded_list = loaded_vps[player]
-                            game_list = game_vps[player]
+                            game_list = self.victory_points[player]
                             for point in loaded_list:
                                 if len(point) != 2:
                                     print(str(point) + " --> Points must have two coordenates.")
