@@ -18,12 +18,14 @@ from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Neural_Networks.Torch_NN import Torch_NN
 
+from Agents.GoalRushAgent import GoalRushAgent
+
 
 
 class Tester():
 
     def __init__(self, slow=False, print=False, render=False):
-        torch.multiprocessing.set_sharing_strategy('file_system')
+        #torch.multiprocessing.set_sharing_strategy('file_system')
 
         self.slow = slow
         self.print = print
@@ -209,7 +211,8 @@ class Tester():
         else:
             print("player_choice should be on these strings: \"1\" | \"2\" | \"both\". Exiting")
             exit()
-        
+
+        invalid = 0
         # --- Main test loop --- #
         while True:
             
@@ -236,14 +239,15 @@ class Tester():
 
                 raw_action = np.argmax(probs)
                 if not valid_actions_mask[raw_action]:
-
+                    
+                    invalid += 1
                     if self.slow:
                         print("AI chose an invalid move. Doing workaround.")
                     
                     probs = probs * valid_actions_mask
                     total = np.sum(probs)
 
-                    if (total != 0): # happens if the network gave 0 probablity to all valid actions and high probability to invalid actions
+                    if (total != 0): 
                         probs /= total
 
                         max_action = np.argmax(probs)
@@ -251,14 +255,15 @@ class Tester():
                         action_i = max_action
 
                     else:
-                        # Problem during learning... using random action instead
+                        # happens if the network gave 0 probablity to all valid actions and high probability to invalid actions
+                        # There was a problem in training... using random action instead
                         probs = probs + valid_actions_mask
                         probs /= n_valids
                         action_i = np.random.choice(game.num_actions, p=probs)
                 
                 else:
                     action_i = raw_action
-            
+
             else:
                 # The other player chooses randomly
                 probs = valid_actions_mask/n_valids
@@ -283,11 +288,82 @@ class Tester():
                 ray.get(self.remote_storage.store.remote(game))
 
             if (done):
+                if self.print:
+                    print(game.string_representation())
                 winner = game.get_winner()
                 break
-
+            
+            #print("\n" + str(invalid) + " invalid moves\n")
             
         return winner, {}
+
+    def Test_agent_vs_random(self, player_choice, game, keep_state_history=False):
+        
+        # --- Printing and rendering preparations --- #
+        if self.print:
+            print("\n")
+
+        if self.render:
+            ray.get(self.remote_storage.store.remote(game))
+            self.renderer.render.remote(player_unit_images=True)
+            time.sleep(3)
+
+        if player_choice == "1":
+            AI_player = 1
+            
+        elif player_choice == "2":
+            AI_player = 2
+        
+        agent=GoalRushAgent(game)
+        
+        # --- Main test loop --- #
+        while True:
+            
+            valid_actions_mask = game.possible_actions().flatten()
+
+            player = game.current_player
+            
+            if (player == AI_player):
+                action_coords = agent.choose_action(game)
+                action_i = game.get_action_index(action_coords)
+                if not valid_actions_mask[action_i]:
+                    print("invalid agent action\n")
+                    exit()
+
+            else:
+                # The other player chooses randomly
+                n_valids = np.sum(valid_actions_mask)
+                probs = valid_actions_mask/n_valids
+                action_i = np.random.choice(game.num_actions, p=probs)
+                action_coords = game.get_action_coords(action_i)
+                
+            
+            
+            if self.print:
+                print(game.string_representation())
+
+            if self.slow:
+                time.sleep(self.slow_duration)
+            
+            if keep_state_history:
+                state = game.generate_state_image()
+                game.store_state(state)
+
+            done = game.step_function(action_coords)
+
+            if self.render:
+                ray.get(self.remote_storage.store.remote(game))
+
+            if (done):
+                if self.print:
+                    print(game.string_representation())
+                winner = game.get_winner()
+                break
+            
+            #print("\n" + str(invalid) + " invalid moves\n")
+            
+        return winner, {}
+
 
     def random_vs_random(self, game, keep_state_history=False):
         

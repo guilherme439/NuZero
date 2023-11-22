@@ -6,6 +6,7 @@ import time
 import torch
 import pickle
 import math
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -88,21 +89,27 @@ class TestManager():
         if show_results:
             print("\n\nTesting as p" + player_choice + " using " + test_mode)
 
+        # We must use map instead of submit,
+        # because ray bugs if you do several submit calls with different values
+        map_args = []
         for g in range(num_games):
-            game = self.game_class(*self.game_args)
-            args_list[game_index] = game
-            if test_mode == "policy":
-                self.actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
-            elif test_mode == "mcts":
-                self.actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
+            args_copy = copy.copy(args_list)
+            args_copy[game_index] = self.game_class(*self.game_args)
+            map_args.append(args_copy)
 
-        time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
 
-        for g in range(num_games):
-            winner, stats = self.actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
-            stats_list.append(stats)
+        if test_mode == "policy":
+            results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_policy.remote(*args), map_args)
+        elif test_mode == "mcts":
+            results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), map_args)
+            
+        time.sleep(1)
+
+        for res in results:
+            winner, _ = res
             if winner != 0:
-                wins[winner-1] += 1
+                wins[winner-1] +=1
+            
 
         if test_mode == "mcts" and show_results:
             print_stats_list(stats_list)

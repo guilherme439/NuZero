@@ -155,6 +155,16 @@ class SCS_Game():
         self.action_space_shape = (self.total_action_planes , self.rows , self.columns)
         self.num_actions     =     self.total_action_planes * self.rows * self.columns
 
+        # Plane borders
+        self.placement_limit = self.placement_planes
+        self.movement_limit = self.placement_limit + self.movement_planes
+        self.target_limit = self.movement_limit + self.choose_target_planes
+        self.attackers_limit = self.target_limit + self.choose_attackers_planes
+        self.confirm_limit = self.attackers_limit + self.confirm_attack_planes
+        self.no_move_limit = self.confirm_limit + self.no_move_planes
+        self.no_fight_limit = self.no_move_limit + self.no_fight_planes
+        # Each of these limits represents the first index of the next section
+
 
         ## STATE REPRESENTATION
         
@@ -283,7 +293,7 @@ class SCS_Game():
         if self.current_sub_phase == 0:
             # In this sub_phase the player places his reinforcements
 
-            next_reinforcement = self.current_reinforcements[self.current_player-1][self.current_turn][0]
+            next_reinforcement = self.get_next_reinforcement()
             arraival_locations = next_reinforcement.get_arraival_locations()
             for (row, col) in arraival_locations:
                 tile = self.board[row][col]
@@ -330,7 +340,7 @@ class SCS_Game():
                     choose_target_planes[0][row][col] = 1 # select target action
 
         elif self.current_sub_phase == 3:
-            # In this sub_phase the player can either select a unit to atack with or confirm the attack
+            # In this sub_phase the player can either select a unit to attack with or confirm the attack
 
             selectable_units = self.check_adjacent_units(self.target_tile.position, player)
             for unit in selectable_units.copy():
@@ -364,29 +374,20 @@ class SCS_Game():
 
         current_plane = action_coords[0]
 
-        # Plane borders
-        placement_limit = self.placement_planes
-        movement_limit = placement_limit + self.movement_planes
-        target_limit = movement_limit + self.choose_target_planes
-        attackers_limit = target_limit + self.choose_attackers_planes
-        confirm_limit = attackers_limit + self.confirm_attack_planes
-        no_move_limit = confirm_limit + self.no_move_planes
-        no_fight_limit = no_move_limit + self.no_fight_planes
-
 
         # PLACEMENT PLANES
-        if current_plane < placement_limit:
+        if current_plane < self.placement_limit:
             act = 0
             start = (action_coords[1], action_coords[2])
 
         # MOVEMENT PLANES
-        elif current_plane < movement_limit:
+        elif current_plane < self.movement_limit:
             act = 1
             x = action_coords[1]
             y = action_coords[2]
             start = (x, y)
 
-            plane_index = current_plane - placement_limit
+            plane_index = current_plane - self.placement_limit
             stacking_lvl = plane_index % self.stacking_limit
             direction = plane_index // self.stacking_limit
 
@@ -413,34 +414,34 @@ class SCS_Game():
                 exit()
             
         # FIGHT PLANES
-        elif current_plane < target_limit:
+        elif current_plane < self.target_limit:
             act = 2
             x = action_coords[1]
             y = action_coords[2]
             start = (x, y)
 
-        elif current_plane < attackers_limit:
+        elif current_plane < self.attackers_limit:
             act = 3
             start = (action_coords[1], action_coords[2])
 
-            plane_index = current_plane - target_limit
+            plane_index = current_plane - self.target_limit
             stacking_lvl = plane_index
 
-        elif current_plane < confirm_limit:
+        elif current_plane < self.confirm_limit:
             act = 4
             start = (action_coords[1],action_coords[2])
 
         # NO_MOVE PLANE
-        elif current_plane < no_move_limit:
+        elif current_plane < self.no_move_limit:
             act = 5
-            plane_index = current_plane - confirm_limit
+            plane_index = current_plane - self.confirm_limit
             stacking_lvl = plane_index
             start = (action_coords[1],action_coords[2])
 
         # NO_FIGHT PLANE
-        elif current_plane < no_fight_limit:
+        elif current_plane < self.no_fight_limit:
             act = 6
-            plane_index = current_plane - no_move_limit
+            plane_index = current_plane - self.no_move_limit
             stacking_lvl = plane_index
             start = (action_coords[1],action_coords[2])
 
@@ -672,10 +673,10 @@ class SCS_Game():
             exit()
 
 
-        reinforcement_stages = (-2,-1,0,4)
-        movement_stages = (1,5)
-        choosing_target_stages = (2,6)
-        choosing_attackers_stages = (3,7)
+        reinforcement_stages = self.reinforcement_stages()
+        movement_stages = self.movement_stages()
+        choosing_target_stages = self.choosing_target_stages()
+        choosing_attackers_stages = self.choosing_attackers_stages()
 
         if stage in reinforcement_stages:
             self.current_sub_phase = 0
@@ -701,6 +702,18 @@ class SCS_Game():
         self.current_stage = stage
 
         return done
+    
+    def reinforcement_stages(self):
+        return (-2,-1,0,4)
+    
+    def movement_stages(self):
+        return (1,5)
+    
+    def choosing_target_stages(self):
+        return (2,6)
+    
+    def choosing_attackers_stages(self):
+        return (3,7)
 
     def new_turn(self):
         # Resets units status before new turn
@@ -986,6 +999,7 @@ class SCS_Game():
         return (not(player-1)) + 1 
 
     def define_board_sides(self):
+        '''Calculates the indexes for each of the board's sides'''
 
         # Calculate the indexes that define each side of the board
         if self.columns % 2 != 0:
@@ -1003,6 +1017,46 @@ class SCS_Game():
             # For boards with even columns we separate the center by one more column
             self.p1_last_index = max(0, left_index-1)
             self.p2_first_index = min(self.columns-1, right_index+1)
+
+    def get_direction(self, start_coords, destination_coords):
+        (s_row, s_col) = start_coords
+        (d_row, d_col) = destination_coords
+        vector = (d_row - s_row, d_col - s_col)
+        
+        match vector:
+            case (-1, -1):
+                return "nw"
+            
+            case (-1, 0):
+                return "n"
+            
+            case (0, -1):
+                if s_col % 2 == 0:
+                    return "sw"
+                else:
+                    return "nw"
+                
+            case (1, -1):
+                return "sw"
+            
+            case (-1, 1):
+                return "ne"
+            
+            case (0, 1):
+                if s_col % 2 == 0:
+                    return "se"
+                else:
+                    return "ne"
+
+            case (1, 0):
+                return "s"
+
+            case (1, 1):
+                return "se"
+
+            case _:
+                print("get_direction() invalid vector.")
+                exit()
 
     def get_n_coords(self, coords):
         (row, col) = coords
@@ -1084,7 +1138,69 @@ class SCS_Game():
 
         return strongest_unit
 
+    def get_movement_action(self, unit_position, unit_stacking, destination):
+        '''Returns the action index for a specific movement action
+           If unit_position and destination are the same, the "No_move" action will be assumed
+        '''
+        #plane order -> placement_planes, movement_planes, choose_target_planes, choose_attackers_planes, confirm_attack_planes, no_move_planes, no_fight_planes
+        
+        (x,y) = unit_position
+        if unit_position != destination:
+            direction = self.get_direction(unit_position, destination)
+            dir_index = self.get_index_from_direction(direction)
+            movement_index = ((dir_index * self.stacking_limit) + unit_stacking)
+            plane_index = self.placement_limit + movement_index
+            action_coords = (plane_index, x, y)
+        else: # no move
+            plane_index = self.confirm_limit + unit_stacking
+            action_coords = (plane_index, x, y)
 
+        action_i = self.get_action_index(action_coords)
+        return action_i, action_coords
+    
+    def get_target_action(self, target_position):
+        '''Returns the action index for a specific targeting action'''
+        (x,y) = target_position
+        plane_index = self.movement_limit
+        action_coords = (plane_index, x, y)
+        action_i = self.get_action_index(action_coords)
+        return action_i, action_coords
+    
+    def get_skip_combat_action(self, unit_position, unit_stacking):
+        '''Returns the action index for a unit skiping combat'''
+        (x,y) = unit_position
+        plane_index = self.no_move_limit + unit_stacking
+        action_coords = (plane_index, x, y)
+        action_i = self.get_action_index(action_coords)
+        return action_i, action_coords
+    
+    def get_confirm_attack_action(self):
+        '''Returns the action index for confirming the current attack'''
+        (x,y) = self.target_tile.position
+        plane_index = self.attackers_limit
+        action_coords = (plane_index, x, y)
+        action_i = self.get_action_index(action_coords)
+        return action_i, action_coords
+    
+    def get_next_reinforcement(self):
+        return self.current_reinforcements[self.current_player-1][self.current_turn][0]
+
+    def get_action_coords(self, action_i):
+        action_coords = np.unravel_index(action_i, self.action_space_shape)
+        return action_coords
+    
+    def get_action_index(self, action_coords):
+        action_i = np.ravel_multi_index(action_coords, self.action_space_shape)
+        return action_i
+    
+    def get_direction_from_index(self, index):
+        directions = ["n", "ne", "se", "s", "sw", "nw"]
+        return directions[index]
+    
+    def get_index_from_direction(self, direction):
+        directions = ["n", "ne", "se", "s", "sw", "nw"]
+        return directions.index(direction)
+    
 ##########################################################################
 # -------------------------                   -------------------------- #
 # ------------------------  ALPHAZERO SUPPORT  ------------------------- #

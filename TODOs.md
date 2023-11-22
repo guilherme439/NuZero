@@ -17,16 +17,17 @@
 - Implement Ray's hyperparameter search [medium/hard, low]
 
 ### Training
-- Fully implement continuous training option. [hard, medium]
+
 
 ### Tester
-- Allow the tester to use state_dict per actor, and not just per game [medium, low]
+- Implement policy, mcts and goal rush as Agents [high, high]
+- Make test manager the responsible for all tests (including testing presets)[medium, high]
 
 ### SCS Game
 - Convert board to numpy array (allows indexing with tuples) [medium, low] {1}
 
 ### Graphs
-- Allow spliting of more graphs other than policy
+
 
 ### Rendering and Iterface
 - SCS marker creator interface [hard, low]

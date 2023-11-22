@@ -209,7 +209,7 @@ def main():
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.70)
+                        torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
 
@@ -373,16 +373,16 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/automatic_config.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config_large.yml"]
                 method = "policy"
 
                 # testing options
                 AI_player = "2"
-                recurrent_iterations = 2
+                recurrent_iterations = 18
 
                 # network options
-                net_name = "short_updates_low_value_continue"
-                model_iteration = 30
+                net_name = "unbalanced_reduce_prog"
+                model_iteration = 260
 
                 # TODO: Add possibilty of using second network
 
@@ -418,13 +418,14 @@ def main():
                     renderer.analyse(game)
 
             case 2: # Statistics for multiple games
+                #TODO: Modify the code to use test manager for all tests
                 ray.init()
 
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
-                method = "policy"
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                method = "agent"
 
                 # testing options
                 num_games = 100
@@ -432,8 +433,8 @@ def main():
                 recurrent_iterations = 15
 
                 # network options
-                net_name = "solo_reduce_prog"
-                model_iteration = 100
+                net_name = "unbalanced_reduce_prog"
+                model_iteration = 250
 
                 # TODO: Add possibilty of using second network
 
@@ -450,7 +451,8 @@ def main():
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_large.yml"]
+                game_config = "SCS/Game_configs/unbalanced_config_large.yml"
+                game_args = [game_config]
                 method = "policy"
 
                 # testing options
@@ -458,12 +460,15 @@ def main():
                 AI_player = "2"
 
                 # network options
-                net_name = "solo_reduce_prog"
-                model_iteration = 100
+                net_name = "unbalanced_reduce_prog"
+                model_iteration = 260
 
                 #---
-                recurrent_iterations_list = range(20,63,3)
-                figpath = "extrapolation_p" + AI_player
+                min = 15
+                max = 40
+                step = 1
+                recurrent_iterations_list = range(min,max+1,step)
+                figpath = "Graphs/" + net_name + "_p" + AI_player + "_" + game_config +  "_" + str(min) + "-" + str(max)
 
                 ################################################
                 
@@ -517,7 +522,22 @@ def main():
                 
                 test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
 
+            case 5:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game = game_class(*game_args)
 
+                tester = Tester(print=True)
+            
+                winner, _ = tester.Test_agent_vs_random("2", game, keep_state_history=False)
+
+                if winner == 0:
+                    winner_text = "Draw!"
+                else:
+                    winner_text = "Player " + str(winner) + " won!"
+                
+                print("\n\nLength: " + str(game.get_length()) + "\n")
+                print(winner_text)
 
             case _:
                 print("Unknown testing preset.")
@@ -671,8 +691,21 @@ def main():
                 destination = (3,3)
                 agent = GoalRushAgent(game)
                 distances, previous_nodes = agent.dijkstra(start)
-                shortest_path = agent.shortest_path_to(destination, previous_nodes)
-                print(shortest_path)
+                #shortest_path = agent.shortest_path_to(destination, previous_nodes)
+
+                for node, items in distances.items():
+                    print("NODE: " + str(node) + "\n")
+                    print("Items: " + str(items))
+                    print("\n\n\n")
+
+            case 9:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game = game_class(*game_args)
+
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+
+                
                 
 
 
@@ -1172,29 +1205,38 @@ def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=N
     elif method == "mcts":
         args_list = [AI_player, search_config, None, nn, None, recurrent_iterations, False, False]
         game_index = 2
+    elif method == "agent":
+        args_list = [AI_player, None, False]
+        game_index = 1
 
-    
-    actor_list = [RemoteTester.remote() for a in range(num_testers)]
+    actor_list = [RemoteTester.remote(print=False) for a in range(num_testers)]
     actor_pool = ray.util.ActorPool(actor_list)
 
     text = "Testing using " + method
     bar = PrintBar(text, num_games, 15)
 
+    # We must use map instead of submit,
+    # because ray bugs if you do several submit calls with different values
+    map_args = []
     for g in range(num_games):
-        game = game_class(*game_args)
-        args_list[game_index] = game
-        if method == "random":
-            actor_pool.submit(lambda actor, args: actor.random_vs_random.remote(*args), args_list)
-        elif method == "policy":
-            actor_pool.submit(lambda actor, args: actor.Test_AI_with_policy.remote(*args), args_list)
-        elif method == "mcts":
-            actor_pool.submit(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), args_list)
+        args_copy = copy.copy(args_list)
+        args_copy[game_index] = game_class(*game_args)
+        map_args.append(args_copy)
 
 
-    time.sleep(1)
+    if method == "random":
+        results = actor_pool.map_unordered(lambda actor, args: actor.random_vs_random.remote(*args), map_args)
+    elif method == "policy":
+        results = actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_policy.remote(*args), map_args)
+    elif method == "mcts":
+        results = actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), map_args)
+    elif method == "agent":
+        results = actor_pool.map_unordered(lambda actor, args: actor.Test_agent_vs_random.remote(*args), map_args)
+        
+    time.sleep(2)
 
-    for g in range(num_games):
-        winner, _ = actor_pool.get_next_unordered(250, True) # Timeout and Ignore_if_timeout
+    for res in results:
+        winner, _ = res
         if winner != 0:
             wins[winner-1] +=1
         bar.next()

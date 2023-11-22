@@ -17,8 +17,9 @@ Tic_Tac_Toe/models/*
 SLURM/Scripts/*
 !SLURM/Scripts/__init__.py
 
+Graphs/
+
 *.insyncdl
 *.log
-
 
 !Tic_Tac_Toe/models/best_ttt_config/
