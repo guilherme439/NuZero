@@ -237,14 +237,14 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.80)
+                        torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
 
@@ -424,17 +424,17 @@ def main():
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
-                method = "agent"
+                game_args = ["SCS/Game_configs/solo_soldier_config_large.yml"]
+                method = "policy"
 
                 # testing options
                 num_games = 100
                 AI_player = "2"
-                recurrent_iterations = 15
+                recurrent_iterations = 16
 
                 # network options
-                net_name = "unbalanced_reduce_prog"
-                model_iteration = 250
+                net_name = "solo_reduce_prog_3"
+                model_iteration = 220
 
                 # TODO: Add possibilty of using second network
 
@@ -445,30 +445,33 @@ def main():
                 
                 test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
 
-            case 3: # Graphs for several itarations (extrapolation testing)
+            case 3: # Graphs for several iterations (extrapolation testing)
                 ray.init()
 
                 number_of_testers = 5
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/unbalanced_config_large.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_larger.yml"
                 game_args = [game_config]
                 method = "policy"
 
                 # testing options
-                num_games = 100
+                num_games = 200
                 AI_player = "2"
 
                 # network options
-                net_name = "unbalanced_reduce_prog"
-                model_iteration = 260
+                net_name = "solo_reduce_prog_3"
+                model_iteration = 400
 
                 #---
-                min = 15
-                max = 40
+                min = 0
+                max = 300
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
-                figpath = "Graphs/" + net_name + "_p" + AI_player + "_" + game_config +  "_" + str(min) + "-" + str(max)
+                config_name = game_config[:-4]
+                config_name = config_name[17:]
+                figpath = "Graphs/" + net_name + "_p" + AI_player + "_" + config_name +  "_" + str(min) + "-" + str(max) + "_" + method
+                print(figpath)
 
                 ################################################
                 
@@ -479,6 +482,7 @@ def main():
                 p1_wr_list = []
                 p2_wr_list = []
                 for rec_iter in recurrent_iterations_list:
+                    print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                     p1_wr, p2_wr, _ = test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, rec_iter, False)
                     p1_wr_list.append(p1_wr)
                     p2_wr_list.append(p2_wr)
