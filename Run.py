@@ -52,7 +52,6 @@ from ray.runtime_env import RuntimeEnv
 
 from scipy.special import softmax
 
-from Agents.GoalRushAgent import GoalRushAgent
 
 
 '''
