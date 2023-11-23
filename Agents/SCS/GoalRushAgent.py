@@ -11,6 +11,8 @@ class GoalRushAgent():
 
     def __init__(self, game):
         self.graph = self.create_graph(game)
+        # This agent assumes the adjacencies of the game with which it was created.
+        # If you need to run it on a different game, you need to create a new agent.
         return
 
     def choose_action(self, game):

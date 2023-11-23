@@ -18,7 +18,6 @@ from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from Agents.GoalRushAgent import GoalRushAgent
 
 
 
@@ -297,7 +296,8 @@ class Tester():
             
         return winner, {}
 
-    def Test_agent_vs_random(self, player_choice, game, keep_state_history=False):
+
+    def Test_using_agents(self, game, p1_agent, p2_agent, keep_state_history=False):
         
         # --- Printing and rendering preparations --- #
         if self.print:
@@ -308,13 +308,6 @@ class Tester():
             self.renderer.render.remote(player_unit_images=True)
             time.sleep(3)
 
-        if player_choice == "1":
-            AI_player = 1
-            
-        elif player_choice == "2":
-            AI_player = 2
-        
-        agent=GoalRushAgent(game)
         
         # --- Main test loop --- #
         while True:
@@ -323,22 +316,19 @@ class Tester():
 
             player = game.current_player
             
-            if (player == AI_player):
-                action_coords = agent.choose_action(game)
-                action_i = game.get_action_index(action_coords)
-                if not valid_actions_mask[action_i]:
-                    print("invalid agent action\n")
-                    exit()
-
+            if (player == 1):
+                current_agent = p1_agent
             else:
-                # The other player chooses randomly
-                n_valids = np.sum(valid_actions_mask)
-                probs = valid_actions_mask/n_valids
-                action_i = np.random.choice(game.num_actions, p=probs)
-                action_coords = game.get_action_coords(action_i)
+                current_agent = p2_agent
+
+            
+            action_coords = current_agent.choose_action(game)
+            action_i = game.get_action_index(action_coords)
+            if not valid_actions_mask[action_i]:
+                print("invalid agent action\n")
+                exit()
+
                 
-            
-            
             if self.print:
                 print(game.string_representation())
 
@@ -360,7 +350,6 @@ class Tester():
                 winner = game.get_winner()
                 break
             
-            #print("\n" + str(invalid) + " invalid moves\n")
             
         return winner, {}
 
