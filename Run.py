@@ -621,7 +621,7 @@ def main():
 
                 in_channels = game.state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 print(model)
@@ -630,7 +630,7 @@ def main():
                     #print(name)
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.80)
+                        torch.nn.init.xavier_uniform_(param, gain=0.70)
                     
                 #'''
                 nn = Torch_NN(game, model)
@@ -649,7 +649,7 @@ def main():
                 
                 state = game.generate_state_image()
 
-                policy, value = nn.inference(state, False, 10)
+                policy, value = nn.inference(state, False, 30)
                 
 
                 print("\n\n")
