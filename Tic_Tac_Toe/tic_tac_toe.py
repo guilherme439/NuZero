@@ -10,10 +10,10 @@ from collections import Counter
 from termcolor import colored
 
 
+from Game import Game
 
 
-
-class tic_tac_toe():
+class tic_tac_toe(Game):
     WIDTH = 3
     HEIGHT = 3
     TURNS = 9

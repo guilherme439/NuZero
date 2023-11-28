@@ -31,11 +31,10 @@ from progress.spinner import PieSpinner
 class TestManager():
     '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, train_config, search_config, shared_storage, state_set=None):
+    def __init__(self, game_class, game_args, num_testers, shared_storage, state_set=None):
         self.game_class = game_class
         self.game_args = game_args
-        self.train_config = train_config
-        self.search_config = search_config
+        self.num_testers = num_testers
         self.shared_storage = shared_storage
         self.state_set = state_set
 
@@ -43,76 +42,55 @@ class TestManager():
         # --------------------- ACTOR POOL --------------------- #
         # ------------------------------------------------------ #
 
-        num_testers = self.train_config.testing["testing_actors"]
-        actor_list = [RemoteTester.remote() for a in range(num_testers)]
+        
+        actor_list = [RemoteTester.remote() for a in range(self.num_testers)]
         self.actor_pool = ray.util.ActorPool(actor_list)
 
-    
-    def run_tests(self, policy_games, mcts_games, state_cache):
-        p1_policy_results = ()
-        p2_policy_results = ()
-        p1_mcts_results = ()
-        p2_mcts_results = ()
+    def run_group_of_test_batches(self, num_batches, games_per_batch, p1_agents_list, p2_agents_list, show_results):
 
-        if policy_games:
-            p1_policy_results = self.test_latest_nn("1", policy_games, "policy", state_cache)
-            p2_policy_results = self.test_latest_nn("2", policy_games, "policy", state_cache) 
+        result_list = []
+        for batch_idx in range(num_batches):
+            p1_agent = p1_agents_list[batch_idx]
+            p2_agent = p2_agents_list[batch_idx]
+            result = self.run_test_batch(games_per_batch, p1_agent, p2_agent, show_results)
+            result_list.append(result)
 
-        if mcts_games:
-            p1_mcts_results = self.test_latest_nn("1", mcts_games, "mcts", state_cache)
-            p2_mcts_results = self.test_latest_nn("2", mcts_games, "mcts", state_cache)
-            
-        return p1_policy_results, p2_policy_results, p1_mcts_results, p2_mcts_results
-       
-    def test_latest_nn(self, player_choice, num_games, test_mode, state_cache, show_results=True):
+        return result_list
+        
+
+    def run_test_batch(self, num_games, p1_agent, p2_agent, show_results=True):
         start = time.time()
         print("\n")
 
-        latest_network = ray.get(self.shared_storage.get.remote()) # ask for a copy of the latest network
-
-        test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
-
-        stats_list = []
         wins = [0,0]
 
-        use_state_cache = False
-        if state_cache != "disabled":
-            use_state_cache = True
+        args = [None, p1_agent, p2_agent, False]
 
-        if test_mode == "policy":
-            args_list = [player_choice, None, latest_network, None, test_iterations, False]
-            game_index = 1
-        elif test_mode == "mcts":
-            args_list = [player_choice, self.search_config, None, latest_network, None, test_iterations, use_state_cache, False]
-            game_index = 2
 
-        if show_results:
-            print("\n\nTesting as p" + player_choice + " using " + test_mode)
-
-        # We must use map instead of submit,
+        # We must use actor_pool.map instead of actor_pool.submit,
         # because ray bugs if you do several submit calls with different values
         map_args = []
         for g in range(num_games):
-            args_copy = copy.copy(args_list)
-            args_copy[game_index] = self.game_class(*self.game_args)
+            game = self.game_class(*self.game_args)
+            args_copy = copy.deepcopy(args)
+            args_copy[0] = game
             map_args.append(args_copy)
 
+        time.sleep(1)
 
-        if test_mode == "policy":
-            results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_policy.remote(*args), map_args)
-        elif test_mode == "mcts":
-            results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), map_args)
+        results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_using_agents.remote(*args), map_args)
             
         time.sleep(1)
 
+        bar = PrintBar('Testing', num_games, 15)
         for res in results:
             winner, _ = res
             if winner != 0:
                 wins[winner-1] +=1
-            
+            bar.next()
 
-        if test_mode == "mcts" and show_results:
-            print_stats_list(stats_list)
+        bar.finish()
+            
         
         # STATISTICS
         cmp_winrate_1 = 0.0
@@ -133,7 +111,8 @@ class TestManager():
 
 
         if show_results:
-            print("\n\nAI playing as p" + player_choice + "\n")
+            print("\n\n")
+            print("Results for:\n" + "p1->" + p1_agent.name() + "\np2->" + p2_agent.name() + "\n")
             print("P1 Win ratio: " + format(p1_winrate, '.4'))
             print("P2 Win ratio: " + format(p2_winrate, '.4'))
             print("Draw percentage: " + format(draw_percentage, '.4'))
@@ -148,6 +127,10 @@ class TestManager():
         print("\n\n")
 
         return (p1_winrate, p2_winrate, draw_percentage)
+    
+
+    def run_mcts_batch_with_stats(self):
+        return
         
 
     

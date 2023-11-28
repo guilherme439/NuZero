@@ -6,10 +6,7 @@ class Training_Config(Config):
 
         self.running = dict \
         (
-        state_cache = "disabled",		# disabled | per_game | per_actor
-        # Wether to keep a cache within each actor/game of previously seen states, to avoid using slow network inference.
-        # Consumes a lot of memory so it is only worth using if the game being played repeats states frequently.
-        
+        cache_choice = "disabled",		# disabled | dict | keyless        
         running_mode = "sequential",
         num_actors = 4,
         early_fill = 1000,
@@ -57,6 +54,7 @@ class Training_Config(Config):
         plot_frequency = 50,
         value_split = 0,
         policy_split = 0,
+        combined_split = 0,
         )
 
 

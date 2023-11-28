@@ -12,11 +12,13 @@ from enum import Enum
 from collections import Counter
 from termcolor import colored
 
-from .Unit import Unit
-from .Tile import Tile
-from .Terrain import Terrain
+from SCS.Unit import Unit
+from SCS.Tile import Tile
+from SCS.Terrain import Terrain
 
-from .SCS_Renderer import SCS_Renderer
+from SCS.SCS_Renderer import SCS_Renderer
+
+from Game import Game
 
 
 '''
@@ -60,7 +62,7 @@ but I believe it makes more sense this way.
 
 '''
 
-class SCS_Game():
+class SCS_Game(Game):
 
     PHASES = 2              # Check 'update_game_env()' 
     SUB_PHASES = 4
@@ -238,7 +240,7 @@ class SCS_Game():
     def get_num_actions(self):
         return self.num_actions
 
-    def state_shape(self):
+    def get_state_shape(self):
         return self.game_state_shape
 
     def get_state_from_history(self, i):
@@ -1104,6 +1106,14 @@ class SCS_Game():
 
         return nw
 
+    def get_direction_from_index(self, index):
+        directions = ["n", "ne", "se", "s", "sw", "nw"]
+        return directions[index]
+    
+    def get_index_from_direction(self, direction):
+        directions = ["n", "ne", "se", "s", "sw", "nw"]
+        return directions.index(direction)
+    
     def get_strongest_defender(self, units_list):
         # returns the unit from the list which has the highest defense
         # In case of a draw, attack and movement allowance are used to select the unit
@@ -1186,20 +1196,12 @@ class SCS_Game():
         return self.current_reinforcements[self.current_player-1][self.current_turn][0]
 
     def get_action_coords(self, action_i):
-        action_coords = np.unravel_index(action_i, self.action_space_shape)
+        action_coords = np.unravel_index(action_i, self.get_action_space_shape())
         return action_coords
     
     def get_action_index(self, action_coords):
-        action_i = np.ravel_multi_index(action_coords, self.action_space_shape)
-        return action_i
-    
-    def get_direction_from_index(self, index):
-        directions = ["n", "ne", "se", "s", "sw", "nw"]
-        return directions[index]
-    
-    def get_index_from_direction(self, direction):
-        directions = ["n", "ne", "se", "s", "sw", "nw"]
-        return directions.index(direction)
+        action_i = np.ravel_multi_index(action_coords, self.get_action_space_shape())
+        return action_i 
     
 ##########################################################################
 # -------------------------                   -------------------------- #

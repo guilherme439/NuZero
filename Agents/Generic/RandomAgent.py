@@ -1,10 +1,10 @@
 from SCS.SCS_Game import SCS_Game
 
 import numpy as np
-
+from Agents.Agent import Agent
     
 
-class RandomAgent():
+class RandomAgent(Agent):
     ''' Chooses actions at random (within legal actions)'''
 
     def __init__(self):
@@ -15,6 +15,9 @@ class RandomAgent():
         probs = possible_actions/sum(possible_actions)          # 2.normalize them 
         action_i = np.random.choice(game.num_actions, p=probs)  # 3.select one at random
         return game.get_action_coords(action_i)                 # 4.return it as a coordenate in action space
+    
+    def name(self):
+        return "Random Agent"
 
 
           

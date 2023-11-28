@@ -26,3 +26,7 @@ class Node():
 	
 	def get_visit_count(self):
 		return self.visit_count
+	
+	def get_child(self, action):
+		# Get child based on action index
+		return self.children[action]

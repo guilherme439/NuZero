@@ -32,17 +32,16 @@ from Node import Node
 # The explorer runs searches.
 class Explorer():  
 
-    def __init__(self, search_config, training, recurrent_iterations=1):
-        
+    def __init__(self, search_config, training):
         self.config = search_config
         self.training = training
-        self.recurrent_iterations = recurrent_iterations
 
 
-    def run_mcts(self, network, game, subtree_root, state_dict=None):
+    def run_mcts(self, game, network, root_node, recurrent_iterations=2, cache=None):
         self.network = network
-        search_start = subtree_root
-
+        self.recurrent_iterations = recurrent_iterations
+        search_start = root_node
+        
         if self.training:
             self.add_exploration_noise(search_start)
         
@@ -54,17 +53,16 @@ class Explorer():
         
             while node.expanded():
                 action_i, node = self.select_child(node)
-                action_coords = np.unravel_index(action_i, scratch_game.get_action_space_shape())
+                action_coords = scratch_game.get_action_coords(action_i)
                 scratch_game.step_function(action_coords)
                 search_path.append(node)
         
             
-            value = self.evaluate(node, scratch_game, state_dict)
+            value = self.evaluate(node, scratch_game, cache)
             self.backpropagate(search_path, value)
         
 
         final_root_bias = self.calculate_exploration_bias(search_start)
-
         action = self.select_action(game, search_start)
         return action, search_start.children[action], final_root_bias
     
@@ -136,7 +134,7 @@ class Explorer():
             node.visit_count += 1
             node.value_sum += value	
 
-    def evaluate(self, node, game, state_dict):
+    def evaluate(self, node, game, cache):
         node.to_play = game.get_current_player()
 
         if game.is_terminal():
@@ -145,18 +143,17 @@ class Explorer():
         
         else:
             state = game.generate_state_image()
-            if state_dict is not None:
-                state_key = tuple(state.numpy().flatten())
-                result = state_dict.get(state_key)
-                
-                if result:
+            if cache is not None:
+                result = cache.get(state)
+                if result is not None:
                     (action_probs, predicted_value) = result
                 else:
                     action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
                     action_probs = softmax(action_probs)
-                    state_dict[state_key] = (action_probs, predicted_value)
-                    
-
+                    key = state
+                    value = (action_probs, predicted_value)
+                    cache.put((key, value))
+    
             else:
                 action_probs, predicted_value = self.network.inference(state, False, self.recurrent_iterations)
                 action_probs = softmax(action_probs)

@@ -2,18 +2,22 @@ from SCS.SCS_Game import SCS_Game
 
 import numpy as np
 from scipy.special import softmax
+
+from Agents.Agent import Agent
     
 
-class PolicyAgent():
+class PolicyAgent(Agent):
     ''' Chooses actions acording to a neural network's policy'''
 
-    def __init__(self):
+    def __init__(self, network, recurrent_iterations=2):
+        self.network = network
+        self.recurrent_iterations = recurrent_iterations
         return
 
-    def choose_action(self, game, network, recurrent_iterations=2):
+    def choose_action(self, game):
         
         state = game.generate_state_image()
-        policy_logits, value_pred = network.inference(state, False, recurrent_iterations)
+        policy_logits, value_pred = self.network.inference(state, False, self.recurrent_iterations)
         probs = softmax(policy_logits).flatten()
 
         raw_action = np.argmax(probs)
@@ -44,6 +48,9 @@ class PolicyAgent():
             action_i = raw_action
 
         return game.get_action_coords(action_i)
+    
+    def name(self):
+        return "Policy Agent"
 
           
    

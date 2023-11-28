@@ -9,3 +9,6 @@ scipy
 matplotlib
 resource
 hexagdly
+cityhash
+metrohash
+bitstring

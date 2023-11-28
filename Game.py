@@ -1,20 +1,21 @@
+import numpy as np
+
 class Game():
 
-    # Abstract class so that you know what methods to implement in your game
+    # Generic Game class
     def __init__(self):
-        print("init_not implemented")
+        self.action_space_shape = (0,0,0)
+        self.game_state_shape = (0,0,0)
         pass
     
-    def get_name(self):
-        print("get_action_space_shape not implemented")
-        pass
-
-    def state_shape(self):
-        print("state_shape() not implemented")
-        pass
+    def get_state_shape(self):
+        return self.game_state_shape
 
     def get_action_space_shape(self):
-        print("get_action_space_shape not implemented")
+        return self.action_space_shape
+    
+    def get_name(self):
+        print("get_name not implemented")
         pass
 
     def get_num_actions(self):
@@ -36,6 +37,11 @@ class Game():
     def get_terminal_value(self):
         # return terminal value. For example: 1 if player_1 wins and -1 if player_2 wins
         print("get_terminal_value not implemented")
+        pass
+
+    def get_winner(self):
+        # return 0, 1 or 2, if the game ended in a draw, p1 or p2 victory, respectively
+        print("get_winner not implemented")
         pass
 
     def get_lenght(self):
@@ -66,9 +72,14 @@ class Game():
         print("store_search_statistics not implemented")
         pass
 
-    def shallow_clone(self):
-        # creates a clone of the game on the current board/game position/state
+    def clone(self):
+        # creates a clone of the entire game
         # watch out for mem leaks
+        print("clone not implemented")
+        pass
+
+    def shallow_clone(self):
+        # creates a simpler clone of the game we just the necessary information for simulation
         print("shallow_clone not implemented")
         pass
 
@@ -82,7 +93,14 @@ class Game():
         print("make_target not implemented")
         pass
 
-
-    def print_board(self):
-        # not necessary
+    def get_action_coords(self, action_i):
+        action_coords = np.unravel_index(action_i, self.get_action_space_shape())
+        return action_coords
+    
+    def get_action_index(self, action_coords):
+        action_i = np.ravel_multi_index(action_coords, self.get_action_space_shape())
+        return action_i
+    
+    def string_representation(self):
+        # necessary only for visualization purposes
         pass

@@ -3,16 +3,16 @@ from SCS.SCS_Game import SCS_Game
 import heapq
 import numpy as np
 
-    
+from Agents.Agent import Agent
 
-class GoalRushAgent():
+class GoalRushAgent(Agent):
     ''' Tries to move each unit towards the closest victory point. 
         Atacks enemies if they are in the path to the goal. '''
 
     def __init__(self, game):
         self.graph = self.create_graph(game)
-        # This agent assumes the adjacencies of the game with which it was created.
-        # If you need to run it on a different game, you need to create a new agent.
+        # This agent's graph assumes the adjacencies of the game with which it was created.
+        # If you need to run it on a different game, you need to call new_game().
         return
 
     def choose_action(self, game):
@@ -114,8 +114,7 @@ class GoalRushAgent():
                 probs = possible_actions/sum(possible_actions)
                 action_i = np.random.choice(game.num_actions, p=probs)
                 return game.get_action_coords(action_i)
-
-          
+   
     def create_graph(self, game):
         '''Creates the graph for Dijkstra's Algorithm as a dict of dicts'''
         board = game.get_board()
@@ -167,3 +166,14 @@ class GoalRushAgent():
         path.reverse()
         return path
     
+    def name(self):
+        return "GoalRush Agent"
+    
+    def new_game(self, game=None):
+        if game is None:
+            print("WARNING: GoalRushAgent.new_game() called but no Game was provided.")
+            print("When called this way the internal graph won't be updated,\n \
+                   and the Agent will likely not trace the fastest paths to the VPs.")
+        
+        else:
+            self.graph = self.create_graph(game)

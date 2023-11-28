@@ -30,12 +30,18 @@ from RemoteTester import RemoteTester
 from TestManager import TestManager
 from RemoteTestManager import RemoteTestManager
 
+from Agents.Generic.PolicyAgent import PolicyAgent
+from Agents.Generic.MctsAgent import MctsAgent
+from Agents.Generic.RandomAgent import RandomAgent
+
 from Utils.stats_utilities import *
 from Utils.loss_functions import *
 from Utils.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
+
+
 
 
 class AlphaZero():
@@ -117,7 +123,7 @@ class AlphaZero():
 
         print("\n\n--------------------------------\n")
 
-        state_cache = self.train_config.running["state_cache"]
+        cache_choice = self.train_config.running["cache_choice"]
 
         running_mode = self.train_config.running["running_mode"]
         num_actors = self.train_config.running["num_actors"]
@@ -245,12 +251,10 @@ class AlphaZero():
 
         if asynchronous_testing:
             self.test_futures = []
-            self.test_manager = RemoteTestManager.remote(self.game_class, self.game_args, 
-                                                         self.train_config, self.search_config, 
-                                                         self.network_storage, self.state_set)
+            self.test_manager = RemoteTestManager.remote(self.game_class, self.game_args, num_testers,
+                                                        self.network_storage, self.state_set)
         else:
-            self.test_manager = TestManager(self.game_class, self.game_args, 
-                                            self.train_config, self.search_config, 
+            self.test_manager = TestManager(self.game_class, self.game_args, num_testers,
                                             self.network_storage, self.state_set)
 
         if running_mode == "sequential":
@@ -259,8 +263,8 @@ class AlphaZero():
             print("\nRunning for " + str(training_steps) + " training steps with " + str(update_delay) + "s of delay between each step.")
         if early_fill_games > 0:
             print("\n-Playing " + str(early_fill_games) + " initial games to fill the replay buffer.")
-        if state_cache != "disabled":
-            print("\n-Using state dictonary as cache.")			  
+        if cache_choice != "disabled":
+            print("\n-Using cache for inference results.")			  
         if starting_iteration != 0:
             print("\n-Starting from iteration " + str(starting_iteration+1) + ".\n")
 
@@ -283,20 +287,15 @@ class AlphaZero():
                 self.plot_weight()
             
             if early_testing: # For graphing purposes
-                if asynchronous_testing:
-                    print("\nLaunched early tests.") 
-                    test_policy = (policy_test_frequency != 0)
-                    test_mcts = (mcts_test_frequency != 0)
-                    policy_games = num_policy_test_games if test_policy else 0
-                    mcts_games = num_mcts_test_games if test_mcts else 0
-                    self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
-                else:
-                    result = self.test_manager.run_tests(policy_games, mcts_games, state_cache)
-                    self.update_wr_data(result)
+                test_policy = (policy_test_frequency != 0)
+                test_mcts = (mcts_test_frequency != 0)
+                policy_games = num_policy_test_games if test_policy else 0
+                mcts_games = num_mcts_test_games if test_mcts else 0
+                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice)
 
         if early_fill_games > 0:
             print("\n\n\n\nEarly Buffer Fill\n")
-            self.run_selfplay(early_fill_games, state_cache, text="Playing initial games", early_fill=True)
+            self.run_selfplay(early_fill_games, cache_choice, text="Playing initial games", early_fill=True)
 
         if running_mode == "asynchronous":
             actor_list= [Gamer.options(max_concurrency=2).remote
@@ -307,7 +306,7 @@ class AlphaZero():
                         self.game_args,
                         self.search_config,
                         pred_iterations,
-                        state_cache
+                        cache_choice
                         )
                         for a in range(num_actors)]
             
@@ -318,7 +317,7 @@ class AlphaZero():
             print("\n\n\n\nStep: " + str(step+1) + "\n")
 
             if running_mode == "sequential":
-                self.run_selfplay(num_games_per_step, state_cache, text="Self-Play Games")
+                self.run_selfplay(num_games_per_step, cache_choice, text="Self-Play Games")
 
             print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
             self.train_network(optimizer, scheduler, batch_size, learning_method, prog_alpha)
@@ -328,20 +327,21 @@ class AlphaZero():
             policy_games = num_policy_test_games if test_policy else 0
             mcts_games = num_mcts_test_games if test_mcts else 0
             if asynchronous_testing:
-                (futures_ready, remaining_futures) = ray.wait(self.test_futures, timeout=0.1)
-                print("Awaiting results of " + str(len(remaining_futures)) + " test(s)\n")
-                for future in futures_ready:
-                    self.test_futures.remove(future)
-                    result = ray.get(future)
-                    self.update_wr_data(result)
+                if len(self.test_futures) > 0:
+                    futures, types = list(zip(*self.test_futures))
+                    futures = list(futures)
+                    (futures_ready, remaining_futures) = ray.wait(futures, timeout=0.1)
+                    print("Awaiting results of " + str(len(remaining_futures)) + " test(s)\n")
+                    for future in futures_ready:
+                        i = futures.index(future)
+                        test_type = types[i]
+                        result = ray.get(future)
+                        self.update_wr_data(result, test_type)
+                        self.test_futures.pop(i)
                 
-                if policy_games or mcts_games:
-                    self.test_futures.append(self.test_manager.run_tests.remote(policy_games, mcts_games, state_cache))
-            else:
-                if policy_games or mcts_games:
-                    result = self.test_manager.run_tests(policy_games, mcts_games, state_cache)
-                    self.update_wr_data(result)
-                
+            if policy_games or mcts_games:
+                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice)
+
             
             # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
             if plot_frequency and (((step+1) % plot_frequency) == 0):
@@ -396,10 +396,14 @@ class AlphaZero():
             # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
         if asynchronous_testing:
-            print("\nWaiting for tests to finish...")
-            results = ray.get(self.test_futures)
-            for result in results:
-                self.update_wr_data(result)
+            bar = PrintBar("Finishing tests", len(self.test_futures), 15)
+            for future, i in self.test_futures:
+                result = ray.get(future)
+                self.update_wr_data(result, i)
+                bar.next()
+
+            bar.finish()
+
 
             self.plot_wr()
             print("All tests done.\n")
@@ -416,7 +420,7 @@ class AlphaZero():
         print("All done.\nExiting")
         return
             
-    def run_selfplay(self, num_games_per_step, state_cache, text="Self-Play", early_fill=False):
+    def run_selfplay(self, num_games_per_step, cache_choice, text="Self-Play", early_fill=False):
         start = time.time()
 
         pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
@@ -441,7 +445,7 @@ class AlphaZero():
                     self.game_args,
                     search_config,
                     pred_iterations,
-                    state_cache
+                    cache_choice
                     )
                     for a in range(num_actors)]
             
@@ -467,6 +471,49 @@ class AlphaZero():
 
         return
 
+    def run_tests(self, policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice):
+        latest_network = ray.get(self.network_storage.get.remote()) # ask for a copy of the latest network
+        
+        if mcts_games:
+            mcts_agent = MctsAgent(self.search_config, latest_network, test_iterations, cache_choice)
+        if policy_games:
+            policy_agent = PolicyAgent(latest_network, test_iterations)
+
+        random_agent = RandomAgent()
+
+        p1_policy = p2_policy = p1_mcts = p2_mcts = None
+
+        if asynchronous_testing:
+            if policy_games:
+                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, show_results=True)
+                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, show_results=True)
+            if mcts_games:
+                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, show_results=True)
+                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, show_results=True)
+            
+            futures = [p1_policy, p2_policy, p1_mcts, p2_mcts]
+            for i in range(len(futures)):
+                future = futures[i]
+                if future is not None:
+                    self.test_futures.append((future, i))
+                    
+            print("\nLaunched early tests.")
+        else:
+            if policy_games:
+                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, show_results=True)
+                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, show_results=True)
+            if mcts_games:
+                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, show_results=True)
+                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, show_results=True)
+
+            results = [p1_policy, p2_policy, p1_mcts, p2_mcts]
+            for i in range(len(results)):
+                result = results[i]
+                if result is not None:
+                    self.update_wr_data(result, i)
+
+        return
+        
     def train_network(self, optimizer, scheduler, batch_size, learning_method, prog_alpha):
         '''Executes a training step'''
         print()
@@ -919,21 +966,20 @@ class AlphaZero():
             plt.clf()
             print("State plotting done\n")
 
-    def update_wr_data(self, result):
-        p1_policy_results, p2_policy_results, p1_mcts_results, p2_mcts_results = result
-
+    def update_wr_data(self, result, result_type):
+        # An integer between 0 and 3 is used to determine which list to update
         for player in (0,1):
-            if p1_policy_results != ():
-                self.p1_policy_wr_stats[player].append(p1_policy_results[player])
+            if result_type == 0:
+                self.p1_policy_wr_stats[player].append(result[player])
 
-            if p2_policy_results != ():   
-                self.p2_policy_wr_stats[player].append(p2_policy_results[player])
+            if result_type == 1:   
+                self.p2_policy_wr_stats[player].append(result[player])
 
-        for player in (0,1):
-            if p1_mcts_results != ():
-                self.p1_mcts_wr_stats[player].append(p1_mcts_results[player])
-            if p2_mcts_results != ():
-                self.p2_mcts_wr_stats[player].append(p2_mcts_results[player])
+            if result_type == 2:
+                self.p1_mcts_wr_stats[player].append(result[player])
+
+            if result_type == 3:
+                self.p2_mcts_wr_stats[player].append(result[player])
         return
 
     def update_weight_data(self):
@@ -960,7 +1006,6 @@ class AlphaZero():
             x = range(num_points)
             plt.plot(x, self.train_global_policy_loss)
             plt.title("Before split global policy loss")
-            plt.legend()
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
             plt.clf()
 
@@ -975,7 +1020,6 @@ class AlphaZero():
             x = range(num_points)
             plt.plot(x, self.train_global_value_loss)
             plt.title("Before split global value loss")
-            plt.legend()
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
             plt.clf()
 

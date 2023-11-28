@@ -10,7 +10,7 @@
 - Creation of custom training/testing presets based on user interactive choices, probably using preset save files[hard, low]
 
 ### Explorer
-- Use id() to get unique identifier when using state_dict (helps to reduce memory usage) [easy, low] {2}
+- Implement inference cache using cuckoo hashing (or something similar). The cache must not keep the keys to avoid high memory usage. [medium, high]
 
 ### Implement Ray's features
 - Use Ray's destributed training. [easy, low]
@@ -32,6 +32,7 @@
 ### Rendering and Iterface
 - SCS marker creator interface [hard, low]
 - Implement a user interface to play games vs trained AI [hard, low]
+- Fix SCS_game's string representation for games with even number of rows [easy, medium]
 
 ### Structure
 

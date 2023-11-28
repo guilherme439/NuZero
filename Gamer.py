@@ -7,12 +7,17 @@ import numpy as np
 from Node import Node
 from Explorer import Explorer
 
+from Utils.Caches.DictCache import DictCache
+from Utils.Caches.KeylessCache import KeylessCache
+
+from functools import reduce
+
 
 
 @ray.remote(scheduling_strategy="SPREAD")
 class Gamer():  
 
-    def __init__(self, buffer, shared_storage, game_class, game_args, search_config, recurrent_iterations, state_cache):
+    def __init__(self, buffer, shared_storage, game_class, game_args, search_config, recurrent_iterations, cache_choice):
 
         self.buffer = buffer
         self.shared_storage = shared_storage
@@ -20,17 +25,14 @@ class Gamer():
         self.game_args = game_args
 
         self.search_config = search_config
-        self.state_cache = state_cache
-
-        if self.state_cache == "per_actor":
-            self.state_dict = {}
-        else:
-            self.state_dict = None
+        self.recurrent_iterations = recurrent_iterations
+        self.cache_choice = cache_choice
         
-        self.explorer = Explorer(search_config, True, recurrent_iterations)
+        self.explorer = Explorer(search_config, True)
 
         self.time_to_stop = False
         
+
 
     def play_game(self):
         future_network = self.shared_storage.get.remote() # ask for a copy of the latest network
@@ -45,13 +47,20 @@ class Gamer():
         "final_bias_value" : 0,
         }
 
-        if self.state_cache == "per_game":
-            self.state_dict = {}
-
-        keep_sub_tree = self.search_config.simulation["keep_sub_tree"]
-        
-        subtree_root = Node(0)
         game = self.game_class(*self.game_args)
+        keep_subtree = self.search_config.simulation["keep_subtree"]
+
+        if self.cache_choice == "dict":
+            self.cache = DictCache()
+        elif self.cache_choice == "keyless":
+            self.cache = KeylessCache(4096)
+        elif self.cache_choice == "disabled":
+            self.cache = None
+        else:
+            print("\nbad cache_choice")
+            exit()
+
+        root_node = Node(0)
 
         network_copy = ray.get(future_network, timeout=200)
         network_copy.check_devices() # Switch to gpu if available
@@ -61,20 +70,17 @@ class Gamer():
             game.store_state(state)
             #game.store_player(game.get_current_player())
             
-            if not keep_sub_tree:
-                subtree_root = Node(0)
-            
-            action_i, chosen_child, root_bias = self.explorer.run_mcts(network_copy, game, subtree_root, self.state_dict)
-            tree_size = subtree_root.get_visit_count()
-            node_children = subtree_root.num_children()
+            action_i, chosen_child, root_bias = self.explorer.run_mcts(game, network_copy, root_node, self.recurrent_iterations, self.cache)
+            tree_size = root_node.get_visit_count()
+            node_children = root_node.num_children()
 
 
-            action_coords = np.unravel_index(action_i, game.get_action_space_shape())
+            action_coords = game.get_action_coords(action_i)
             game.step_function(action_coords)
 
-            game.store_search_statistics(subtree_root)
-            if keep_sub_tree:
-                subtree_root = chosen_child
+            game.store_search_statistics(root_node)
+            if keep_subtree:
+                root_node = chosen_child
 
             stats["average_children"] += node_children
             stats["average_tree_size"] += tree_size

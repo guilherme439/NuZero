@@ -9,7 +9,7 @@ class Search_Config(Config):
         self.simulation = dict \
         (
         mcts_simulations = 800,	# Not recomended to use a number os mcts simulations N such that sqrt(N) <= N/average_possible_actions. Because... decision criteria during MCTS.
-        keep_sub_tree = True,	# Recommended to set as False for simpler games in order to make tunning and optimization easier
+        keep_subtree = True,	# Recommended to set as False for simpler games in order to make tunning and optimization easier
         )
 			
 		
