@@ -565,7 +565,7 @@ def main():
 
                 game = SCS_Game("SCS/Game_configs/unbalanced_config_8.yml")
 
-                num_testers = 5
+                num_testers = 8
                 num_games = 100
 
                 # network options
@@ -575,9 +575,7 @@ def main():
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
-                
+                shared_storage.store.remote(nn)              
 
                 
                 name = "5x5_to_10x10_100_iterations_unbalanced"
