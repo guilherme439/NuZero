@@ -3,31 +3,38 @@
 
 AlphaZero + DeepThinking + WarGames
 
+Based on the [AlphaZero paper](https://www.semanticscholar.org/paper/A-general-reinforcement-learning-algorithm-that-and-Silver-Hubert/f9717d29840f4d8f1cc19d1b1e80c5d12ec40608)
+
 
 ## Features
 
-* [x] Self-play and Testing are done using [Ray](https://github.com/ray-project/ray) actors meaning it can be run multi-process/multi-computer.
+* [x] Fully Assyncronous self-play, training and testing using [Ray](https://github.com/ray-project/ray).
 * [x] Saves checkpoints during training and allows continuing previous training in case anything goes wrong.
 * [x] Creates graphs for loss, win rates and others.
-* [X] Allows defining any custom game or network arquitecture(using pytorch).
+* [X] Allows defining any custom games, network arquitectures and agents.
 * [x] Tic Tac Toe and SCS games already implemented.
 * [X] Definition of any custom SCS games within the already implemented rules.
 * [x] Creation of custom SCS markers for units.
 
+
 ### Features in development
 
-* [ ] Fully Assyncronous Training as described in the [AlphaZero paper](https://www.semanticscholar.org/paper/A-general-reinforcement-learning-algorithm-that-and-Silver-Hubert/f9717d29840f4d8f1cc19d1b1e80c5d12ec40608)
-* [ ] 
+* [] Better testing inteface 
 
 ### Future features
 
 * [ ] Training and testing preset creation and saving
 * [ ] Visual Interface for users to play SCS games
+* [ ] Hyperparameter optimization
+* [ ] Destributed training updates
 
 ### Current issues
 
 * [ ] Bad GPU performance
 * [ ] Others...
+
+## Structure
+
 
 
 

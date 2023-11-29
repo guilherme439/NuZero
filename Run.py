@@ -95,6 +95,8 @@ def main():
     args = parser.parse_args()
 
     print("CUDA: " + str(torch.cuda.is_available()))
+
+    print("\n\nRemove GAME from TORCH NN!!!\n")
                
     if args.training_preset is not None:
         log_to_driver = False
@@ -431,10 +433,10 @@ def main():
                 ray.init()
 
                 num_testers = 5
-                num_games = 250
+                num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_large.yml"
+                game_config = "SCS/Game_configs/unbalanced_config_8.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
                 
@@ -443,8 +445,8 @@ def main():
 
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 1000
+                net_name = "unbalanced_reduce_prog_2"
+                model_iteration = 360
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -454,8 +456,8 @@ def main():
                 
 
                 #---
-                min = 30
-                max = 40
+                min = 0
+                max = 200
                 step = 2
                 recurrent_iterations_list = range(min,max+1,step)
                 
@@ -465,7 +467,7 @@ def main():
 
                 ################################################
 
-                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "per_game")
+                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless")
                 #policy_agent = PolicyAgent(nn, rec_iter)
                 #random_agent = RandomAgent()
                 #goal_agent = GoalRushAgent()
@@ -559,31 +561,16 @@ def main():
                 plt.clf()
 
             case 5: # Graphs for several games (can be used to compared performance with board size for example)
-                #TODO: Not implemented
-                print("\nnot impelemented yet!!!")
                 ray.init()
 
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_larger.yml"
-                game_args = [game_config]
-                
-                config_name = game_config[:-4]
-                config_name = config_name[17:]
-
+                game = SCS_Game("SCS/Game_configs/unbalanced_config_8.yml")
 
                 num_testers = 5
                 num_games = 100
 
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_larger.yml"
-                game_args = [game_config]
-                game = game_class(*game_args)
-
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 450
-                recurrent_iterations = 30
+                net_name = "unbalanced_reduce_prog_2"
+                model_iteration = 360
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -591,38 +578,43 @@ def main():
                 shared_storage.store.remote(nn)
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                 
-                # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
-                policy_agent = PolicyAgent(nn, recurrent_iterations)
-                random_agent = RandomAgent()
-                p1_agent = random_agent
-                p2_agent = policy_agent
-                
 
-                #---
-                min = 0
-                max = 100
-                step = 1
-                recurrent_iterations_list = range(min,max+1,step)
                 
-                name_input = input("Name for the graph: ")
-                figpath = "Graphs/" + name_input
+                name = "5x5_to_10x10_100_iterations_unbalanced"
+                figpath = "Graphs/" + name
                 print(figpath)
 
                 ################################################
 
+                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "per_game")
+                #policy_agent = PolicyAgent(nn, rec_iter)
+                #random_agent = RandomAgent()
+                #goal_agent = GoalRushAgent()
+
+                game_class = SCS_Game
+                configs_list = ["SCS/Game_configs/unbalanced_config.yml",
+                                "SCS/Game_configs/unbalanced_config_6.yml",
+                                "SCS/Game_configs/unbalanced_config_7.yml",
+                                "SCS/Game_configs/unbalanced_config_8.yml",
+                                "SCS/Game_configs/unbalanced_config_9.yml",
+                                "SCS/Game_configs/unbalanced_config_10.yml"]
+                recurrent_iterations = 100
+
                 p1_wr_list = []
                 p2_wr_list = []
-                for rec_iter in recurrent_iterations_list:
-                    print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
+                for config in configs_list:
+                    game_args = [config]
+                    test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                    p1_agent = RandomAgent()
+                    p2_agent = PolicyAgent(nn, recurrent_iterations)
                     p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                     p1_wr_list.append(p1_wr)
                     p2_wr_list.append(p2_wr)
 
 
-                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
-                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
-                plt.title(method.upper() + " -> Win rates as Player " + AI_player)
+                plt.plot(range(len(configs_list)), p1_wr_list, label = "P1")
+                plt.plot(range(len(configs_list)), p2_wr_list, label = "P2")
+                plt.title(name)
                 plt.legend()
                 plt.savefig(figpath)
                 plt.clf()
