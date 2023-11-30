@@ -10,9 +10,11 @@
 #SBATCH --gres=shard:0
 
 #SBATCH --job-name=forgot_name
+#SBATCH --nodelist=nexus3
 
 
 CUDA_VISIBLE_DEVICES=-1 python Run.py --training-preset 5 --name "not_a_name"
+# python Run.py --testing-preset 3 
 
 
 

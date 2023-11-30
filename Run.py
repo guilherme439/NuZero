@@ -457,7 +457,7 @@ def main():
                 #---
                 min = 0
                 max = 500
-                step = 20
+                step = 10
                 recurrent_iterations_list = range(min,max+1,step)
                 
                 name_input = input("Name for the graph: ")
