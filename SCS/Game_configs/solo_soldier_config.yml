@@ -48,12 +48,8 @@ Terrain:
 
 ###
 Map:
-  creation_method: Detailed # Detailed | Randomized
-  map_configuration : [ [1,1,1,1,1],
-                        [1,1,1,1,1],
-                        [1,1,1,1,1],
-                        [1,1,1,1,1],
-                        [1,1,1,1,1] ]
+  creation_method: Randomized # Detailed | Randomized
+  distribution: [1]
 
 
 ###
