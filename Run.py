@@ -432,7 +432,7 @@ def main():
                 ray.init()
 
                 num_testers = 10
-                num_games = 200
+                num_games = 100
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/solo_soldier_config_8.yml"]
@@ -453,7 +453,7 @@ def main():
                 #---
                 min = 0
                 max = 500
-                step = 10
+                step = 20
                 recurrent_iterations_list = range(min,max+1,step)
                 
                 name = "8x8_0_to_500 iterations_solo_1000"
@@ -561,7 +561,7 @@ def main():
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
 
                 num_testers = 10
-                num_games = 100
+                num_games = 200
 
                 # network options
                 net_name = "solo_reduce_prog_4"
