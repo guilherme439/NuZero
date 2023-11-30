@@ -197,17 +197,17 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net_test"
 
                 ################################################
 
-                state_set = create_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -243,7 +243,7 @@ def main():
 
                 ################################################
 
-                state_set = create_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -441,7 +441,7 @@ def main():
 
                 # network options
                 net_name = "solo_reduce_prog_4"
-                model_iteration = 1000
+                model_iteration = 3860
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -456,7 +456,7 @@ def main():
                 step = 20
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = "8x8_0_to_500 iterations_solo_1000"
+                name = "8x8_0_to_500 iterations_solo_3860"
                 figpath = "Graphs/" + name
                 print(figpath)
 
@@ -560,13 +560,13 @@ def main():
 
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
 
-                num_testers = 10
+                num_testers = 5
                 num_games = 200
 
                 # network options
                 net_name = "solo_reduce_prog_4"
-                model_iteration = 1000
-                recurrent_iterations = 100 
+                model_iteration = 3860
+                recurrent_iterations = 30
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -584,7 +584,7 @@ def main():
                             
 
                 
-                name = "5x5_to_10x10_100_iterations_solo"
+                name = "5x5_to_10x10_30_iterations_solo_3860"
                 figpath = "Graphs/" + name
                 print(figpath)
 
@@ -1100,34 +1100,34 @@ def create_mirrored_state_set(game):
     renderer = SCS_Renderer()
 
     state_set = []
-    game.set_simple_game_state(7, [1], [(0,1)], [2])
+    game.set_simple_game_state(9, [1], [(0,1)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(7, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
+    game.set_simple_game_state(9, [1,1,1], [(0,1),(1,1),(0,0)], [2,2,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(7, [1], [(4,4)], [2])
+    game.set_simple_game_state(9, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     
     game.reset_env()
-    game.set_simple_game_state(7, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
+    game.set_simple_game_state(9, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(7, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
+    game.set_simple_game_state(9, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
 
     game.reset_env()
-    game.set_simple_game_state(7, [1], [(4,4)], [1])
+    game.set_simple_game_state(9, [1], [(4,4)], [1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
