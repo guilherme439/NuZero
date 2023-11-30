@@ -435,7 +435,7 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_config_8.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_8.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
                 
