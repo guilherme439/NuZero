@@ -460,8 +460,8 @@ def main():
                 step = 10
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name_input = input("Name for the graph: ")
-                figpath = "Graphs/" + name_input
+                name = "8x8_0_to_500 iterations_solo_1000"
+                figpath = "Graphs/" + name
                 print(figpath)
 
                 ################################################
@@ -485,7 +485,7 @@ def main():
 
                 plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
                 plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
-                plt.title(name_input)
+                plt.title(name)
                 plt.legend()
                 plt.savefig(figpath)
                 plt.clf()
