@@ -564,12 +564,12 @@ def main():
 
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
 
-                num_testers = 5
+                num_testers = 10
                 num_games = 100
 
                 # network options
                 net_name = "solo_reduce_prog_4"
-                model_iteration = 360
+                model_iteration = 1000
                 recurrent_iterations = 100 
 
                 # Test Manager configuration
