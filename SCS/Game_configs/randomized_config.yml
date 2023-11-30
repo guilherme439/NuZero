@@ -8,7 +8,7 @@ Board_dimensions:
 
 
 ###
-Turns: 7
+Turns: 9
 
 
 ###
@@ -35,9 +35,9 @@ Units:
 ###
 Reinforcements:
   schedule:
-    p1: [ [1,1], [], [2], [], [], [], [], [] ]
+    p1: [ [1,1], [], [2], [], [], [], [], [], [], [] ]
 
-    p2: [ [1,1], [], [2], [], [], [], [], [] ]
+    p2: [ [1,1], [], [2], [], [], [], [], [], [], [] ]
 
   arrival:
     method: Default  # Default | Detailed

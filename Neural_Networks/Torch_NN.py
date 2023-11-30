@@ -12,7 +12,7 @@ from torch import nn
 
 class Torch_NN():
 
-    def __init__(self, game, model):
+    def __init__(self, model):
         
         self.model = model
         self.check_devices()
@@ -25,8 +25,6 @@ class Torch_NN():
         elif not isinstance(self.model.recurrent, bool):
             print("\"model.recurrent\" must be a bollean atribute specifing if the model is or not recurrent.")
             exit()
-
-        self.game = game
         
 
     def get_model(self):

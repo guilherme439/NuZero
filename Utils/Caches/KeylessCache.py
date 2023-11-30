@@ -27,7 +27,8 @@ class KeylessCache(Cache):
             exit()
 
         self.indexing_bits = int(math.floor(math.log2(size_estimate)) + 1)
-        self.size = int(math.pow(2, self.indexing_bits) - 1)
+        self.size = int(math.pow(2, self.indexing_bits))
+        self.max_index = self.size - 1
         
         self.table = [[]] * self.size
         self.num_items = 0
@@ -76,7 +77,7 @@ class KeylessCache(Cache):
             print("WARNING: Cache usage over 75%")
 
         full_hash, index, identifier = self.hash(key)
-        
+
         cache_entry = (value, identifier)
         self.table[index].append(cache_entry)   
         return

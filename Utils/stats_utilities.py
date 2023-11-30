@@ -24,6 +24,7 @@ def print_stats_list(stats_list):
     "average_tree_size" : 0,
     "final_bias_value" : 0,
     "average_bias_value" : 0,
+    "cache_fill_ratio" : 0
     }
 
     print("\n")

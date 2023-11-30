@@ -3,8 +3,8 @@ Name: Important battle
 
 ###
 Board_dimensions:
-  rows: 5
-  columns: 5
+  rows: 6
+  columns: 6
 
 
 ###
@@ -71,11 +71,12 @@ Terrain:
 ###
 Map:
   creation_method: Detailed # Detailed | Randomized
-  map_configuration : [ [1,3,4,1,1],
-                        [1,3,1,1,1],
-                        [1,3,2,3,1],
-                        [1,1,1,3,1],
-                        [1,1,4,3,1] ]
+  map_configuration : [ [1,3,4,1,1,1],
+                        [1,3,1,1,1,1],
+                        [1,3,1,2,3,1],
+                        [1,3,2,1,3,1],
+                        [1,1,1,1,3,1],
+                        [1,1,1,4,3,1] ]
 
 
 ###
@@ -83,7 +84,7 @@ Victory_points:
   creation_method: Detailed # Detailed | Randomized
   vp_locations:             
     p1: [[1,0]]     # The point coordenates are given as indexes,        
-    p2: [[3,4]]     # Meaning that [0,0] will be the top left corner of the map
+    p2: [[4,5]]     # Meaning that [0,0] will be the top left corner of the map
 
   # YAML safe_loader does not suport tuples,
   # define the points as two element lists instead.

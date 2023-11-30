@@ -18,6 +18,7 @@ SLURM/Scripts/*
 !SLURM/Scripts/__init__.py
 
 Graphs/
+!Graphs/__init__.py
 
 *.insyncdl
 *.log

@@ -17,7 +17,7 @@ from functools import reduce
 @ray.remote(scheduling_strategy="SPREAD")
 class Gamer():  
 
-    def __init__(self, buffer, shared_storage, game_class, game_args, search_config, recurrent_iterations, cache_choice):
+    def __init__(self, buffer, shared_storage, game_class, game_args, search_config, recurrent_iterations, cache_choice, size_estimate=10000):
 
         self.buffer = buffer
         self.shared_storage = shared_storage
@@ -27,7 +27,8 @@ class Gamer():
         self.search_config = search_config
         self.recurrent_iterations = recurrent_iterations
         self.cache_choice = cache_choice
-        
+        self.size_estimate = size_estimate
+
         self.explorer = Explorer(search_config, True)
 
         self.time_to_stop = False
@@ -45,6 +46,7 @@ class Gamer():
         "final_tree_size" : 0,
         "average_bias_value" : 0,
         "final_bias_value" : 0,
+        "cache_fill_ratio" : 0,
         }
 
         game = self.game_class(*self.game_args)
@@ -53,7 +55,7 @@ class Gamer():
         if self.cache_choice == "dict":
             self.cache = DictCache()
         elif self.cache_choice == "keyless":
-            self.cache = KeylessCache(4096)
+            self.cache = KeylessCache(self.size_estimate)
         elif self.cache_choice == "disabled":
             self.cache = None
         else:
@@ -88,13 +90,13 @@ class Gamer():
             stats["average_bias_value"] += root_bias
             stats["final_bias_value"] = root_bias
             
-            
+        stats["cache_fill_ratio"] = self.cache.get_fill_ratio()
         stats["number_of_moves"] = game.length
         stats["average_children"] /= game.length
         stats["average_tree_size"] /= game.length
         stats["average_bias_value"] /= game.length
 
-
+        #print(self.cache.get_fill_ratio())
         ray.get(self.buffer.save_game.remote(game)) # each actor waits for the game to be saved before returning
         return stats
     

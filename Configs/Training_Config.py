@@ -6,7 +6,7 @@ class Training_Config(Config):
 
         self.running = dict \
         (
-        cache_choice = "disabled",		# disabled | dict | keyless        
+        cache_choice = "disabled",		# disabled | dict | keyless       
         running_mode = "sequential",
         num_actors = 4,
         early_fill = 1000,
@@ -14,7 +14,6 @@ class Training_Config(Config):
         early_random_exploration = 0,
     	training_steps = 1e5,
         )
-
 
         self.sequential = dict \
         (
@@ -25,6 +24,13 @@ class Training_Config(Config):
         self.asynchronous = dict \
         (
         update_delay = 1600,
+        )
+
+
+        self.cache = dict \
+        (
+        cache_choice = 'disabled',
+        size_estimate = 10000
         )
         
 

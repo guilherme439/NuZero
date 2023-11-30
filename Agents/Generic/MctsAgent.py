@@ -12,7 +12,7 @@ from Utils.Caches.KeylessCache import KeylessCache
 class MctsAgent(Agent):
     ''' Chooses the action most visited using AlphaZero's MCTS'''
 
-    def __init__(self, search_config, network, recurrent_iterations=2, cache_choice="disabled"):
+    def __init__(self, search_config, network, recurrent_iterations=2, cache_choice="disabled", size_estimate=10000):
         self.explorer = Explorer(search_config, False)
         self.keep_subtree = search_config.simulation["keep_subtree"]
         self.root_node = Node(0)
@@ -20,10 +20,11 @@ class MctsAgent(Agent):
         self.network = network
         self.recurrent_iterations = recurrent_iterations
         self.cache_choice = cache_choice
+        self.size_estimate = size_estimate
         if self.cache_choice == "dict":
             self.cache = DictCache()
         elif self.cache_choice == "keyless":
-            self.cache = KeylessCache(4096)
+            self.cache = KeylessCache(self.size_estimate)
         elif self.cache_choice == "disabled":
             self.cache = None
         else:
@@ -51,7 +52,7 @@ class MctsAgent(Agent):
         if self.cache_choice == "dict":
             self.cache = DictCache()
         elif self.cache_choice == "keyless":
-            self.cache = KeylessCache(4096)
+            self.cache = KeylessCache(self.size_estimate)
         elif self.cache_choice == "disabled":
             self.cache = None
         else:

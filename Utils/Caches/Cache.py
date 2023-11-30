@@ -25,3 +25,6 @@ class Cache():
     def length(self):
         ''' Returns the number of items in the cache '''
         return
+    
+    def get_fill_ratio(self):
+        return 0

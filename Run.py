@@ -96,7 +96,6 @@ def main():
 
     print("CUDA: " + str(torch.cuda.is_available()))
 
-    print("\n\nRemove GAME from TORCH NN!!!\n")
                
     if args.training_preset is not None:
         log_to_driver = False
@@ -198,7 +197,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
 
                 alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
@@ -234,10 +233,10 @@ def main():
 
             case 4:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
 
-                alpha_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net_test"
@@ -255,7 +254,7 @@ def main():
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.9)
+                        torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
 
@@ -281,7 +280,7 @@ def main():
 
                 ################################################
 
-                state_set = create_unbalanced_state_set(game)
+                state_set = create_solo_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -292,7 +291,7 @@ def main():
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
+                        torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
 
@@ -377,7 +376,7 @@ def main():
                 if rendering_mode == "passive":
                     tester = Tester(render=True)
                 elif rendering_mode == "interactive":
-                    tester = Tester(print=False)
+                    tester = Tester(print=True)
 
                 
                 winner, _ = tester.Test_using_agents(game, p1_agent, p2_agent, keep_state_history=False)
@@ -418,7 +417,7 @@ def main():
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "per_game")
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless")
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
@@ -432,11 +431,11 @@ def main():
             case 3: # Graphs for several recurrent iterations (extrapolation testing)
                 ray.init()
 
-                num_testers = 5
-                num_games = 100
+                num_testers = 10
+                num_games = 200
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/unbalanced_config_8.yml"
+                game_config = "SCS/Game_configs/solo_config_8.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
                 
@@ -445,8 +444,8 @@ def main():
 
 
                 # network options
-                net_name = "unbalanced_reduce_prog_2"
-                model_iteration = 360
+                net_name = "solo_reduce_prog_4"
+                model_iteration = 1000
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -457,8 +456,8 @@ def main():
 
                 #---
                 min = 0
-                max = 200
-                step = 2
+                max = 500
+                step = 20
                 recurrent_iterations_list = range(min,max+1,step)
                 
                 name_input = input("Name for the graph: ")
@@ -563,22 +562,33 @@ def main():
             case 5: # Graphs for several games (can be used to compared performance with board size for example)
                 ray.init()
 
-                game = SCS_Game("SCS/Game_configs/unbalanced_config_8.yml")
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
 
-                num_testers = 8
+                num_testers = 5
                 num_games = 100
 
                 # network options
-                net_name = "unbalanced_reduce_prog_2"
+                net_name = "solo_reduce_prog_4"
                 model_iteration = 360
+                recurrent_iterations = 100 
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)              
+                shared_storage.store.remote(nn) 
+                
+                # Game settings
+                game_class = SCS_Game
+                configs_list = ["SCS/Game_configs/solo_soldier_config.yml",
+                                "SCS/Game_configs/solo_soldier_config_6.yml",
+                                "SCS/Game_configs/solo_soldier_config_7.yml",
+                                "SCS/Game_configs/solo_soldier_config_8.yml",
+                                "SCS/Game_configs/solo_soldier_config_9.yml",
+                                "SCS/Game_configs/solo_soldier_config_10.yml"]
+                            
 
                 
-                name = "5x5_to_10x10_100_iterations_unbalanced"
+                name = "5x5_to_10x10_100_iterations_solo"
                 figpath = "Graphs/" + name
                 print(figpath)
 
@@ -589,14 +599,7 @@ def main():
                 #random_agent = RandomAgent()
                 #goal_agent = GoalRushAgent()
 
-                game_class = SCS_Game
-                configs_list = ["SCS/Game_configs/unbalanced_config.yml",
-                                "SCS/Game_configs/unbalanced_config_6.yml",
-                                "SCS/Game_configs/unbalanced_config_7.yml",
-                                "SCS/Game_configs/unbalanced_config_8.yml",
-                                "SCS/Game_configs/unbalanced_config_9.yml",
-                                "SCS/Game_configs/unbalanced_config_10.yml"]
-                recurrent_iterations = 100
+                
 
                 p1_wr_list = []
                 p2_wr_list = []
@@ -633,7 +636,7 @@ def main():
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                nn = Torch_NN(game, model)
+                nn = Torch_NN(model)
                 shared_storage = RemoteStorage.remote(window_size=1)
                 shared_storage.store.remote(nn)
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
@@ -667,7 +670,7 @@ def main():
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                nn = Torch_NN(game, model)
+                nn = Torch_NN(model)
 
                 search_config_path="Configs/Config_Files/Search/test_search_config.ini"
                 search_config = Search_Config()
@@ -986,7 +989,7 @@ def main():
                         torch.nn.init.xavier_uniform_(param, gain=0.70)
                     
                 #'''
-                nn = Torch_NN(game, model)
+                nn = Torch_NN(model)
 
                 
                 play_actions = 9
@@ -1056,16 +1059,17 @@ def main():
                     print("\n\n\n")
 
             case 9:
-                cache = KeylessCache(250)
+                cache = KeylessCache(2000)
                 size = (5,5,10)
                 tensor1 = torch.rand(size)
-                tensor2 = torch.rand(size)
-                copy_tensor = copy.deepcopy(tensor1)
+                #tensor2 = torch.rand(size)
+                #copy_tensor = copy.deepcopy(tensor1)
                 hash1 = cache.hash(tensor1)
-                hash2 = cache.hash(tensor2)
-                print(hash1 == hash2)
                 print(hash1)
-                print(hash2)
+                #hash2 = cache.hash(tensor2)
+                #print(hash1 == hash2)
+                #print(hash1)
+                #print(hash2)
 
 
                 
@@ -1548,7 +1552,7 @@ def load_trained_network(game, net_name, model_iteration):
     model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
     
 
-    nn = Torch_NN(game, model)
+    nn = Torch_NN(model)
 
     search_config = Search_Config()
     search_config.load(search_config_path)
