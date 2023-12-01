@@ -230,7 +230,7 @@ def main():
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
                 alpha_zero.run()
 
 

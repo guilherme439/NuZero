@@ -12,3 +12,4 @@ hexagdly
 cityhash
 metrohash
 bitstring
+more_itertools
