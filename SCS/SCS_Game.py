@@ -116,7 +116,6 @@ class SCS_Game(Game):
         
         if game_config_path != "":
             self.load_from_config(game_config_path)
-            self.update_game_env()
 
 
         # ------------------------------------------------------ #
@@ -1628,6 +1627,8 @@ class SCS_Game(Game):
                         self.board[point[0]][point[1]].victory = 2
                         self.n_vp[1] += 1
 
+        self.update_game_env()
+
     def clone(self):
         return deepcopy(self)
     
@@ -1749,13 +1750,21 @@ class SCS_Game(Game):
 
                 mark = colored(mark_text, mark_color, attrs=attributes)
 
+                first_row = (i == 0)
+                last_col = (j == (self.columns - 1))
                 odd_col = j%2
                 if odd_col:
                     first_line += '__'
                     second_line += mark
+                    if last_col:
+                        if not first_row:
+                            first_line += "/"
+                        second_line += "\\"
+
                 else:
                     first_line += "/" + mark + "\\"
                     second_line += "\__/"
+                       
 
             string += (first_line + "\n")
             string += (second_line + "\n")

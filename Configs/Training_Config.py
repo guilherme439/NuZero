@@ -9,7 +9,7 @@ class Training_Config(Config):
         cache_choice = "disabled",		# disabled | dict | keyless       
         running_mode = "sequential",
         num_actors = 4,
-        early_fill = 1000,
+        early_fill_per_type = 250,
         early_softmax_exploration = 1,
         early_random_exploration = 0,
     	training_steps = 1e5,
@@ -64,10 +64,10 @@ class Training_Config(Config):
         )
 
 
-        self.recurrent_networks = dict \
+        self.recurrent_training = dict \
         (
-        num_train_iterations = 4,
-        num_pred_iterations = 4,
+        num_train_iterations = [4],
+        num_pred_iterations = [4],
         num_test_iterations = 4,
         alpha = 0.5
         )
@@ -112,6 +112,7 @@ class Training_Config(Config):
         weight_decay = 1e-5,
         momentum = 0.9,
         nesterov = 0.1,
+        # If you use SGD optimizer, it applies L2 weight regularization
 
         # Lr Scheduler
         scheduler_boundaries = [100e3, 600e3, 1500e3],

@@ -14,7 +14,7 @@ class ReplayBuffer():
         self.n_games = 0
 
 
-    def save_game(self, game):
+    def save_game(self, game, game_index):
         full = False
         if self.n_games >= self.window_size:
             full = True
@@ -23,10 +23,10 @@ class ReplayBuffer():
 
         for i in range(len(game.state_history)):
             state = game.get_state_from_history(i)
-            pair = (state, game.make_target(i))
+            tuple = (state, game.make_target(i), game_index)
             if full:
                 self.buffer.pop(0)
-            self.buffer.append(pair)
+            self.buffer.append(tuple)
 
 
     def shuffle(self):

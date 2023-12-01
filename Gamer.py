@@ -17,12 +17,13 @@ from functools import reduce
 @ray.remote(scheduling_strategy="SPREAD")
 class Gamer():  
 
-    def __init__(self, buffer, shared_storage, game_class, game_args, search_config, recurrent_iterations, cache_choice, size_estimate=10000):
+    def __init__(self, buffer, shared_storage, game_class, game_args, game_index, search_config, recurrent_iterations, cache_choice, size_estimate=10000):
 
         self.buffer = buffer
         self.shared_storage = shared_storage
         self.game_class = game_class
         self.game_args = game_args
+        self.game_index = game_index
 
         self.search_config = search_config
         self.recurrent_iterations = recurrent_iterations
@@ -97,7 +98,7 @@ class Gamer():
         stats["average_bias_value"] /= game.length
 
         #print(self.cache.get_fill_ratio())
-        ray.get(self.buffer.save_game.remote(game)) # each actor waits for the game to be saved before returning
+        ray.get(self.buffer.save_game.remote(game, self.game_index)) # each actor waits for the game to be saved before returning
         return stats
     
     def play_forever(self):

@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from torch import nn
 from copy import deepcopy
 from random import randrange
+import more_itertools
 
 from Neural_Networks.Torch_NN import Torch_NN
 
@@ -47,23 +48,22 @@ from progress.spinner import PieSpinner
 class AlphaZero():
 
 	
-    def __init__(self, game_class, game_args, model, net_name, train_config_path, search_config_path, plot_data_path=None, state_set=None):
+    def __init__(self, game_class, game_args_list, model, net_name, train_config_path, search_config_path, plot_data_path=None, state_set=None):
 
         
         # ------------------------------------------------------ #
         # -------------------- SYSTEM SETUP -------------------- #
         # ------------------------------------------------------ #
 
-        self.game_args = game_args  # Args for the game's __init__()
+        self.game_args_list = game_args_list  # Args for the game's __init__()
         self.game_class = game_class
-        self.game = game_class(*game_args)
 
         current_directory = os.getcwd()
         print("\nCurrent working directory: " + str(current_directory))
 
         self.network_name = net_name
 
-        self.game_folder_name = self.game.get_name()
+        self.game_folder_name = self.game_class().get_name()
         self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
         if not os.path.exists(self.model_folder_path):
             os.mkdir(self.model_folder_path)
@@ -125,13 +125,18 @@ class AlphaZero():
 
         running_mode = self.train_config.running["running_mode"]
         num_actors = self.train_config.running["num_actors"]
-        early_fill_games = self.train_config.running["early_fill"]
+        early_fill_games_per_type = self.train_config.running["early_fill_per_type"]
 
         training_steps = int(self.train_config.running["training_steps"])
+        num_game_types = len(self.game_args_list)
         if running_mode == "asynchronous":
+            if num_game_types > 1:
+                print("Asynchronous mode does not support training with multiple games.\nExiting.")
+                exit()
             update_delay = self.train_config.asynchronous["update_delay"]
         elif running_mode == "sequential":
-            num_games_per_step = self.train_config.sequential["num_games_per_step"]
+            num_games_per_type_per_step = self.train_config.sequential["num_games_per_type_per_step"]
+            
 
         cache_choice = self.train_config.cache["cache_choice"]
         size_estimate = self.train_config.cache["size_estimate"]
@@ -139,10 +144,10 @@ class AlphaZero():
         save_frequency = self.train_config.saving["save_frequency"]
         storage_frequency = self.train_config.saving["storage_frequency"]
 
-        pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
-        test_iterations = self.train_config.recurrent_networks["num_test_iterations"]
-        train_iterations = self.train_config.recurrent_networks["num_train_iterations"]
-        prog_alpha = self.train_config.recurrent_networks["alpha"]
+        train_iterations = self.train_config.recurrent_training["train_iterations"]
+        pred_iterations = self.train_config.recurrent_training["pred_iterations"]
+        test_iterations = self.train_config.recurrent_training["test_iterations"]
+        prog_alpha = self.train_config.recurrent_training["alpha"]
 
         asynchronous_testing = self.train_config.testing["asynchronous_testing"]
         num_testers = self.train_config.testing["testing_actors"]
@@ -168,13 +173,14 @@ class AlphaZero():
         # ------------------------------------------------------ #
         
         # dummy forward pass to initialize the weights
-        game = self.game_class(*self.game_args)
+
+        game = self.game_class(*self.game_args_list[0])
         self.latest_network.inference(game.generate_state_image(), False, 1)
 
         # write model summary and game args to file
         file_name = self.model_folder_path + "model_and_game_config.txt"
         with open(file_name, "w") as file:
-            file.write(self.game_args.__str__())
+            file.write(self.game_args_list.__str__())
             file.write("\n\n\n\n----------------------------------\n\n")
             file.write(self.latest_network.get_model().__str__())
             
@@ -249,20 +255,23 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
+        test_game_args = self.game_args_list[0]
         if asynchronous_testing:
             self.test_futures = []
-            self.test_manager = RemoteTestManager.remote(self.game_class, self.game_args, num_testers,
+            self.test_manager = RemoteTestManager.remote(self.game_class, test_game_args, num_testers,
                                                         self.network_storage, self.state_set)
         else:
-            self.test_manager = TestManager(self.game_class, self.game_args, num_testers,
+            self.test_manager = TestManager(self.game_class, test_game_args, num_testers,
                                             self.network_storage, self.state_set)
 
         if running_mode == "sequential":
-            print("\nRunning for " + str(training_steps) + " training steps with " + str(num_games_per_step) + " games between each step.")
+            self.games_per_step = num_games_per_type_per_step * num_game_types
+            print("\nRunning for " + str(training_steps) + " training steps with " + str(self.games_per_step) + " games in each step.")
         elif running_mode == "asynchronous":
             print("\nRunning for " + str(training_steps) + " training steps with " + str(update_delay) + "s of delay between each step.")
-        if early_fill_games > 0:
-            print("\n-Playing " + str(early_fill_games) + " initial games to fill the replay buffer.")
+        if early_fill_games_per_type > 0:
+            total_early_fill = early_fill_games_per_type * num_game_types
+            print("\n-Playing " + str(total_early_fill) + " initial games to fill the replay buffer.")
         if cache_choice != "disabled":
             print("\n-Using cache for inference results.")			  
         if starting_iteration != 0:
@@ -292,10 +301,11 @@ class AlphaZero():
                 policy_games = num_policy_test_games if test_policy else 0
                 mcts_games = num_mcts_test_games if test_mcts else 0
                 self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, size_estimate)
+                print("\nLaunched early tests.")
 
-        if early_fill_games > 0:
+        if early_fill_games_per_type > 0:
             print("\n\n\n\nEarly Buffer Fill\n")
-            self.run_selfplay(early_fill_games, cache_choice, size_estimate=size_estimate, text="Playing initial games", early_fill=True)
+            self.run_selfplay(early_fill_games_per_type, cache_choice, size_estimate=size_estimate, text="Playing initial games", early_fill=True)
 
         if running_mode == "asynchronous":
             actor_list= [Gamer.options(max_concurrency=2).remote
@@ -303,9 +313,10 @@ class AlphaZero():
                         self.replay_buffer,
                         self.network_storage,
                         self.game_class,
-                        self.game_args,
+                        self.game_args_list[0],
+                        0,
                         self.search_config,
-                        pred_iterations,
+                        pred_iterations[0],
                         cache_choice,
                         size_estimate
                         )
@@ -313,16 +324,18 @@ class AlphaZero():
             
             termination_futures = [actor.play_forever.remote() for actor in actor_list]
 
+        # ---- MAIN TRAINING LOOP ---- #
         steps_to_run = range(starting_iteration, training_steps)
         for step in steps_to_run:
             print("\n\n\n\nStep: " + str(step+1) + "\n")
 
             if running_mode == "sequential":
-                self.run_selfplay(num_games_per_step, cache_choice, size_estimate=size_estimate, text="Self-Play Games")
+                self.run_selfplay(num_games_per_type_per_step, cache_choice, size_estimate=size_estimate, text="Self-Play Games")
 
             print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
             self.train_network(optimizer, scheduler, batch_size, learning_method, prog_alpha)
-            
+
+            # ---- TESTS ---- #
             test_policy = (policy_test_frequency and (((step+1) % policy_test_frequency) == 0)) 
             test_mcts = (mcts_test_frequency and (((step+1) % mcts_test_frequency) == 0))
             policy_games = num_policy_test_games if test_policy else 0
@@ -343,7 +356,7 @@ class AlphaZero():
             if policy_games or mcts_games:
                 self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, size_estimate)
 
-            
+            # ---- PLOTS ---- #
             # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
             if plot_frequency and (((step+1) % plot_frequency) == 0):
                 
@@ -397,13 +410,14 @@ class AlphaZero():
             # psutil gives memory in bytes and resource gives memory in kb (1024 bytes)
 
         if asynchronous_testing:
-            bar = PrintBar("Finishing tests", len(self.test_futures), 15)
-            for future, i in self.test_futures:
-                result = ray.get(future)
-                self.update_wr_data(result, i)
-                bar.next()
+            if len(self.test_futures) > 0:
+                bar = PrintBar("Finishing tests", len(self.test_futures), 15)
+                for future, i in self.test_futures:
+                    result = ray.get(future)
+                    self.update_wr_data(result, i)
+                    bar.next()
 
-            bar.finish()
+                bar.finish()
 
 
             self.plot_wr()
@@ -421,10 +435,11 @@ class AlphaZero():
         print("All done.\nExiting")
         return
             
-    def run_selfplay(self, num_games_per_step, cache_choice, size_estimate=10000, text="Self-Play", early_fill=False):
+    def run_selfplay(self, num_games_per_type, cache_choice, size_estimate=10000, text="Self-Play", early_fill=False):
         start = time.time()
+        stats_list = []
 
-        pred_iterations = self.train_config.recurrent_networks["num_pred_iterations"]
+        pred_iterations_list = self.train_config.recurrent_training["pred_iterations"]
         num_actors = self.train_config.running["num_actors"]
 
         search_config = deepcopy(self.search_config)
@@ -434,34 +449,37 @@ class AlphaZero():
             search_config.exploration["epsilon_softmax_exploration"] = softmax_exploration
             search_config.exploration["epsilon_random_exploration"] = random_exploration
 
-        stats_list = []
-        args_list = []
-        bar = PrintBar(text, num_games_per_step, 15)
+        bar = PrintBar(text, self.games_per_step, 15)
+        for i in range(len(self.game_args_list)):
+            game_args = self.game_args_list[i]
+            iterations = pred_iterations_list[i]
+            game_index = i
+            actor_list= [Gamer.remote
+                        (
+                        self.replay_buffer,
+                        self.network_storage,
+                        self.game_class,
+                        game_args,
+                        game_index,
+                        search_config,
+                        iterations,
+                        cache_choice,
+                        size_estimate
+                        )
+                        for a in range(num_actors)]
+                
+            actor_pool = ray.util.ActorPool(actor_list)
 
-        actor_list= [Gamer.remote
-                    (
-                    self.replay_buffer,
-                    self.network_storage,
-                    self.game_class,
-                    self.game_args,
-                    search_config,
-                    pred_iterations,
-                    cache_choice,
-                    size_estimate
-                    )
-                    for a in range(num_actors)]
+            call_args = []
+            for g in range(num_games_per_type):
+                actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
             
-        actor_pool = ray.util.ActorPool(actor_list)
-
-        for g in range(num_games_per_step):
-            actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), args_list)
-        
-        time.sleep(5) # Sometimes ray bugs if we dont wait before getting the results
-        
-        for g in range(num_games_per_step):
-            stats = actor_pool.get_next_unordered() # Timeout and Ignore_if_timeout
-            stats_list.append(stats)
-            bar.next()
+            time.sleep(1) # Sometimes ray bugs if we dont wait before getting the results
+            
+            for g in range(num_games_per_type):
+                stats = actor_pool.get_next_unordered()
+                stats_list.append(stats)
+                bar.next()
 
         bar.finish()
         print_stats_list(stats_list)
@@ -469,7 +487,7 @@ class AlphaZero():
         end = time.time()
         total_time = end-start
         print("\n\nTotal time(m): " + format(total_time/60, '.4'))
-        print("Average time per game(s): " + format(total_time/num_games_per_step, '.4'))
+        print("Average time per game(s): " + format(total_time/self.games_per_step, '.4'))
 
         return
 
@@ -499,7 +517,6 @@ class AlphaZero():
                 if future is not None:
                     self.test_futures.append((future, i))
                     
-            print("\nLaunched early tests.")
         else:
             if policy_games:
                 p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, show_results=True)
@@ -522,7 +539,7 @@ class AlphaZero():
         start = time.time()
 
         replace = True
-        train_iterations = self.train_config.recurrent_networks["num_train_iterations"]
+        train_iterations = self.train_config.recurrent_training["train_iterations"]
         batch_extraction = self.train_config.learning["batch_extraction"]
 
         replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
@@ -615,7 +632,7 @@ class AlphaZero():
                 
                     value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
                                                                 policy_loss_function, value_loss_function, normalize_policy,
-                                                                batch, batch_size, train_iterations, prog_alpha)
+                                                                batch, train_iterations, prog_alpha)
 
                     epoch_value_loss += value_loss
                     epoch_policy_loss += policy_loss
@@ -690,7 +707,7 @@ class AlphaZero():
 
                 value_loss, policy_loss, combined_loss = self.batch_update_weights(optimizer, scheduler,
                                                                 policy_loss_function, value_loss_function, normalize_policy,
-                                                                batch, batch_size, train_iterations, prog_alpha)
+                                                                batch, train_iterations, prog_alpha)
 
                 average_value_loss += value_loss
                 average_policy_loss += policy_loss
@@ -720,7 +737,7 @@ class AlphaZero():
 
         return	
 
-    def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, batch_size, train_iterations, alpha):
+    def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, train_iterations, alpha):
         '''updates network's weights based on loss values'''
 
         self.latest_network.get_model().train()
@@ -729,36 +746,42 @@ class AlphaZero():
         loss = 0.0
         value_loss, policy_loss, combined_loss = 0.0, 0.0, 0.0
 
-        states, targets = list(zip(*batch))
-        batch_input = torch.cat(states, 0)
-
         if self.latest_network.get_model().recurrent:
-            total_value_loss, total_policy_loss, total_combined_loss = 0.0, 0.0, 0.0
-            prog_value_loss, prog_policy_loss, prog_combined_loss = 0.0, 0.0, 0.0
-            if alpha != 1:
-                outputs, _ = self.latest_network.inference(batch_input, True, train_iterations)
-                total_value_loss, total_policy_loss, total_combined_loss = self.calculate_loss(outputs, targets, batch_size,
-                                                                                               policy_loss_function, value_loss_function, normalize_policy)
+            data_by_game = more_itertools.bucket(batch, key=lambda x: x[2]) 
+            for index in sorted(data_by_game):
+                batch_data = list(data_by_game[index])
+                batch_size = len(batch_data)
 
-            if alpha != 0:
-                outputs = self.get_output_for_prog_loss(batch_input, train_iterations)
-                prog_value_loss, prog_policy_loss, prog_combined_loss = self.calculate_loss(outputs, targets, batch_size,
-                                                                                            policy_loss_function, value_loss_function, normalize_policy)
-            
-            value_loss = (1 - alpha) * total_value_loss + alpha * prog_value_loss
-            policy_loss = (1 - alpha) * total_policy_loss + alpha * prog_policy_loss
-            combined_loss = (1 - alpha) * total_combined_loss + alpha * prog_combined_loss
+                states, targets, indexes = list(zip(*batch_data))
+                batch_input = torch.cat(states, 0)
 
-  
+                recurrent_iterations = train_iterations[index]
+                
+                total_value_loss, total_policy_loss, total_combined_loss = 0.0, 0.0, 0.0
+                prog_value_loss, prog_policy_loss, prog_combined_loss = 0.0, 0.0, 0.0
+                if alpha != 1:
+                    outputs, _ = self.latest_network.inference(batch_input, True, recurrent_iterations)
+                    total_value_loss, total_policy_loss, total_combined_loss = self.calculate_loss(outputs, targets, batch_size,
+                                                                                                policy_loss_function, value_loss_function, normalize_policy)
+
+                if alpha != 0:
+                    outputs = self.get_output_for_prog_loss(batch_input, train_iterations)
+                    prog_value_loss, prog_policy_loss, prog_combined_loss = self.calculate_loss(outputs, targets, batch_size,
+                                                                                                policy_loss_function, value_loss_function, normalize_policy)
+                
+                value_loss = (1 - alpha) * total_value_loss + alpha * prog_value_loss
+                policy_loss = (1 - alpha) * total_policy_loss + alpha * prog_policy_loss
+                combined_loss = (1 - alpha) * total_combined_loss + alpha * prog_combined_loss
+
+    
         else:
             outputs = self.latest_network.inference(batch_input, True, train_iterations)
             value_loss, policy_loss, combined_loss = self.calculate_loss(outputs, targets, batch_size,
-                                                                         policy_loss_function, value_loss_function, normalize_policy)
+                                                                        policy_loss_function, value_loss_function, normalize_policy)
         
         
         loss = combined_loss
 
-        # If you use pythorch's SGD optimizer, it already applies L2 weight regularization
         loss.backward()
         optimizer.step()
         scheduler.step()
@@ -788,9 +811,9 @@ class AlphaZero():
             value_loss += value_loss_function(predicted_value, target_value)
             
         # Policy loss is "normalized" by log(num_actions), since cross entropy's expected value grows with log(target_size)
-        num_actions = self.game.get_num_actions()
+        target_size = len(targets)
         if normalize_policy:
-            policy_loss /= math.log(num_actions)
+            policy_loss /= math.log(target_size)
 
         value_loss /= batch_size
         policy_loss /= batch_size

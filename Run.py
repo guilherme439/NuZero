@@ -197,8 +197,11 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config.yml"]
-                game = game_class(*game_args)
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_6.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_7.yml"] ]
+                
+                game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
@@ -207,7 +210,7 @@ def main():
 
                 ################################################
 
-                state_set = create_mirrored_state_set(game)
+                state_set = create_solo_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -270,8 +273,11 @@ def main():
             case 5: 
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
-                game = game_class(*game_args)
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_6.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_7.yml"] ]
+                
+                game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/test_search_config.ini"
@@ -300,7 +306,7 @@ def main():
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
                 alpha_zero.run()
 
 
@@ -367,8 +373,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = mcts_agent
-                p2_agent = random_agent
+                p1_agent = policy_agent
+                p2_agent = goal_agent
                 
                 ################################################
 
@@ -902,68 +908,8 @@ def main():
 
     elif args.debug is not None:
         match args.debug:
-            case 0:
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
-                game = game_class(*game_args)
-
-                tester = Tester(print=False)
-
-                #tester.random_vs_random(game, keep_state_history=True)
-                #random_index = np.random.choice(range(len(game.state_history)))
-                #state_image = game.state_history[random_index]
-                #game.debug_state_image(state_image)
-
-                #play_loop(10000, game_class, game_args, tester)
-
-            case 1: # default search config
-                search_config = Search_Config()
-
-                filepath = "Configs/Config_files/default_search_config.ini"
-                search_config.save(filepath)
-
-            case 2: # default alpha config
-                alpha_config = Training_Config()
-                filepath = "Configs/Config_files/default_alphazero_config.ini"
-                alpha_config.save(filepath)
-
-            case 3:
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/test_config.yml"]
-                game = game_class(*game_args)
-
-            case 4:
-                renderer = SCS_Renderer()
-                source_path = renderer.create_marker_from_scratch("sCraTCh", (4,7,12), "mechanized", color_rgb=(53, 84, 135))
-                renderer.add_border("red", source_path)
-                
-            case 5: # Debug 
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_super_soldiers.yml"]
-                game = game_class(*game_args)
-
-                # network options
-                net_name = "soldier_value_factor_continue"
-                model_iteration = 305
-                recurrent_iterations = 3
-
-                ##########################################################################
-
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
-                
-                game.set_simple_game_state(7, [1], [(0,1)], [2])
-
-                renderer = SCS_Renderer()
-                renderer.display_board(game)
-
-                state = game.generate_state_image()
-                
-                policy, value = nn.inference(state, False, 3)
-
-                print("\nSoftmax Policy:\n" + str(softmax(policy)) + "\n\n")
-                print("Value: " + str(value.item()) + "\n\n")
-
-            case 6: # Test initialization
+            
+            case 0: # Test initialization
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/randomized_config.yml"]
                 game = game_class(*game_args)
@@ -1018,55 +964,22 @@ def main():
 
                 print(all_weights)
 
+            case 1:
+                import more_itertools
 
-            case 7:
-                from torch import nn
-
-                cross_entropy = nn.CrossEntropyLoss()
-                size = 525
-                #print(math.log(size))
-                input_tensor = torch.rand(size)
-                #input_tensor = torch.zeros(size)
-                input_tensor[284] = 0
-
-                #target = torch.full((size,), fill_value=1, dtype=torch.float32)
-                #target[284] = 300
-                target = torch.rand(size)
-                target = nn.functional.softmax(target, dim=0)
-                #print(input_tensor)
-                #print(target)
-                loss = cross_entropy(input_tensor, target)
-                print(loss)
-
-            case 8:
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
-                game = game_class(*game_args)
-
-                start = (0,0)
-                destination = (3,3)
-                agent = GoalRushAgent(game)
-                distances, previous_nodes = agent.dijkstra(start)
-                #shortest_path = agent.shortest_path_to(destination, previous_nodes)
-
-                for node, items in distances.items():
-                    print("NODE: " + str(node) + "\n")
-                    print("Items: " + str(items))
-                    print("\n\n\n")
-
-            case 9:
-                cache = KeylessCache(2000)
-                size = (5,5,10)
-                tensor1 = torch.rand(size)
-                #tensor2 = torch.rand(size)
-                #copy_tensor = copy.deepcopy(tensor1)
-                hash1 = cache.hash(tensor1)
-                print(hash1)
-                #hash2 = cache.hash(tensor2)
-                #print(hash1 == hash2)
-                #print(hash1)
-                #print(hash2)
-
+                list_of_tuples = [("lala", (933,1), 1),
+                                  ("lawe", (20,0), 0),
+                                  ("weala", (13,1), 3),
+                                  ("lretla", (2243,2), 0),
+                                  ("lewrla", (234352,3), 1),
+                                  ("xladsala", (2003,7), 3),
+                                  ("lfaflefrewe", (2857233,2), 2)]
+                
+                s = more_itertools.bucket(list_of_tuples, key=lambda x: x[2]) 
+                for key in sorted(s):
+                    print(key)
+                    print(list(s[key]))
+                
 
                 
                 
