@@ -197,9 +197,9 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_6.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_7.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_11.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_8.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config.yml"], ]
                 
                 game = game_class(*game_args_list[0])
 
@@ -214,7 +214,7 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=False, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
@@ -438,16 +438,16 @@ def main():
                 ray.init()
 
                 num_testers = 10
-                num_games = 100
+                num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_8.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_10.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 3860
+                net_name = "new_solo"
+                model_iteration = 650
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -458,11 +458,11 @@ def main():
 
                 #---
                 min = 0
-                max = 500
-                step = 20
+                max = 15
+                step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = "8x8_0_to_500 iterations_solo_3860"
+                name = "10x10_0_to_15 iterations_new_solo_650"
                 figpath = "Graphs/" + name
                 print(figpath)
 

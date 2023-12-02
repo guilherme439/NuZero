@@ -160,6 +160,7 @@ class AlphaZero():
         plot_frequency = self.train_config.plotting["plot_frequency"]
         policy_split = self.train_config.plotting["policy_split"]
         value_split = self.train_config.plotting["value_split"]
+        combined_split = self.train_config.plotting["combined_split"]
         self.plot_loss = self.train_config.plotting["plot_loss"]
         self.plot_weights = self.train_config.plotting["plot_weights"]
 
@@ -380,6 +381,9 @@ class AlphaZero():
 
             if value_split and ((step+1) == value_split):
                 self.split_value_loss_graph()
+
+            if combined_split and ((step+1) == combined_split):
+                self.split_combined_loss_graph()
                     
             if save_frequency and (((step+1) % save_frequency) == 0):
                 save_path = self.model_folder_path + self.network_name + "_" + str(step+1) + "_model"
@@ -1049,6 +1053,20 @@ class AlphaZero():
             plt.clf()
 
         self.train_global_value_loss.clear()
+        print("Spliting done.")
+        return
+    
+    def split_cobmined_loss_graph(self):
+        print("\nSpliting cobmined loss graph...")
+        num_points = len(self.train_global_combined_loss)
+        if num_points > 1:
+            x = range(num_points)
+            plt.plot(x, self.train_global_combined_loss)
+            plt.title("Before split global value loss")
+            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
+            plt.clf()
+
+        self.train_global_combined_loss.clear()
         print("Spliting done.")
         return
 
