@@ -128,9 +128,9 @@ class AlphaZero():
         early_fill_games_per_type = self.train_config.running["early_fill_per_type"]
 
         training_steps = int(self.train_config.running["training_steps"])
-        num_game_types = len(self.game_args_list)
+        self.num_game_types = len(self.game_args_list)
         if running_mode == "asynchronous":
-            if num_game_types > 1:
+            if self.num_game_types > 1:
                 print("Asynchronous mode does not support training with multiple games.\nExiting.")
                 exit()
             update_delay = self.train_config.asynchronous["update_delay"]
@@ -266,12 +266,12 @@ class AlphaZero():
                                             self.network_storage, self.state_set)
 
         if running_mode == "sequential":
-            self.games_per_step = num_games_per_type_per_step * num_game_types
+            self.games_per_step = num_games_per_type_per_step * self.num_game_types
             print("\nRunning for " + str(training_steps) + " training steps with " + str(self.games_per_step) + " games in each step.")
         elif running_mode == "asynchronous":
             print("\nRunning for " + str(training_steps) + " training steps with " + str(update_delay) + "s of delay between each step.")
         if early_fill_games_per_type > 0:
-            total_early_fill = early_fill_games_per_type * num_game_types
+            total_early_fill = early_fill_games_per_type * self.num_game_types
             print("\n-Playing " + str(total_early_fill) + " initial games to fill the replay buffer.")
         if cache_choice != "disabled":
             print("\n-Using cache for inference results.")			  
@@ -453,7 +453,8 @@ class AlphaZero():
             search_config.exploration["epsilon_softmax_exploration"] = softmax_exploration
             search_config.exploration["epsilon_random_exploration"] = random_exploration
 
-        bar = PrintBar(text, self.games_per_step, 15)
+        total_games = self.num_game_types * num_games_per_type
+        bar = PrintBar(text, total_games, 15)
         for i in range(len(self.game_args_list)):
             game_args = self.game_args_list[i]
             iterations = pred_iterations_list[i]
@@ -491,7 +492,7 @@ class AlphaZero():
         end = time.time()
         total_time = end-start
         print("\n\nTotal time(m): " + format(total_time/60, '.4'))
-        print("Average time per game(s): " + format(total_time/self.games_per_step, '.4'))
+        print("Average time per game(s): " + format(total_time/total_games, '.4'))
 
         return
 
@@ -769,7 +770,7 @@ class AlphaZero():
                                                                                                 policy_loss_function, value_loss_function, normalize_policy)
 
                 if alpha != 0:
-                    outputs = self.get_output_for_prog_loss(batch_input, train_iterations)
+                    outputs = self.get_output_for_prog_loss(batch_input, recurrent_iterations)
                     prog_value_loss, prog_policy_loss, prog_combined_loss = self.calculate_loss(outputs, targets, batch_size,
                                                                                                 policy_loss_function, value_loss_function, normalize_policy)
                 
