@@ -1,0 +1,60 @@
+---
+Name: Important battle
+
+###
+Board_dimensions:
+  rows: 15
+  columns: 15
+
+
+###
+Turns: 7
+
+
+###
+Stacking_limit: 1
+
+
+###
+Units:
+  Soldier:
+    id: 1
+    attack: 1
+    defense: 1
+    movement: 2
+    image_path: "SCS/Images/soldier.png"
+
+
+###
+Reinforcements:
+  schedule:
+    p1: [ [], [], [], [], [], [], [], [] ]
+
+    p2: [ [1], [], [], [], [], [], [], [] ]
+
+  arrival:
+    method: Default  # Default | Detailed
+
+
+###
+Terrain:
+  Plains:
+    id: 1
+    attack_modifier: 1
+    defense_modifier: 1
+    cost: 1
+    image_path: SCS/Images/plains.jpg
+
+
+###
+Map:
+  creation_method: Randomized # Detailed | Randomized
+  distribution: [1]
+
+
+###
+Victory_points:
+  creation_method: Randomized
+  number_vp:
+    p1: 1
+    p2: 1
