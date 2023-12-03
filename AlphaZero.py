@@ -1102,17 +1102,9 @@ class AlphaZero():
             self.epochs_policy_loss = pickle.load(file)
             self.epochs_combined_loss = pickle.load(file)
 
-            self.tests_value_loss = pickle.load(file)
-            self.tests_policy_loss = pickle.load(file)
-            self.tests_combined_loss = pickle.load(file)
-
             self.train_global_value_loss = pickle.load(file)
             self.train_global_policy_loss = pickle.load(file)
             self.train_global_combined_loss = pickle.load(file)
-
-            self.test_global_value_loss = pickle.load(file)
-            self.test_global_policy_loss = pickle.load(file)
-            self.test_global_combined_loss = pickle.load(file)
 
             self.weight_size_max = pickle.load(file)
             self.weight_size_min = pickle.load(file)

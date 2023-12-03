@@ -138,26 +138,29 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
-                game = game_class(*game_args)
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_6.yml"], 
+                                   ["SCS/Game_configs/solo_soldier_config_7.yml"] ]
+                
+                game = game_class(*game_args_list[1])
 
-                trained_network_name = "unbalanced_new_config_continue"
-                continue_network_name = "unbalanced_new_config_continue" # new network can have the same name as the previous
-                use_same_configs = True
+                trained_network_name = "new_solo"
+                continue_network_name = "new_solo_continuation" # new network can have the same name as the previous
+                use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/local_training_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
                 new_search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_unbalanced_state_set(game)
+                state_set = create_solo_state_set(game)
 
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                continue_training(game_class, game_args, trained_network_name, continue_network_name, \
+                continue_training(game_class, game_args_list, trained_network_name, continue_network_name, \
                                   use_same_configs, new_train_config_path, new_search_config_path, state_set)
 
             case 2:
@@ -629,14 +632,14 @@ def main():
             case 6: # Graphs for sequence of games and iterations
                 ray.init()
 
-                game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config_4.yml")
 
                 num_testers = 5
                 num_games = 200
 
                 # network options
                 net_name = "new_solo"
-                model_iteration = 1250
+                model_iteration = 1350
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -1209,8 +1212,8 @@ def choose_trained_network():
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-def continue_training(game_class, game_args, trained_network_name, continue_network_name, use_same_configs, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
-    game = game_class(*game_args)
+def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
+    game = game_class(*game_args_list[0])
 
     game_folder_name = game.get_name()
     trained_model_folder_path = game_folder_name + "/models/" + trained_network_name + "/"
@@ -1243,7 +1246,7 @@ def continue_training(game_class, game_args, trained_network_name, continue_netw
         alpha_config_path = new_alpha_config_path
         search_config_path = new_search_config_path
 
-    alpha_zero = AlphaZero(game_class, game_args, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
+    alpha_zero = AlphaZero(game_class, game_args_list, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
     alpha_zero.run(starting_iteration)
 
 def load_trained_network(game, net_name, model_iteration):
