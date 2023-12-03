@@ -146,7 +146,6 @@ class AlphaZero():
 
         train_iterations = self.train_config.recurrent_training["train_iterations"]
         pred_iterations = self.train_config.recurrent_training["pred_iterations"]
-        test_iterations = self.train_config.recurrent_training["test_iterations"]
         prog_alpha = self.train_config.recurrent_training["alpha"]
 
         asynchronous_testing = self.train_config.testing["asynchronous_testing"]
@@ -156,6 +155,8 @@ class AlphaZero():
         mcts_test_frequency = self.train_config.testing["mcts_test_frequency"]
         num_policy_test_games = self.train_config.testing["num_policy_test_games"]
         num_mcts_test_games = self.train_config.testing["num_mcts_test_games"]
+        test_iterations = self.train_config.testing["test_iterations"]
+        test_game_index = self.train_config.testing["test_game_index"]
         
         plot_frequency = self.train_config.plotting["plot_frequency"]
         policy_split = self.train_config.plotting["policy_split"]
@@ -256,7 +257,7 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
-        test_game_args = self.game_args_list[0]
+        test_game_args = self.game_args_list[test_game_index]
         if asynchronous_testing:
             self.test_futures = []
             self.test_manager = RemoteTestManager.remote(self.game_class, test_game_args, num_testers,
@@ -1057,7 +1058,7 @@ class AlphaZero():
         print("Spliting done.")
         return
     
-    def split_cobmined_loss_graph(self):
+    def split_combined_loss_graph(self):
         print("\nSpliting cobmined loss graph...")
         num_points = len(self.train_global_combined_loss)
         if num_points > 1:

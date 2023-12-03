@@ -197,11 +197,11 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_11.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_8.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config.yml"], ]
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_4.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_5.yml"], 
+                                   ["SCS/Game_configs/solo_soldier_config_9.yml"] ]
                 
-                game = game_class(*game_args_list[0])
+                game = game_class(*game_args_list[1])
 
                 alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
@@ -214,14 +214,14 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=False, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 300, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.75)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
 
@@ -273,11 +273,11 @@ def main():
             case 5: 
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_6.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_7.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_4.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_5.yml"], 
+                                   ["SCS/Game_configs/solo_soldier_config_9.yml"] ]
                 
-                game = game_class(*game_args_list[0])
+                game = game_class(*game_args_list[1])
 
                 alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/test_search_config.ini"
@@ -290,14 +290,14 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.75)
+                        torch.nn.init.xavier_uniform_(param, gain=0.85)
                     
                 #'''
 
@@ -308,6 +308,8 @@ def main():
                 context = start_ray_local(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
                 alpha_zero.run()
+
+
 
 
             case 6:
@@ -357,13 +359,13 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_4.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 2000
-                recurrent_iterations = 30
+                net_name = "new_solo"
+                model_iteration = 1350
+                recurrent_iterations = 4
 
 
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -373,8 +375,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = policy_agent
-                p2_agent = goal_agent
+                p1_agent = random_agent
+                p2_agent = policy_agent
                 
                 ################################################
 
@@ -404,17 +406,17 @@ def main():
 
             case 2: # Statistics for multiple games
                 num_testers = 5
-                num_games = 100
+                num_games = 200
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/unbalanced_config.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_10.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "unbalanced_reduce_prog_2"
-                model_iteration = 280
-                recurrent_iterations = 30
+                net_name = "new_solo"
+                model_iteration = 1350
+                recurrent_iterations = 10
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -423,21 +425,85 @@ def main():
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless")
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 1000)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = goal_agent
-                p2_agent = mcts_agent
+                p1_agent = random_agent
+                p2_agent = policy_agent
 
                 ################################################
+                print("\n")
+                print(game_args)
+                print("Testing with " + str(recurrent_iterations) + " recurrent iterations.\n")
+
                 test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
 
+                time.sleep(1)
 
-            case 3: # Graphs for several recurrent iterations (extrapolation testing)
+            case 3: # Graphs for several network checkpoints
                 ray.init()
 
-                num_testers = 10
+                num_testers = 5
+                num_games = 200
+
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config_10.yml"]
+                game = game_class(*game_args)
+
+                recurrent_iterations = 10
+
+                # network options
+                net_name = "new_solo"
+
+
+                # Test Manager configuration
+                shared_storage = RemoteStorage.remote(window_size=1)
+                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                
+
+                #---
+                min = 650
+                max = 1350
+                step = 50
+                network_iterations_list = range(min,max+1,step)
+                
+                name = net_name + "_10x10_" + str(min) + "-" + str(max) + "_10_iterarions"
+                figpath = "Graphs/networks/" + name
+                print(figpath)
+
+                ################################################
+
+                #mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 500)
+                #policy_agent = PolicyAgent(nn, recurrent_iterations)
+                #random_agent = RandomAgent()
+                #goal_agent = GoalRushAgent()
+
+
+                p1_wr_list = []
+                p2_wr_list = []
+                for net_iter in network_iterations_list:
+                    print("\n\n\nTesting network n." + str(net_iter) + "\n")
+                    nn, search_config = load_trained_network(game, net_name, net_iter)
+                    shared_storage.store.remote(nn)
+                    p1_agent = RandomAgent()
+                    p2_agent = PolicyAgent(nn, recurrent_iterations)
+                    p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
+                    p1_wr_list.append(p1_wr)
+                    p2_wr_list.append(p2_wr)
+
+
+                plt.plot(network_iterations_list, p1_wr_list, label = "P1")
+                plt.plot(network_iterations_list, p2_wr_list, label = "P2")
+                plt.title(name)
+                plt.legend()
+                plt.savefig(figpath)
+                plt.clf()
+
+            case 4: # Graphs for several recurrent iterations (extrapolation testing)
+                ray.init()
+
+                num_testers = 5
                 num_games = 200
 
                 game_class = SCS_Game
@@ -447,7 +513,7 @@ def main():
 
                 # network options
                 net_name = "new_solo"
-                model_iteration = 650
+                model_iteration = 1350
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -458,12 +524,12 @@ def main():
 
                 #---
                 min = 0
-                max = 15
+                max = 20
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = "10x10_0_to_15 iterations_new_solo_650"
-                figpath = "Graphs/" + name
+                name = "10x10_" + str(min) + "-" + str(max) + "-iterations_" + net_name + "_" + str(model_iteration)
+                figpath = "Graphs/iterations/" + name
                 print(figpath)
 
                 ################################################
@@ -492,74 +558,7 @@ def main():
                 plt.savefig(figpath)
                 plt.clf()
 
-            case 4: # Graphs for several network checkpoints
-                #TODO: Not implemented
-                print("\nnot impelemented yet!!!")
-                ray.init()
-
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_larger.yml"
-                game_args = [game_config]
-                
-                config_name = game_config[:-4]
-                config_name = config_name[17:]
-
-
-                num_testers = 5
-                num_games = 100
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_larger.yml"
-                game_args = [game_config]
-                game = game_class(*game_args)
-
-                # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 450
-                recurrent_iterations = 30
-
-                # Test Manager configuration
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
-                shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
-                
-                # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
-                policy_agent = PolicyAgent(nn, recurrent_iterations)
-                random_agent = RandomAgent()
-                p1_agent = random_agent
-                p2_agent = policy_agent
-                
-
-                #---
-                min = 0
-                max = 100
-                step = 1
-                recurrent_iterations_list = range(min,max+1,step)
-                
-                name_input = input("Name for the graph: ")
-                figpath = "Graphs/" + name_input
-                print(figpath)
-
-                ################################################
-
-                p1_wr_list = []
-                p2_wr_list = []
-                for rec_iter in recurrent_iterations_list:
-                    print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
-                    p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
-                    p1_wr_list.append(p1_wr)
-                    p2_wr_list.append(p2_wr)
-
-
-                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
-                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
-                plt.title(method.upper() + " -> Win rates as Player " + AI_player)
-                plt.legend()
-                plt.savefig(figpath)
-                plt.clf()
+            
 
             case 5: # Graphs for several games (can be used to compared performance with board size for example)
                 ray.init()
@@ -570,9 +569,9 @@ def main():
                 num_games = 200
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 3860
-                recurrent_iterations = 30
+                net_name = "new_solo"
+                model_iteration = 1250
+                recurrent_iterations = 7
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -581,17 +580,22 @@ def main():
                 
                 # Game settings
                 game_class = SCS_Game
-                configs_list = ["SCS/Game_configs/solo_soldier_config.yml",
+                configs_list = ["SCS/Game_configs/solo_soldier_config_5.yml",
                                 "SCS/Game_configs/solo_soldier_config_6.yml",
                                 "SCS/Game_configs/solo_soldier_config_7.yml",
                                 "SCS/Game_configs/solo_soldier_config_8.yml",
                                 "SCS/Game_configs/solo_soldier_config_9.yml",
-                                "SCS/Game_configs/solo_soldier_config_10.yml"]
+                                "SCS/Game_configs/solo_soldier_config_10.yml",
+                                "SCS/Game_configs/solo_soldier_config_11.yml",
+                                "SCS/Game_configs/solo_soldier_config_12.yml",
+                                "SCS/Game_configs/solo_soldier_config_13.yml",
+                                "SCS/Game_configs/solo_soldier_config_14.yml",
+                                "SCS/Game_configs/solo_soldier_config_15.yml"]
                             
-
                 
-                name = "5x5_to_10x10_30_iterations_solo_3860"
-                figpath = "Graphs/" + name
+                
+                name = "5x5_to_15x15_7-iterations_" + net_name + "_" + str(model_iteration)
+                figpath = "Graphs/sizes/" + name
                 print(figpath)
 
                 ################################################
@@ -622,133 +626,46 @@ def main():
                 plt.savefig(figpath)
                 plt.clf()
 
-            case 6: # Untrained network
-                num_testers = 5
-                num_games = 100
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config.yml"
-                game_args = [game_config]
-                game = game_class(*game_args)
-
-                # network options
-                recurrent_iterations = 30
-
-                # Test Manager configuration
-                in_channels = game.get_state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                nn = Torch_NN(model)
-                shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
-
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
-                search_config = Search_Config()
-                search_config.load(search_config_path)
-                
-                # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
-                policy_agent = PolicyAgent(nn, recurrent_iterations)
-                random_agent = RandomAgent()
-                goal_agent = GoalRushAgent(game)
-                p1_agent = goal_agent
-                p2_agent = mcts_agent
-
-                ################################################
-                test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
-
-            case 7:
-                rendering_mode = "interactive"  # passive | interactive
-
-                game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config.yml"]
-                game = game_class(*game_args)
-
-                # network options
-                recurrent_iterations = 30
-
-
-                in_channels = game.get_state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                nn = Torch_NN(model)
-
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
-                search_config = Search_Config()
-                search_config.load(search_config_path)
-
-                
-                # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "per_game")
-                policy_agent = PolicyAgent(nn, recurrent_iterations)
-                random_agent = RandomAgent()
-                goal_agent = GoalRushAgent(game)
-                p1_agent = mcts_agent
-                p2_agent = random_agent
-                
-                ################################################
-
-                
-                if rendering_mode == "passive":
-                    tester = Tester(render=True)
-                elif rendering_mode == "interactive":
-                    tester = Tester(print=True)
-
-                
-                winner, _ = tester.Test_using_agents(game, p1_agent, p2_agent, keep_state_history=False)
-                
-
-                if winner == 0:
-                    winner_text = "Draw!"
-                else:
-                    winner_text = "Player " + str(winner) + " won!"
-                
-                print("\n\nLength: " + str(game.get_length()) + "\n")
-                print(winner_text)
-
-                
-                
-                if rendering_mode == "interactive":
-                    time.sleep(0.5)
-
-                    renderer = SCS_Renderer()
-                    renderer.analyse(game)
-
-            case 8: # Graphs for several recurrent iterations (extrapolation testing)
+            case 6: # Graphs for sequence of games and iterations
                 ray.init()
 
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
+
                 num_testers = 5
-                num_games = 250
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_large.yml"
-                game_args = [game_config]
-                game = game_class(*game_args)
-                
-                config_name = game_config[:-4]
-                config_name = config_name[17:]
-
+                num_games = 200
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 1000
+                net_name = "new_solo"
+                model_iteration = 1250
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                shared_storage.store.remote(nn) 
                 
-
+                # Game settings
+                game_class = SCS_Game
+                configs_list = ["SCS/Game_configs/solo_soldier_config_4.yml",
+                                "SCS/Game_configs/solo_soldier_config_5.yml",
+                                "SCS/Game_configs/solo_soldier_config_6.yml",
+                                "SCS/Game_configs/solo_soldier_config_7.yml",
+                                "SCS/Game_configs/solo_soldier_config_8.yml",
+                                "SCS/Game_configs/solo_soldier_config_9.yml",
+                                "SCS/Game_configs/solo_soldier_config_10.yml",
+                                "SCS/Game_configs/solo_soldier_config_11.yml",
+                                "SCS/Game_configs/solo_soldier_config_12.yml",
+                                "SCS/Game_configs/solo_soldier_config_13.yml",
+                                "SCS/Game_configs/solo_soldier_config_14.yml",
+                                "SCS/Game_configs/solo_soldier_config_15.yml"]
+                            
                 #---
-                min = 30
-                max = 40
-                step = 2
-                recurrent_iterations_list = range(min,max+1,step)
+                min = 4
+                max = 15
+                step = 1
+                recurrent_iterations_list = list(range(min,max+1,step))
                 
-                name_input = input("Name for the graph: ")
-                figpath = "Graphs/" + name_input
+                name = str(min) + "-" + str(max) + "_increasing_size_" + net_name + "_" + str(model_iteration)
+                figpath = "Graphs/" + name
                 print(figpath)
 
                 ################################################
@@ -758,148 +675,31 @@ def main():
                 #random_agent = RandomAgent()
                 #goal_agent = GoalRushAgent()
 
+                
 
                 p1_wr_list = []
                 p2_wr_list = []
-                for rec_iter in recurrent_iterations_list:
+                for i in range(len(configs_list)):
+                    game_args = [configs_list[i]]
+                    rec_iter = recurrent_iterations_list[i]
+                    test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                     p1_agent = RandomAgent()
                     p2_agent = PolicyAgent(nn, rec_iter)
-                    print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                     p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                     p1_wr_list.append(p1_wr)
                     p2_wr_list.append(p2_wr)
 
 
-                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
-                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
-                plt.title(name_input)
+                plt.plot(range(len(configs_list)), p1_wr_list, label = "P1")
+                plt.plot(range(len(configs_list)), p2_wr_list, label = "P2")
+                plt.title(name)
                 plt.legend()
                 plt.savefig(figpath)
                 plt.clf()
 
-            case 9: # Graphs for several recurrent iterations (extrapolation testing)
-                ray.init()
 
-                num_testers = 5
-                num_games = 250
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_large.yml"
-                game_args = [game_config]
-                game = game_class(*game_args)
+            
                 
-                config_name = game_config[:-4]
-                config_name = config_name[17:]
-
-
-                # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 1000
-
-                # Test Manager configuration
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
-                shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
-                
-
-                #---
-                min = 30
-                max = 40
-                step = 2
-                recurrent_iterations_list = range(min,max+1,step)
-                
-                name_input = input("Name for the graph: ")
-                figpath = "Graphs/" + name_input
-                print(figpath)
-
-                ################################################
-
-                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "per_game")
-                #policy_agent = PolicyAgent(nn, rec_iter)
-                #random_agent = RandomAgent()
-                #goal_agent = GoalRushAgent()
-
-
-                p1_wr_list = []
-                p2_wr_list = []
-                for rec_iter in recurrent_iterations_list:
-                    p1_agent = RandomAgent()
-                    p2_agent = PolicyAgent(nn, rec_iter)
-                    print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
-                    p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
-                    p1_wr_list.append(p1_wr)
-                    p2_wr_list.append(p2_wr)
-
-
-                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
-                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
-                plt.title(name_input)
-                plt.legend()
-                plt.savefig(figpath)
-                plt.clf()
-
-            case 10: # Graphs for several recurrent iterations (extrapolation testing)
-                ray.init()
-
-                num_testers = 5
-                num_games = 250
-
-                game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_large.yml"
-                game_args = [game_config]
-                game = game_class(*game_args)
-                
-                config_name = game_config[:-4]
-                config_name = config_name[17:]
-
-
-                # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 1000
-
-                # Test Manager configuration
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
-                shared_storage = RemoteStorage.remote(window_size=1)
-                shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
-                
-
-                #---
-                min = 30
-                max = 40
-                step = 2
-                recurrent_iterations_list = range(min,max+1,step)
-                
-                name_input = input("Name for the graph: ")
-                figpath = "Graphs/" + name_input
-                print(figpath)
-
-                ################################################
-
-                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "per_game")
-                #policy_agent = PolicyAgent(nn, rec_iter)
-                #random_agent = RandomAgent()
-                #goal_agent = GoalRushAgent()
-
-
-                p1_wr_list = []
-                p2_wr_list = []
-                for rec_iter in recurrent_iterations_list:
-                    p1_agent = RandomAgent()
-                    p2_agent = PolicyAgent(nn, rec_iter)
-                    print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
-                    p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
-                    p1_wr_list.append(p1_wr)
-                    p2_wr_list.append(p2_wr)
-
-
-                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
-                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
-                plt.title(name_input)
-                plt.legend()
-                plt.savefig(figpath)
-                plt.clf()
 
             case _:
                 print("Unknown testing preset.")

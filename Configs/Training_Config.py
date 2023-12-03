@@ -50,6 +50,8 @@ class Training_Config(Config):
         mcts_test_frequency = 80,
         num_policy_test_games = 100,
         num_mcts_test_games = 100,
+        test_iterations = 4,
+        test_game_index = 1
         )
 
 
@@ -66,9 +68,8 @@ class Training_Config(Config):
 
         self.recurrent_training = dict \
         (
-        num_train_iterations = [4],
-        num_pred_iterations = [4],
-        num_test_iterations = 4,
+        train_iterations = [4],
+        pred_iterations = [4],
         alpha = 0.5
         )
         

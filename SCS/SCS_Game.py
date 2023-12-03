@@ -555,7 +555,7 @@ class SCS_Game(Game):
         self.player_history.clear()
         self.action_history.clear()
 
-
+        self.update_game_env()
         return
 
     def update_game_env(self):
@@ -1562,8 +1562,8 @@ class SCS_Game(Game):
                         p2_vp = values["number_vp"]["p2"]
                         self.victory_points = [[],[]]        
 
-                        p1_available_tiles = self.rows * self.p1_last_index+1
-                        p2_available_tiles = self.rows * (self.columns - (self.p2_first_index+1))
+                        p1_available_tiles = self.rows * (self.p1_last_index+1)
+                        p2_available_tiles = self.rows * ((self.columns - (self.p2_first_index+1)) + 1)
                         if p1_vp > p1_available_tiles:
                             print("Game config has too many victory points for p1.")
                             exit()
