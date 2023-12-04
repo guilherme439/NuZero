@@ -213,6 +213,7 @@ def main():
 
                 ################################################
 
+                print(game.string_representation())
                 state_set = create_solo_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
@@ -412,14 +413,14 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_10.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_15.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "new_solo"
-                model_iteration = 1350
-                recurrent_iterations = 10
+                net_name = "new_solo_2"
+                model_iteration = 420
+                recurrent_iterations = 15
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -437,6 +438,7 @@ def main():
 
                 ################################################
                 print("\n")
+                print(net_name)
                 print(game_args)
                 print("Testing with " + str(recurrent_iterations) + " recurrent iterations.\n")
 
@@ -510,13 +512,13 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_10.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_15.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
-                net_name = "new_solo"
-                model_iteration = 1350
+                net_name = "new_solo_2"
+                model_iteration = 420
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -527,11 +529,11 @@ def main():
 
                 #---
                 min = 0
-                max = 20
+                max = 25
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = "10x10_" + str(min) + "-" + str(max) + "-iterations_" + net_name + "_" + str(model_iteration)
+                name = net_name + "_" + str(model_iteration) + "_15x15_" + str(min) + "-" + str(max) + "-iterations"
                 figpath = "Graphs/iterations/" + name
                 print(figpath)
 
@@ -638,8 +640,8 @@ def main():
                 num_games = 200
 
                 # network options
-                net_name = "new_solo"
-                model_iteration = 1350
+                net_name = "new_solo_2"
+                model_iteration = 420
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -659,16 +661,21 @@ def main():
                                 "SCS/Game_configs/solo_soldier_config_12.yml",
                                 "SCS/Game_configs/solo_soldier_config_13.yml",
                                 "SCS/Game_configs/solo_soldier_config_14.yml",
-                                "SCS/Game_configs/solo_soldier_config_15.yml"]
+                                "SCS/Game_configs/solo_soldier_config_15.yml",
+                                "SCS/Game_configs/solo_soldier_config_16.yml",
+                                "SCS/Game_configs/solo_soldier_config_17.yml",
+                                "SCS/Game_configs/solo_soldier_config_18.yml",
+                                "SCS/Game_configs/solo_soldier_config_19.yml",
+                                "SCS/Game_configs/solo_soldier_config_20.yml"]
                             
                 #---
-                min = 4
-                max = 15
+                min = 3
+                max = 19
                 step = 1
                 recurrent_iterations_list = list(range(min,max+1,step))
                 
                 name = str(min) + "-" + str(max) + "_increasing_size_" + net_name + "_" + str(model_iteration)
-                figpath = "Graphs/" + name
+                figpath = "Graphs/comb/" + name
                 print(figpath)
 
                 ################################################
@@ -683,6 +690,7 @@ def main():
                 p1_wr_list = []
                 p2_wr_list = []
                 for i in range(len(configs_list)):
+                    print("\ni: " + str(i))
                     game_args = [configs_list[i]]
                     rec_iter = recurrent_iterations_list[i]
                     test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
@@ -899,7 +907,7 @@ def create_solo_state_set(game):
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(7, [1], [(3,0)], [2])
+    game.set_simple_game_state(7, [1], [(0,3)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
@@ -909,17 +917,17 @@ def create_solo_state_set(game):
     #renderer.display_board(game)
 
     game.reset_env()
-    game.set_simple_game_state(7, [1], [(4,2)], [2])
-    state_set.append(game.generate_state_image())
-    #renderer.display_board(game)
-
-    game.reset_env()
-    game.set_simple_game_state(7, [1], [(0,3)], [2])
+    game.set_simple_game_state(7, [1], [(2,3)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
     game.reset_env()
     game.set_simple_game_state(7, [1], [(2,4)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(7, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
     
