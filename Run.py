@@ -512,13 +512,13 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_15.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_5.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
                 net_name = "new_solo_2"
-                model_iteration = 420
+                model_iteration = 440
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -529,11 +529,11 @@ def main():
 
                 #---
                 min = 0
-                max = 25
+                max = 10
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = net_name + "_" + str(model_iteration) + "_15x15_" + str(min) + "-" + str(max) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_5x5_" + str(min) + "-" + str(max) + "-iterations"
                 figpath = "Graphs/iterations/" + name
                 print(figpath)
 
