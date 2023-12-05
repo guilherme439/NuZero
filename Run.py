@@ -96,12 +96,12 @@ def main():
 
     print("CUDA: " + str(torch.cuda.is_available()))
 
-               
-    if args.training_preset is not None:
-        log_to_driver = False
-        if args.log_driver:
-            log_to_driver = True
+    log_to_driver = False
+    if args.log_driver:
 
+        log_to_driver = True          
+    if args.training_preset is not None:
+        
         ##############################################################################################################
         # ---------------------------------------------------------------------------------------------------------- #
         # ------------------------------------------   TRAINING-PRESETS   ------------------------------------------ #
@@ -138,14 +138,14 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_6.yml"], 
-                                   ["SCS/Game_configs/solo_soldier_config_7.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_4.yml"],
+                                   ["SCS/Game_configs/solo_soldier_config_5.yml"], 
+                                   ["SCS/Game_configs/solo_soldier_config_9.yml"] ]
                 
                 game = game_class(*game_args_list[1])
 
-                trained_network_name = "new_solo"
-                continue_network_name = "new_solo_continuation" # new network can have the same name as the previous
+                trained_network_name = "new_solo_2"
+                continue_network_name = "new_solo_2_c" # new network can have the same name as the previous
                 use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
@@ -508,17 +508,17 @@ def main():
             case 4: # Graphs for several recurrent iterations (extrapolation testing)
                 start_ray_local(log_to_driver)
 
-                num_testers = 8
+                num_testers = 5
                 num_games = 100
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_11.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
-                net_name = "unbalanced_reduce_prog_2"
-                model_iteration = 360
+                net_name = "new_solo_2"
+                model_iteration = 640
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -529,11 +529,11 @@ def main():
 
                 #---
                 min = 0
-                max = 36
-                step = 3
+                max = 15
+                step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = net_name + "_" + str(model_iteration) + "_5x5_" + str(min) + "-" + str(max) + "-iterations_p1"
+                name = net_name + "_" + str(model_iteration) + "_11x11_" + str(min) + "-" + str(max) + "-iterations"
                 figpath = "Graphs/iterations/" + name
                 print(figpath)
 
@@ -548,8 +548,8 @@ def main():
                 p1_wr_list = []
                 p2_wr_list = []
                 for rec_iter in recurrent_iterations_list:
-                    p1_agent = MctsAgent(search_config, nn, rec_iter, "keyless", 4000)
-                    p2_agent = GoalRushAgent(game)
+                    p1_agent = RandomAgent()
+                    p2_agent = PolicyAgent(nn, rec_iter)
                     print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                     p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                     p1_wr_list.append(p1_wr)
