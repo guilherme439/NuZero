@@ -410,17 +410,17 @@ def main():
 
             case 2: # Statistics for multiple games
                 num_testers = 5
-                num_games = 200
+                num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_15.yml"
+                game_config = "SCS/Game_configs/unbalanced_config.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "new_solo_2"
-                model_iteration = 420
-                recurrent_iterations = 15
+                net_name = "unbalanced_reduce_prog_2"
+                model_iteration = 360
+                recurrent_iterations = 30
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -433,8 +433,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = random_agent
-                p2_agent = policy_agent
+                p1_agent = mcts_agent
+                p2_agent = goal_agent
 
                 ################################################
                 print("\n")
@@ -512,13 +512,13 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_5.yml"]
+                game_args = ["SCS/Game_configs/unbalanced_config.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
-                net_name = "new_solo_2"
-                model_iteration = 440
+                net_name = "unbalanced_reduce_prog_2"
+                model_iteration = 360
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -529,7 +529,7 @@ def main():
 
                 #---
                 min = 0
-                max = 10
+                max = 40
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
@@ -539,17 +539,17 @@ def main():
 
                 ################################################
 
-                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless")
+                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless",1000)
                 #policy_agent = PolicyAgent(nn, rec_iter)
                 #random_agent = RandomAgent()
-                #goal_agent = GoalRushAgent()
+                #goal_agent = GoalRushAgent(game)
 
 
                 p1_wr_list = []
                 p2_wr_list = []
                 for rec_iter in recurrent_iterations_list:
-                    p1_agent = RandomAgent()
-                    p2_agent = PolicyAgent(nn, rec_iter)
+                    p1_agent = MctsAgent(search_config, nn, rec_iter, "keyless", 1000)
+                    p2_agent = GoalRushAgent(game)
                     print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                     p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                     p1_wr_list.append(p1_wr)
@@ -563,6 +563,7 @@ def main():
                 plt.savefig(figpath)
                 plt.clf()
 
+                print("done!")
             
 
             case 5: # Graphs for several games (can be used to compared performance with board size for example)
@@ -637,11 +638,11 @@ def main():
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_4.yml")
 
                 num_testers = 5
-                num_games = 200
+                num_games = 350
 
                 # network options
                 net_name = "new_solo_2"
-                model_iteration = 420
+                model_iteration = 460
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -708,9 +709,8 @@ def main():
                 plt.savefig(figpath)
                 plt.clf()
 
+                print("done!")
 
-            
-                
 
             case _:
                 print("Unknown testing preset.")
