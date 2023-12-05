@@ -512,7 +512,7 @@ def main():
                 num_games = 100
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_11.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_13.yml"]
                 game = game_class(*game_args)
 
 
@@ -529,11 +529,11 @@ def main():
 
                 #---
                 min = 0
-                max = 15
+                max = 20
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = net_name + "_" + str(model_iteration) + "_11x11_" + str(min) + "-" + str(max) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_13x13_" + str(min) + "-" + str(max) + "-iterations"
                 figpath = "Graphs/iterations/" + name
                 print(figpath)
 
@@ -569,15 +569,15 @@ def main():
             case 5: # Graphs for several games (can be used to compared performance with board size for example)
                 ray.init()
 
-                game = SCS_Game("SCS/Game_configs/solo_soldier_config.yml")
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config_4.yml")
 
                 num_testers = 5
-                num_games = 200
+                num_games = 350
 
                 # network options
-                net_name = "new_solo"
-                model_iteration = 1250
-                recurrent_iterations = 7
+                net_name = "new_solo_2"
+                model_iteration = 640
+                recurrent_iterations = 8
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -586,7 +586,8 @@ def main():
                 
                 # Game settings
                 game_class = SCS_Game
-                configs_list = ["SCS/Game_configs/solo_soldier_config_5.yml",
+                configs_list = ["SCS/Game_configs/solo_soldier_config_4.yml",
+                                "SCS/Game_configs/solo_soldier_config_5.yml",
                                 "SCS/Game_configs/solo_soldier_config_6.yml",
                                 "SCS/Game_configs/solo_soldier_config_7.yml",
                                 "SCS/Game_configs/solo_soldier_config_8.yml",
@@ -596,11 +597,17 @@ def main():
                                 "SCS/Game_configs/solo_soldier_config_12.yml",
                                 "SCS/Game_configs/solo_soldier_config_13.yml",
                                 "SCS/Game_configs/solo_soldier_config_14.yml",
-                                "SCS/Game_configs/solo_soldier_config_15.yml"]
+                                "SCS/Game_configs/solo_soldier_config_15.yml",
+                                "SCS/Game_configs/solo_soldier_config_16.yml",
+                                "SCS/Game_configs/solo_soldier_config_17.yml",
+                                "SCS/Game_configs/solo_soldier_config_18.yml",
+                                "SCS/Game_configs/solo_soldier_config_19.yml",
+                                "SCS/Game_configs/solo_soldier_config_20.yml",
+                                "SCS/Game_configs/solo_soldier_config_30.yml"]
                             
                 
                 
-                name = "5x5_to_15x15_7-iterations_" + net_name + "_" + str(model_iteration)
+                name = "4x4_to_30x30_8-iterations_" + net_name + "_" + str(model_iteration)
                 figpath = "Graphs/sizes/" + name
                 print(figpath)
 
@@ -617,6 +624,7 @@ def main():
                 p2_wr_list = []
                 for config in configs_list:
                     game_args = [config]
+                    print("\n" + str(game_args))
                     test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                     p1_agent = RandomAgent()
                     p2_agent = PolicyAgent(nn, recurrent_iterations)
