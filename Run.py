@@ -533,7 +533,7 @@ def main():
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = net_name + "_" + str(model_iteration) + "_5x5_" + str(min) + "-" + str(max) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_5x5_" + str(min) + "-" + str(max) + "-iterations_p1"
                 figpath = "Graphs/iterations/" + name
                 print(figpath)
 
