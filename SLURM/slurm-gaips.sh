@@ -14,7 +14,8 @@
 
 
 CUDA_VISIBLE_DEVICES=-1 python Run.py --training-preset 5 --name "not_a_name"
-# python Run.py --testing-preset 3 
+#CUDA_VISIBLE_DEVICES=-1 python Run.py --training-preset 1
+#CUDA_VISIBLE_DEVICES=-1 python Run.py --testing-preset 3 
 
 
 

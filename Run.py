@@ -429,11 +429,11 @@ def main():
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 1000)
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 2000)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = mcts_agent
+                p1_agent = policy_agent
                 p2_agent = goal_agent
 
                 ################################################
@@ -508,8 +508,8 @@ def main():
             case 4: # Graphs for several recurrent iterations (extrapolation testing)
                 ray.init()
 
-                num_testers = 5
-                num_games = 200
+                num_testers = 8
+                num_games = 100
 
                 game_class = SCS_Game
                 game_args = ["SCS/Game_configs/unbalanced_config.yml"]
@@ -529,8 +529,8 @@ def main():
 
                 #---
                 min = 0
-                max = 40
-                step = 1
+                max = 36
+                step = 3
                 recurrent_iterations_list = range(min,max+1,step)
                 
                 name = net_name + "_" + str(model_iteration) + "_5x5_" + str(min) + "-" + str(max) + "-iterations_p1"
