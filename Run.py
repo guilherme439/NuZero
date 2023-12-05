@@ -548,7 +548,7 @@ def main():
                 p1_wr_list = []
                 p2_wr_list = []
                 for rec_iter in recurrent_iterations_list:
-                    p1_agent = MctsAgent(search_config, nn, rec_iter, "keyless", 1000)
+                    p1_agent = MctsAgent(search_config, nn, rec_iter, "keyless", 2000)
                     p2_agent = GoalRushAgent(game)
                     print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                     p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
