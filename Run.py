@@ -409,18 +409,18 @@ def main():
                     renderer.analyse(game)
 
             case 2: # Statistics for multiple games
-                num_testers = 5
+                num_testers = 3
                 num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/unbalanced_config.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_12.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "unbalanced_reduce_prog_2"
-                model_iteration = 360
-                recurrent_iterations = 30
+                net_name = "new_solo_2_c"
+                model_iteration = 720
+                recurrent_iterations = 12
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -429,12 +429,12 @@ def main():
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 2000)
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 1000)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = policy_agent
-                p2_agent = goal_agent
+                p1_agent = random_agent
+                p2_agent = policy_agent
 
                 ################################################
                 print("\n")
@@ -508,17 +508,17 @@ def main():
             case 4: # Graphs for several recurrent iterations (extrapolation testing)
                 start_ray_local(log_to_driver)
 
-                num_testers = 5
+                num_testers = 3
                 num_games = 100
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_13.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_10.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
-                net_name = "new_solo_2"
-                model_iteration = 640
+                net_name = "new_solo_continuation"
+                model_iteration = 2020
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -529,7 +529,7 @@ def main():
 
                 #---
                 min = 0
-                max = 20
+                max = 25
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
@@ -575,9 +575,9 @@ def main():
                 num_games = 350
 
                 # network options
-                net_name = "new_solo_2"
-                model_iteration = 640
-                recurrent_iterations = 8
+                net_name = "new_solo_continuation"
+                model_iteration = 2020
+                recurrent_iterations = 7
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -607,7 +607,7 @@ def main():
                             
                 
                 
-                name = "4x4_to_30x30_8-iterations_" + net_name + "_" + str(model_iteration)
+                name = net_name + "_" + str(model_iteration) + "_4x4_to_30x30_" + str(recurrent_iterations) + "-iterations"
                 figpath = "Graphs/sizes/" + name
                 print(figpath)
 
@@ -643,14 +643,14 @@ def main():
             case 6: # Graphs for sequence of games and iterations
                 ray.init()
 
-                game = SCS_Game("SCS/Game_configs/solo_soldier_config_4.yml")
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
-                num_testers = 5
+                num_testers = 7
                 num_games = 350
 
                 # network options
-                net_name = "new_solo_2"
-                model_iteration = 460
+                net_name = "new_solo_2_c"
+                model_iteration = 720
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
