@@ -643,8 +643,8 @@ def main():
 
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
-                num_testers = 5
-                num_games = 350
+                num_testers = 4
+                num_games = 250
 
                 # network options
                 net_name = "new_solo_2_c"
