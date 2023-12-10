@@ -202,7 +202,7 @@ def main():
                 game_class = SCS_Game
                 game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"] ]
                 
-                game = game_class(*game_args_list[1])
+                game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
