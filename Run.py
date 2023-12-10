@@ -200,9 +200,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_4.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_5.yml"], 
-                                   ["SCS/Game_configs/solo_soldier_config_9.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"] ]
                 
                 game = game_class(*game_args_list[1])
 
@@ -214,11 +212,11 @@ def main():
                 ################################################
 
                 print(game.string_representation())
-                state_set = create_solo_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 300, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
@@ -413,14 +411,14 @@ def main():
                 num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_12.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_13.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
                 net_name = "new_solo_2_c"
-                model_iteration = 720
-                recurrent_iterations = 12
+                model_iteration = 880
+                recurrent_iterations = 13
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -508,17 +506,17 @@ def main():
             case 4: # Graphs for several recurrent iterations (extrapolation testing)
                 start_ray_local(log_to_driver)
 
-                num_testers = 3
-                num_games = 100
+                num_testers = 5
+                num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_10.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_13.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
-                net_name = "new_solo_continuation"
-                model_iteration = 2020
+                net_name = "new_solo_2_c"
+                model_iteration = 880
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -529,11 +527,11 @@ def main():
 
                 #---
                 min = 0
-                max = 25
+                max = 20
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
-                name = net_name + "_" + str(model_iteration) + "_13x13_" + str(min) + "-" + str(max) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_15x15_" + str(min) + "-" + str(max) + "-iterations"
                 figpath = "Graphs/iterations/" + name
                 print(figpath)
 
@@ -575,9 +573,9 @@ def main():
                 num_games = 350
 
                 # network options
-                net_name = "new_solo_continuation"
-                model_iteration = 2020
-                recurrent_iterations = 7
+                net_name = "new_solo_2_c"
+                model_iteration = 1380
+                recurrent_iterations = 8
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -645,12 +643,12 @@ def main():
 
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
-                num_testers = 7
+                num_testers = 5
                 num_games = 350
 
                 # network options
                 net_name = "new_solo_2_c"
-                model_iteration = 720
+                model_iteration = 2220
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -694,12 +692,12 @@ def main():
                 #random_agent = RandomAgent()
                 #goal_agent = GoalRushAgent()
 
-                
+                start = 4
 
                 p1_wr_list = []
                 p2_wr_list = []
                 for i in range(len(configs_list)):
-                    print("\ni: " + str(i))
+                    print("\ni: " + str(start+i))
                     game_args = [configs_list[i]]
                     rec_iter = recurrent_iterations_list[i]
                     test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
@@ -710,8 +708,8 @@ def main():
                     p2_wr_list.append(p2_wr)
 
 
-                plt.plot(range(len(configs_list)), p1_wr_list, label = "P1")
-                plt.plot(range(len(configs_list)), p2_wr_list, label = "P2")
+                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
+                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
                 plt.title(name)
                 plt.legend()
                 plt.savefig(figpath)
