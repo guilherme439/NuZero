@@ -286,7 +286,7 @@ class AlphaZero():
 
         if starting_iteration != 0:
             print("NOTE: when continuing training both optimizer state and replay buffer are reset.\n")
-            self.load_data(self.plot_data_load_path)
+            #self.load_data(self.plot_data_load_path)
         
         else:
             # Initial save (untrained network)
