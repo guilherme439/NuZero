@@ -24,10 +24,10 @@ from Utils.PrintBar import PrintBar
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
 
-from Neural_Networks.Orthogonal.Simple_Conv_Network import Simple_Conv_Network as Ort_ConvNet
-from Neural_Networks.Orthogonal.ResNet import ResNet as Ort_ResNet
-from Neural_Networks.Orthogonal.dt_neural_network import dt_net_2d as Ort_DTNet
-from Neural_Networks.Orthogonal.dt_neural_network import dt_net_recall_2d as Ort_DTNet_recall
+#from Neural_Networks.Orthogonal.Simple_Conv_Network import Simple_Conv_Network as Ort_ConvNet
+#from Neural_Networks.Orthogonal.ResNet import ResNet as Ort_ResNet
+#from Neural_Networks.Orthogonal.dt_neural_network import dt_net_2d as Ort_DTNet
+#from Neural_Networks.Orthogonal.dt_neural_network import dt_net_recall_2d as Ort_DTNet_recall
 
 from Neural_Networks.Hexagonal.ConvNet import ConvNet as Hex_ConvNet
 from Neural_Networks.Hexagonal.ResNet import ResNet as Hex_ResNet
