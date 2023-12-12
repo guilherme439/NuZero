@@ -138,18 +138,16 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_4.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_5.yml"], 
-                                   ["SCS/Game_configs/solo_soldier_config_9.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
                 
                 game = game_class(*game_args_list[1])
 
-                trained_network_name = "new_solo_2"
-                continue_network_name = "new_solo_2_c" # new network can have the same name as the previous
+                trained_network_name = "mirrored_latest"
+                continue_network_name = "mirrored_latest_c" # new network can have the same name as the previous
                 use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 new_search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 ################################################
@@ -510,13 +508,13 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_13.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_20.yml"]
                 game = game_class(*game_args)
 
 
                 # network options
                 net_name = "new_solo_2_c"
-                model_iteration = 880
+                model_iteration = 2220
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -527,7 +525,7 @@ def main():
 
                 #---
                 min = 0
-                max = 20
+                max = 30
                 step = 1
                 recurrent_iterations_list = range(min,max+1,step)
                 
@@ -643,7 +641,7 @@ def main():
 
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
-                num_testers = 4
+                num_testers = 3
                 num_games = 250
 
                 # network options
