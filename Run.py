@@ -198,7 +198,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"] ]
                 
                 game = game_class(*game_args_list[0])
 
@@ -273,9 +273,7 @@ def main():
             case 5: 
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_4.yml"],
-                                   ["SCS/Game_configs/solo_soldier_config_5.yml"], 
-                                   ["SCS/Game_configs/solo_soldier_config_9.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"]]
                 
                 game = game_class(*game_args_list[1])
 
