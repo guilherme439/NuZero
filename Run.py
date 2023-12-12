@@ -140,7 +140,7 @@ def main():
                 game_class = SCS_Game
                 game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
                 
-                game = game_class(*game_args_list[1])
+                game = game_class(*game_args_list[0])
 
                 trained_network_name = "mirrored_latest"
                 continue_network_name = "mirrored_latest_c" # new network can have the same name as the previous
