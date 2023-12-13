@@ -236,28 +236,30 @@ def main():
 
             case 4:
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
-                game = game_class(*game_args)
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"] ]
+                
+                game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/local_search_config.ini"
 
                 network_name = "local_net_test"
 
                 ################################################
 
+                print(game.string_representation())
                 state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
                 model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
+                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.75)
+                        torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
                 #'''
 
@@ -265,9 +267,10 @@ def main():
                     network_name = args.name
 
                 print("\n")
-                context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                context = start_ray_rnl(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
                 alpha_zero.run()
+
                 
 
             case 5: 
