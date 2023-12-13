@@ -203,7 +203,7 @@ def main():
                 game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+                search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -240,8 +240,8 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
 
                 network_name = "local_net_test"
 
