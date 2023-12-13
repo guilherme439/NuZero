@@ -142,7 +142,7 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirrored_latest"
+                trained_network_name = "mirrored_latest_c"
                 continue_network_name = "mirrored_latest_c" # new network can have the same name as the previous
                 use_same_configs = False
 
@@ -275,7 +275,7 @@ def main():
                 game_class = SCS_Game
                 game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"]]
                 
-                game = game_class(*game_args_list[1])
+                game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
                 search_config_path="Configs/Config_Files/Search/test_search_config.ini"
@@ -502,7 +502,7 @@ def main():
             case 4: # Graphs for several recurrent iterations (extrapolation testing)
                 start_ray_local(log_to_driver)
 
-                num_testers = 5
+                num_testers = 3
                 num_games = 200
 
                 game_class = SCS_Game

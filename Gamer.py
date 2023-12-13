@@ -72,11 +72,11 @@ class Gamer():
             state = game.generate_state_image()
             game.store_state(state)
             #game.store_player(game.get_current_player())
-            
+    
             action_i, chosen_child, root_bias = self.explorer.run_mcts(game, network_copy, root_node, self.recurrent_iterations, self.cache)
+        
             tree_size = root_node.get_visit_count()
             node_children = root_node.num_children()
-
 
             action_coords = game.get_action_coords(action_i)
             game.step_function(action_coords)
@@ -91,6 +91,7 @@ class Gamer():
             stats["average_bias_value"] += root_bias
             stats["final_bias_value"] = root_bias
             
+            
         stats["cache_fill_ratio"] = self.cache.get_fill_ratio()
         stats["number_of_moves"] = game.length
         stats["average_children"] /= game.length
@@ -99,6 +100,7 @@ class Gamer():
 
         #print(self.cache.get_fill_ratio())
         ray.get(self.buffer.save_game.remote(game, self.game_index)) # each actor waits for the game to be saved before returning
+
         return stats
     
     def play_forever(self):

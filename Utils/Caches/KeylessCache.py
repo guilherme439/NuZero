@@ -69,12 +69,15 @@ class KeylessCache(Cache):
         (key, value) = item
         self.num_items += 1
         self.fill_ratio = self.num_items / self.size
+
+        '''
         if self.fill_ratio > 0.9:
             print("WARNING: Cache usage over 90%")
         elif self.fill_ratio > 0.8:
             print("WARNING: Cache usage over 80%")
         elif self.fill_ratio > 0.75:
             print("WARNING: Cache usage over 75%")
+        '''
 
         full_hash, index, identifier = self.hash(key)
 
