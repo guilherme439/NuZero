@@ -198,7 +198,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"] ]
                 
                 game = game_class(*game_args_list[0])
 
@@ -267,7 +267,7 @@ def main():
                     network_name = args.name
 
                 print("\n")
-                context = start_ray_rnl(log_to_driver)
+                context = start_ray_local(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
                 alpha_zero.run()
 

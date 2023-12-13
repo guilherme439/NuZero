@@ -8,6 +8,7 @@
 ###SBATCH --mincpus=8
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=shard:0
+#SBATCH --mem=50G
 
 #SBATCH --job-name=forgot_name
 #SBATCH --nodelist=nexus3

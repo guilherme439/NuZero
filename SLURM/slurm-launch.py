@@ -94,7 +94,7 @@ if __name__ == "__main__":
     )
 
     # ===== Save the script =====
-    script_file = "{}.sh".format(job_name)
+    script_file = "SLURM/{}.sh".format(job_name)
     with open(script_file, "w") as f:
         f.write(text)
 
