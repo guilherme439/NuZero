@@ -138,13 +138,13 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirrored_latest_c"
-                continue_network_name = "mirrored_latest_c" # new network can have the same name as the previous
-                use_same_configs = False
+                trained_network_name = "randomized_ilu"
+                continue_network_name = "randomized_ilu_c" # new network can have the same name as the previous
+                use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
                 new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
@@ -153,7 +153,7 @@ def main():
                 ################################################
 
                 state_set = None
-                state_set = create_solo_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
 
                 print("\n")
