@@ -142,8 +142,8 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "randomized_ilu"
-                continue_network_name = "randomized_ilu_c" # new network can have the same name as the previous
+                trained_network_name = "mirror_slice"
+                continue_network_name = "mirror_slice_c" # new network can have the same name as the previous
                 use_same_configs = True
 
                 # In case of not using the same configs define the new configs to use like this
