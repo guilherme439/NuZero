@@ -142,13 +142,13 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirror_slice"
-                continue_network_name = "mirror_slice_c" # new network can have the same name as the previous
-                use_same_configs = True
+                trained_network_name = "mirror_slice_c"
+                continue_network_name = "mirror_slice_c2" # new network can have the same name as the previous
+                use_same_configs = False
 
                 # In case of not using the same configs define the new configs to use like this
                 new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/local_search_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 ################################################
 
