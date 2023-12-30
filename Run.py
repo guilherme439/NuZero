@@ -198,7 +198,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/unbalanced_config_5.yml"] ]
                 
                 game = game_class(*game_args_list[0])
 
@@ -210,7 +210,7 @@ def main():
                 ################################################
 
                 print(game.string_representation())
-                state_set = create_mirrored_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
