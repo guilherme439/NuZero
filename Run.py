@@ -198,7 +198,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/unbalanced_config_5.yml"] ]
                 
                 game = game_class(*game_args_list[0])
 
@@ -210,7 +210,7 @@ def main():
                 ################################################
 
                 print(game.string_representation())
-                state_set = create_solo_state_set(game)
+                state_set = create_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -716,6 +716,69 @@ def main():
 
                 print("done!")
 
+            case 7: # extrapolation testing with multiple runs
+                start_ray_local(log_to_driver)
+
+                num_testers = 3
+                num_runs = 4
+                num_games = 100
+
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/solo_soldier_config_7.yml"]
+                game = game_class(*game_args)
+
+
+                # network options
+                net_name = "solo_final"
+                model_iteration = 1100
+
+                # Test Manager configuration
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                shared_storage = RemoteStorage.remote(window_size=1)
+                shared_storage.store.remote(nn)
+                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                
+
+                #---
+                min = 0
+                max = 100
+                step = 1
+                recurrent_iterations_list = list(range(min,max+1,step))
+                
+                name = net_name + "_" + str(model_iteration) + "_7x7_" + str(min) + "-" + str(max) + "-iterations"
+                figpath = "Graphs/iterations/" + name
+                print(figpath)
+
+                ################################################
+
+                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless",1000)
+                #policy_agent = PolicyAgent(nn, rec_iter)
+                #random_agent = RandomAgent()
+                #goal_agent = GoalRushAgent(game)
+
+                num_rec_iters = len(recurrent_iterations_list)
+                p1_wr_list = [0] * num_rec_iters
+                p2_wr_list = [0] * num_rec_iters
+                
+                for run in range(num_runs):
+                    for i in range(num_rec_iters):
+                        rec_iter = recurrent_iterations_list[i]
+                        p1_agent = RandomAgent()
+                        p2_agent = PolicyAgent(nn, rec_iter)
+                        print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
+                        p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
+                        p1_wr_list[i] += p1_wr/num_runs
+                        p2_wr_list[i] += p2_wr/num_runs
+
+
+                plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
+                plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
+                plt.title(name)
+                plt.legend()
+                plt.savefig(figpath)
+                plt.clf()
+
+                print("done!")
 
             case _:
                 print("Unknown testing preset.")
