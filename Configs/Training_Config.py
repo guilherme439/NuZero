@@ -10,6 +10,7 @@ class Training_Config(Config):
         running_mode = "sequential",
         num_actors = 4,
         early_fill_per_type = 250,
+        early_softmax_moves = 0,
         early_softmax_exploration = 1,
         early_random_exploration = 0,
     	training_steps = 1e5,

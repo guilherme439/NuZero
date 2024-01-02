@@ -360,13 +360,13 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_4.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_5.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "new_solo"
-                model_iteration = 1350
-                recurrent_iterations = 4
+                net_name = "mirror_final_atempt"
+                model_iteration = 880
+                recurrent_iterations = 6
 
 
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -410,14 +410,14 @@ def main():
                 num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_13.yml"
+                game_config = "SCS/Game_configs/unbalanced_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "new_solo_2_c"
-                model_iteration = 880
-                recurrent_iterations = 13
+                net_name = "unbalanced_final"
+                model_iteration = 780
+                recurrent_iterations = 6
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -430,8 +430,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = random_agent
-                p2_agent = policy_agent
+                p1_agent = mcts_agent
+                p2_agent = goal_agent
 
                 ################################################
                 print("\n")
@@ -773,6 +773,85 @@ def main():
 
                 plt.plot(recurrent_iterations_list, p1_wr_list, label = "P1")
                 plt.plot(recurrent_iterations_list, p2_wr_list, label = "P2")
+                plt.title(name)
+                plt.legend()
+                plt.savefig(figpath)
+                plt.clf()
+
+                print("done!")
+
+            case 8: # Multiple extrapolation runs with different maps
+                start_ray_local(log_to_driver)
+
+                num_testers = 5
+                num_runs_per_game = 3
+                num_games = 100
+
+                game_class = SCS_Game
+                configs_list = ["SCS/Game_configs/solo_soldier_config_5.yml",
+                                "SCS/Game_configs/solo_soldier_config_6.yml",
+                                "SCS/Game_configs/solo_soldier_config_7.yml",
+                                "SCS/Game_configs/solo_soldier_config_8.yml",
+                                "SCS/Game_configs/solo_soldier_config_9.yml",
+                                "SCS/Game_configs/solo_soldier_config_10.yml",
+                                "SCS/Game_configs/solo_soldier_config_11.yml",
+                                "SCS/Game_configs/solo_soldier_config_12.yml",
+                                "SCS/Game_configs/solo_soldier_config_13.yml",
+                                "SCS/Game_configs/solo_soldier_config_14.yml",
+                                "SCS/Game_configs/solo_soldier_config_15.yml",]
+                
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
+
+                # network options
+                net_name = "solo_final"
+                model_iteration = 1100               
+
+                # iteration options
+                min = 0
+                max = 100
+                step = 1
+                recurrent_iterations_list = list(range(min,max+1,step))
+                
+                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations"
+                figpath = "Graphs/" + name
+                print(figpath)
+
+                # Test Manager configuration
+                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                shared_storage = RemoteStorage.remote(window_size=1)
+                shared_storage.store.remote(nn) 
+
+                ################################################
+
+                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless",1000)
+                #policy_agent = PolicyAgent(nn, rec_iter)
+                #random_agent = RandomAgent()
+                #goal_agent = GoalRushAgent(game)
+
+                num_rec_iters = len(recurrent_iterations_list)
+                #p1_wr_list = [([0] * num_rec_iters) for game in range(len(configs_list))]
+                p2_wr_list = [([0] * num_rec_iters) for game in range(len(configs_list))]
+
+                #print(p1_wr_list)
+                #print(p2_wr_list)
+                
+                for i in range(len(configs_list)):
+                    game_args = [configs_list[i]]
+                    test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                    for run in range(num_runs_per_game):
+                        for k in range(num_rec_iters):
+                            rec_iter = recurrent_iterations_list[k]
+                            p1_agent = RandomAgent()
+                            p2_agent = PolicyAgent(nn, rec_iter)
+                            print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
+                            p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
+                            #p1_wr_list[i][k] += p1_wr/num_runs_per_game
+                            p2_wr_list[i][k] += p2_wr/num_runs_per_game
+
+                    #plt.plot(recurrent_iterations_list, p1_wr_list, label = str(i+5))
+                    plt.plot(recurrent_iterations_list, p2_wr_list, label = str(i+5))
+
+                
                 plt.title(name)
                 plt.legend()
                 plt.savefig(figpath)

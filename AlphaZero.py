@@ -449,8 +449,10 @@ class AlphaZero():
 
         search_config = deepcopy(self.search_config)
         if early_fill:
+            softmax_moves = self.train_config.running["early_softmax_moves"]
             softmax_exploration = self.train_config.running["early_softmax_exploration"]
             random_exploration = self.train_config.running["early_random_exploration"]
+            search_config.exploration["number_of_softmax_moves"] = softmax_moves
             search_config.exploration["epsilon_softmax_exploration"] = softmax_exploration
             search_config.exploration["epsilon_random_exploration"] = random_exploration
 
