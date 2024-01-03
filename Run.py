@@ -839,6 +839,7 @@ def main():
                     game_args = [configs_list[i]]
                     test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                     for run in range(num_runs_per_game):
+                        print("run " + str(run))
                         for k in range(num_rec_iters):
                             rec_iter = recurrent_iterations_list[k]
                             p1_agent = RandomAgent()
@@ -849,13 +850,17 @@ def main():
                             p2_wr_list[i][k] += p2_wr/num_runs_per_game
 
                     #plt.plot(recurrent_iterations_list, p1_wr_list, label = str(i+5))
-                    plt.plot(recurrent_iterations_list, p2_wr_list, label = str(i+5))
+                    plt.plot(recurrent_iterations_list, p2_wr_list[i], label = str(i+5))
 
                 
                 plt.title(name)
                 plt.legend()
                 plt.savefig(figpath)
                 plt.clf()
+
+                data = p2_wr_list
+                save_path = "Graphs/graph_data/" + name + '.pkl'
+                pickle_save(save_path, data)
 
                 print("done!")
 
@@ -1505,7 +1510,12 @@ def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=N
 
 def str_to_class(classname):
     return getattr(sys.modules[__name__], classname)
-   
+
+def pickle_save(save_path, data):
+
+    with open(save_path, 'wb') as file:
+        pickle.dump(data,file)
+
 ##########################################################################
 # ----------------------------               --------------------------- #
 # ---------------------------       RAY       -------------------------- #
