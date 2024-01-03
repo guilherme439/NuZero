@@ -859,7 +859,7 @@ def main():
                 plt.clf()
 
                 data = p2_wr_list
-                save_path = "Graphs/graph_data/" + name + '.pkl'
+                save_path = "Graphs/_graph_data/" + name + '.pkl'
                 pickle_save(save_path, data)
 
                 print("done!")
