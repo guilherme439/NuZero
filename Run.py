@@ -850,7 +850,7 @@ def main():
                             p2_wr_list[i][k] += p2_wr/num_runs_per_game
 
                     #plt.plot(recurrent_iterations_list, p1_wr_list, label = str(i+5))
-                    plt.plot(recurrent_iterations_list, p2_wr_list[i], label = str(i+5))
+                    plt.plot(recurrent_iterations_list, p2_wr_list[i], label = str(i+5) + "x" + str(i+5))
 
                 
                 plt.title(name)
