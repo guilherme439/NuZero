@@ -17,6 +17,7 @@ Tic_Tac_Toe/models/*
 SLURM/Scripts/*
 !SLURM/Scripts/__init__.py
 
+Graphs/*
 Graphs/comb/*
 Graphs/sizes/*
 Graphs/iterations/*
@@ -25,6 +26,7 @@ Graphs/networks/*
 !Graphs/sizes/__init__.py
 !Graphs/iterations/__init__.py
 !Graphs/networks/__init__.py
+
 
 *.insyncdl
 *.log

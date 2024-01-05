@@ -1057,12 +1057,12 @@ def create_unbalanced_state_set(game):
 def create_r_unbalanced_state_set(game):
     renderer = SCS_Renderer()
 
+    state_set = []
 
     game.reset_env()
     game.set_simple_game_state(7, [1], [(1,2)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-
 
     game.reset_env()
     game.set_simple_game_state(7, [1,1], [(0,1),(4,3)], [2,1])
@@ -1085,8 +1085,6 @@ def create_r_unbalanced_state_set(game):
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
-
-    state_set = []
     game.set_simple_game_state(7, [1,1], [(4,3),(4,3)], [1,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
