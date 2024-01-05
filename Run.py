@@ -96,6 +96,8 @@ def main():
 
     print("CUDA: " + str(torch.cuda.is_available()))
 
+    print("\n\n\n\nChange continue to allow for curriculumm learning. make it not keep graphs etc.\n\n\n")
+
     log_to_driver = False
     if args.log_driver:
 
@@ -138,13 +140,14 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirror_slice_c"
-                continue_network_name = "mirror_final_atempt" # new network can have the same name as the previous
+                trained_network_name = "solo_final"
+                continue_network_name = "r_unbalanced_final"
                 use_same_configs = False
+                curriculum_learning = True
 
                 # In case of not using the same configs define the new configs to use like this
                 new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
@@ -153,13 +156,13 @@ def main():
                 ################################################
 
                 state_set = None
-                state_set = create_mirrored_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
                 continue_training(game_class, game_args_list, trained_network_name, continue_network_name, \
-                                  use_same_configs, new_train_config_path, new_search_config_path, state_set)
+                                  use_same_configs, curriculum_learning, new_train_config_path, new_search_config_path, state_set)
 
             case 2:
                 game_class = SCS_Game
@@ -248,7 +251,7 @@ def main():
                 ################################################
 
                 print(game.string_representation())
-                state_set = create_mirrored_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -1051,6 +1054,47 @@ def create_unbalanced_state_set(game):
     game.reset_env()
     return state_set
 
+def create_r_unbalanced_state_set(game):
+    renderer = SCS_Renderer()
+
+
+    game.reset_env()
+    game.set_simple_game_state(7, [1], [(1,2)], [2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+
+    game.reset_env()
+    game.set_simple_game_state(7, [1,1], [(0,1),(4,3)], [2,1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    
+    game.reset_env()
+    game.set_simple_game_state(7, [1,1], [(2,3),(3,3)], [1,2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(7, [1,1,1], [(1,4),(2,2),(2,3)], [1,1,2])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+    game.reset_env()
+    game.set_simple_game_state(7, [1], [(1,4)], [1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+
+
+    state_set = []
+    game.set_simple_game_state(7, [1,1], [(4,3),(4,3)], [1,1])
+    state_set.append(game.generate_state_image())
+    #renderer.display_board(game)
+    
+
+    game.reset_env()
+    return state_set
+
 def create_solo_state_set(game):
     renderer = SCS_Renderer()
 
@@ -1373,7 +1417,7 @@ def choose_trained_network():
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
+def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, curriculum_learning, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
     game = game_class(*game_args_list[0])
 
     game_folder_name = game.get_name()
@@ -1393,8 +1437,8 @@ def continue_training(game_class, game_args_list, trained_network_name, continue
     model_paths = glob.glob(trained_model_folder_path + "*_model")
             
     # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-    starting_iteration = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
-    latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(starting_iteration) + "_model"
+    latest_iteration = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
+    latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(latest_iteration) + "_model"
     model.load_state_dict(torch.load(latest_model_path, map_location=torch.device('cpu')))
 
     if use_same_configs:
@@ -1408,6 +1452,11 @@ def continue_training(game_class, game_args_list, trained_network_name, continue
         search_config_path = new_search_config_path
 
     alpha_zero = AlphaZero(game_class, game_args_list, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
+    if not curriculum_learning:
+        starting_iteration = latest_iteration
+    else:
+        starting_iteration = 0
+
     alpha_zero.run(starting_iteration)
 
 def load_trained_network(game, net_name, model_iteration):
