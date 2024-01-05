@@ -783,7 +783,7 @@ def main():
             case 8: # Multiple extrapolation runs with different maps
                 start_ray_local(log_to_driver)
 
-                num_testers = 5
+                num_testers = 6
                 num_runs_per_game = 3
                 num_games = 100
 
@@ -795,10 +795,7 @@ def main():
                                 "SCS/Game_configs/solo_soldier_config_9.yml",
                                 "SCS/Game_configs/solo_soldier_config_10.yml",
                                 "SCS/Game_configs/solo_soldier_config_11.yml",
-                                "SCS/Game_configs/solo_soldier_config_12.yml",
-                                "SCS/Game_configs/solo_soldier_config_13.yml",
-                                "SCS/Game_configs/solo_soldier_config_14.yml",
-                                "SCS/Game_configs/solo_soldier_config_15.yml",]
+                                "SCS/Game_configs/solo_soldier_config_12.yml"]
                 
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
@@ -815,6 +812,8 @@ def main():
                 name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations"
                 figpath = "Graphs/" + name
                 print(figpath)
+
+                
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -836,6 +835,7 @@ def main():
                 #print(p2_wr_list)
                 
                 for i in range(len(configs_list)):
+                    print("game_idx: " + str(i))
                     game_args = [configs_list[i]]
                     test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                     for run in range(num_runs_per_game):
@@ -851,6 +851,7 @@ def main():
 
                     #plt.plot(recurrent_iterations_list, p1_wr_list, label = str(i+5))
                     plt.plot(recurrent_iterations_list, p2_wr_list[i], label = str(i+5) + "x" + str(i+5))
+                    plt.savefig(figpath)
 
                 
                 plt.title(name)
