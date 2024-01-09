@@ -783,6 +783,9 @@ class AlphaZero():
 
     
         else:
+            states, targets, indexes = list(zip(*batch))
+            batch_input = torch.cat(states, 0)
+            batch_size = len(indexes)
             outputs = self.latest_network.inference(batch_input, True, train_iterations)
             value_loss, policy_loss, combined_loss = self.calculate_loss(outputs, targets, batch_size,
                                                                         policy_loss_function, value_loss_function, normalize_policy)

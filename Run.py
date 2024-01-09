@@ -96,8 +96,6 @@ def main():
 
     print("CUDA: " + str(torch.cuda.is_available()))
 
-    print("\n\n\n\nChange continue to allow for curriculumm learning. make it not keep graphs etc.\n\n\n")
-
     log_to_driver = False
     if args.log_driver:
 
@@ -185,13 +183,13 @@ def main():
                 #model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce")
 
-                '''
+                #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
                         torch.nn.init.xavier_uniform_(param, gain=0.8)
                     
-                '''
+                #'''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
@@ -296,16 +294,16 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
+                #model = Hex_RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce")
 
-                #'''
+                '''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
                         torch.nn.init.xavier_uniform_(param, gain=0.85)
                     
-                #'''
+                '''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
