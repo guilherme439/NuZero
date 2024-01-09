@@ -138,14 +138,14 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "solo_final"
-                continue_network_name = "r_unbalanced_final"
+                trained_network_name = "mirror_final_atempt"
+                continue_network_name = "mirror_final_atempt_c"
                 use_same_configs = False
-                curriculum_learning = True
+                curriculum_learning = False
 
                 # In case of not using the same configs define the new configs to use like this
                 new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
@@ -154,7 +154,7 @@ def main():
                 ################################################
 
                 state_set = None
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
 
                 print("\n")
@@ -297,13 +297,13 @@ def main():
                 #model = Hex_RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
                 model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce")
 
-                '''
+                #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
                         torch.nn.init.xavier_uniform_(param, gain=0.85)
                     
-                '''
+                #'''
 
                 if args.name is not None and args.name != "":
                     network_name = args.name
