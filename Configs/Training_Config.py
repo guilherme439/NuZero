@@ -5,8 +5,7 @@ class Training_Config(Config):
     def __init__(self):
 
         self.running = dict \
-        (
-        cache_choice = "disabled",		# disabled | dict | keyless       
+        (      
         running_mode = "sequential",
         num_actors = 4,
         early_fill_per_type = 250,
@@ -18,7 +17,7 @@ class Training_Config(Config):
 
         self.sequential = dict \
         (
-        num_games_per_step = 200,
+        num_games_per_type_per_step = 20,
         )
 
 
@@ -30,7 +29,7 @@ class Training_Config(Config):
 
         self.cache = dict \
         (
-        cache_choice = 'disabled',
+        cache_choice = 'disabled', # disabled | dict | keyless 
         size_estimate = 10000
         )
         
@@ -52,7 +51,7 @@ class Training_Config(Config):
         num_policy_test_games = 100,
         num_mcts_test_games = 100,
         test_iterations = 4,
-        test_game_index = 1
+        test_game_index = 0
         )
 
 

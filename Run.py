@@ -786,7 +786,7 @@ def main():
             case 8: # Multiple extrapolation runs with different maps
                 start_ray_local(log_to_driver)
 
-                num_testers = 6
+                num_testers = 4
                 num_runs_per_game = 3
                 num_games = 100
 
@@ -801,8 +801,8 @@ def main():
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
                 # network options
-                net_name = "solo_final"
-                model_iteration = 1100               
+                net_name = "solo_reduce_prog_4"
+                model_iteration = 3860              
 
                 # iteration options
                 min = 0
@@ -810,7 +810,7 @@ def main():
                 step = 1
                 recurrent_iterations_list = list(range(min,max+1,step))
                 
-                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations_extrapolation"
                 figpath = "Graphs/" + name
                 print(figpath)
 
