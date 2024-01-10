@@ -363,13 +363,13 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/mirrored_config_5.yml"]
+                game_args = ["SCS/Game_configs/solo_soldier_config_8.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "mirror_final_atempt"
-                model_iteration = 880
-                recurrent_iterations = 6
+                net_name = "solo_reduce_prog_4"
+                model_iteration = 3860
+                recurrent_iterations = 30
 
 
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -413,14 +413,14 @@ def main():
                 num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/unbalanced_config_5.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_8.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "unbalanced_final"
-                model_iteration = 780
-                recurrent_iterations = 6
+                net_name = "solo_reduce_prog_4"
+                model_iteration = 1100
+                recurrent_iterations = 30
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -433,8 +433,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent(game)
-                p1_agent = mcts_agent
-                p2_agent = goal_agent
+                p1_agent = random_agent
+                p2_agent = policy_agent
 
                 ################################################
                 print("\n")
@@ -453,13 +453,13 @@ def main():
                 num_games = 200
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_10.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_5.yml"]
                 game = game_class(*game_args)
 
                 recurrent_iterations = 10
 
                 # network options
-                net_name = "new_solo"
+                net_name = "mirror_final_atempt"
 
 
                 # Test Manager configuration
@@ -572,12 +572,12 @@ def main():
                 game = SCS_Game("SCS/Game_configs/solo_soldier_config_4.yml")
 
                 num_testers = 5
-                num_games = 350
+                num_games = 100
 
                 # network options
-                net_name = "new_solo_2_c"
-                model_iteration = 1380
-                recurrent_iterations = 8
+                net_name = "solo_reduce_prog_4"
+                model_iteration = 3860
+                recurrent_iterations = 30
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -592,22 +592,11 @@ def main():
                                 "SCS/Game_configs/solo_soldier_config_7.yml",
                                 "SCS/Game_configs/solo_soldier_config_8.yml",
                                 "SCS/Game_configs/solo_soldier_config_9.yml",
-                                "SCS/Game_configs/solo_soldier_config_10.yml",
-                                "SCS/Game_configs/solo_soldier_config_11.yml",
-                                "SCS/Game_configs/solo_soldier_config_12.yml",
-                                "SCS/Game_configs/solo_soldier_config_13.yml",
-                                "SCS/Game_configs/solo_soldier_config_14.yml",
-                                "SCS/Game_configs/solo_soldier_config_15.yml",
-                                "SCS/Game_configs/solo_soldier_config_16.yml",
-                                "SCS/Game_configs/solo_soldier_config_17.yml",
-                                "SCS/Game_configs/solo_soldier_config_18.yml",
-                                "SCS/Game_configs/solo_soldier_config_19.yml",
-                                "SCS/Game_configs/solo_soldier_config_20.yml",
-                                "SCS/Game_configs/solo_soldier_config_30.yml"]
+                                "SCS/Game_configs/solo_soldier_config_10.yml",]
                             
                 
                 
-                name = net_name + "_" + str(model_iteration) + "_4x4_to_30x30_" + str(recurrent_iterations) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_4x4_to_10x10_" + str(recurrent_iterations) + "-iterations"
                 figpath = "Graphs/sizes/" + name
                 print(figpath)
 
@@ -787,7 +776,7 @@ def main():
                 start_ray_local(log_to_driver)
 
                 num_testers = 4
-                num_runs_per_game = 3
+                num_runs_per_game = 1
                 num_games = 100
 
                 game_class = SCS_Game
@@ -802,7 +791,7 @@ def main():
 
                 # network options
                 net_name = "solo_reduce_prog_4"
-                model_iteration = 3860              
+                model_iteration = 1100            
 
                 # iteration options
                 min = 0
@@ -866,11 +855,34 @@ def main():
 
                 print("done!")
 
+            case 9: # build graphs from data
+                plt.figure(figsize=(12, 9))
+
+                data_path = "Graphs/_graph_data/solo_final_1100_0-100-iterations.pkl"
+                win_rates = pickle_load(data_path)
+
+                for size_i in range(len(win_rates)):
+                    iterations = win_rates[size_i]
+                    plt.plot(range(len(iterations)), iterations, label = str(size_i+5) + "x" + str(size_i+5))
+
+                name = "Extrapolation Solo"
+
+                
+                plt.title(name)
+                plt.legend(bbox_to_anchor=(1,1))
+                plt.savefig("Graphs/" + name)
+                plt.clf()
+
+                return
+
+
             case _:
                 print("Unknown testing preset.")
                 return
 
-
+        
+        
+            
     elif args.debug is not None:
         match args.debug:
             
@@ -1558,9 +1570,15 @@ def str_to_class(classname):
     return getattr(sys.modules[__name__], classname)
 
 def pickle_save(save_path, data):
-
     with open(save_path, 'wb') as file:
         pickle.dump(data,file)
+
+def pickle_load(load_path):
+    with open(load_path, 'rb') as file:
+        data = pickle.load(file)
+    return data
+
+
 
 ##########################################################################
 # ----------------------------               --------------------------- #
