@@ -21,15 +21,7 @@ class MctsAgent(Agent):
         self.recurrent_iterations = recurrent_iterations
         self.cache_choice = cache_choice
         self.size_estimate = size_estimate
-        if self.cache_choice == "dict":
-            self.cache = DictCache()
-        elif self.cache_choice == "keyless":
-            self.cache = KeylessCache(self.size_estimate)
-        elif self.cache_choice == "disabled":
-            self.cache = None
-        else:
-            print("\nbad cache_choice")
-            exit()
+        self.cache = None
 
         return
 
@@ -47,7 +39,7 @@ class MctsAgent(Agent):
         return
     
     
-    def new_game(self):
+    def new_game(self, *args):
         self.root_node = Node(0)
         if self.cache_choice == "dict":
             self.cache = DictCache()

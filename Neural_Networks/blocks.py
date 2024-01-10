@@ -1,4 +1,3 @@
-
 import math
 
 import torch
@@ -12,16 +11,23 @@ from .depthwise_conv import depthwise_conv
 
 class BasicBlock(nn.Module):
 
-    def __init__(self, channels, batch_norm=False):
+    def __init__(self, channels, batch_norm=False, hex=True):
         super().__init__()
         
         before_shortcut_layers = []
 
-        before_shortcut_layers.append(hexagdly.Conv2d(in_channels=channels, out_channels=channels, kernel_size = 1, bias=False))
+        if hex: 
+            before_shortcut_layers.append(hexagdly.Conv2d(in_channels=channels, out_channels=channels, kernel_size = 1, bias=False))
+        else:
+            before_shortcut_layers.append(nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size = 3, bias=False))
         if batch_norm:
             before_shortcut_layers.append(nn.BatchNorm2d(num_features=channels))
         before_shortcut_layers.append(nn.ReLU())
-        before_shortcut_layers.append(hexagdly.Conv2d(in_channels=channels, out_channels=channels, kernel_size = 1, bias=False))
+
+        if hex:
+            before_shortcut_layers.append(hexagdly.Conv2d(in_channels=channels, out_channels=channels, kernel_size = 1, bias=False))
+        else:
+            before_shortcut_layers.append(nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size = 3, bias=False))
         
         self.before_shortcut = nn.Sequential(*before_shortcut_layers)
         self.shortcut = nn.Sequential()
@@ -39,9 +45,9 @@ class BasicBlock(nn.Module):
 
 class Reduce_ValueHead(nn.Module):
     '''Several conv layers that progressively reduce the amount of filters,
-       followed by an average pooling layer'''
+       followed by a global average pooling layer'''
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
         
         conv_filters = [256, 64, 8 , 1]
@@ -49,7 +55,10 @@ class Reduce_ValueHead(nn.Module):
         value_head_layers = []
         current_depth = width
         for depth in conv_filters:
-            conv = hexagdly.Conv2d(in_channels=current_depth, out_channels=depth, kernel_size=1, stride=1, bias=False)
+            if hex:
+                conv = hexagdly.Conv2d(in_channels=current_depth, out_channels=depth, kernel_size=1, stride=1, bias=False)
+            else:
+                conv = nn.Conv2d(in_channels=current_depth, out_channels=depth, kernel_size=3, stride=1, bias=False)
             value_head_layers.append(conv)
             if depth != 1:
                 if batch_norm:
@@ -80,14 +89,17 @@ class Reduce_ValueHead(nn.Module):
 
 class Depth_ValueHead(nn.Module):
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
 
         layer_list = []
         num_depth_layers = 4
 
         for l in range(num_depth_layers):
-            layer_list.append(depthwise_conv(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False))
+            if hex:
+                layer_list.append(depthwise_conv(in_channels=width, out_channels=width, kernel_size=1, stride=1, bias=False))
+            else:
+                layer_list.append(nn.Conv2d(in_channels=width, out_channels=width, groups=width, kernel_size=3, stride=1, bias=False))
             if batch_norm:
                 layer_list.append(nn.BatchNorm2d(num_features=width))
 
@@ -99,7 +111,10 @@ class Depth_ValueHead(nn.Module):
                 print("Unknown activation.")
                 exit()
 
-        layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=1, kernel_size=1, stride=1, bias=False))
+        if hex:
+            layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=1, kernel_size=1, stride=1, bias=False))
+        else:
+            layer_list.append(nn.Conv2d(in_channels=width, out_channels=1, kernel_size=3, stride=1, bias=False))
 
         layer_list.append(nn.AdaptiveAvgPool3d(1))
         layer_list.append(nn.Flatten())
@@ -117,7 +132,7 @@ class Depth_ValueHead(nn.Module):
 
 class Combined_ValueHead(nn.Module):
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
         
         layer_list = []
@@ -125,7 +140,10 @@ class Combined_ValueHead(nn.Module):
         
         current_filters = width
         for filters in conv_filters:
-            layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False))
+            if hex:
+                layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False))
+            else:
+                layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=current_filters, groups=current_filters, kernel_size=3, stride=1, bias=False))
             if batch_norm:
                 layer_list.append(nn.BatchNorm2d(num_features=current_filters))
 
@@ -136,8 +154,11 @@ class Combined_ValueHead(nn.Module):
             else:
                 print("Unknown activation.")
                 exit()
+            if hex:
+                layer_list.append(hexagdly.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False))
+            else:
+                layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=3, stride=1, bias=False))
 
-            layer_list.append(hexagdly.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False))
             if filters != 1:
                 if batch_norm:
                     layer_list.append(nn.BatchNorm2d(num_features=filters))
@@ -170,7 +191,7 @@ class Combined_ValueHead(nn.Module):
 
 class Separable_ValueHead(nn.Module):
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
         
         conv_filters = [256, 64 , 8 , 1]
@@ -178,7 +199,11 @@ class Separable_ValueHead(nn.Module):
         layer_list = []
         current_filters = width
         for filters in conv_filters:
-            layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False)) #depthwise
+            if hex:
+                layer_list.append(depthwise_conv(in_channels=current_filters, out_channels=current_filters, kernel_size=1, stride=1, bias=False)) #depthwise
+            else:
+                layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=current_filters, groups=current_filters, kernel_size=3, stride=1, bias=False)) #depthwise
+
             layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # pointwise
             current_filters=filters
 
@@ -209,7 +234,7 @@ class Separable_ValueHead(nn.Module):
 
 class Reverse_ValueHead(nn.Module):
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
         
         conv_filters = [256, 64 , 8 , 1]
@@ -218,9 +243,13 @@ class Reverse_ValueHead(nn.Module):
         current_filters = width
         for filters in conv_filters:
             layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # pointwise
-            layer_list.append(depthwise_conv(in_channels=filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) #depthwise
-            current_filters=filters
+            if hex:
+                layer_list.append(depthwise_conv(in_channels=filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) #depthwise
+            else:
+                layer_list.append(nn.Conv2d(in_channels=filters, out_channels=filters, groups=filters, kernel_size=3, stride=1, bias=False)) #depthwise
 
+
+            current_filters=filters
             if filters != 1:
                 if batch_norm:
                     layer_list.append(nn.BatchNorm2d(num_features=filters))
@@ -248,7 +277,7 @@ class Reverse_ValueHead(nn.Module):
 
 class RawSeparable_ValueHead(nn.Module):
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
         
         conv_filters = [256, 64 , 8 , 1]
@@ -287,7 +316,7 @@ class RawSeparable_ValueHead(nn.Module):
 
 class Strange_ValueHead(nn.Module):
 
-    def __init__(self, width, activation, batch_norm=False):
+    def __init__(self, width, activation="relu", batch_norm=False, hex=True):
         super().__init__()
         
         conv_filters = [256, 64 , 8 , 1]
@@ -296,9 +325,12 @@ class Strange_ValueHead(nn.Module):
         current_filters = width
         for filters in conv_filters:
             layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=current_filters, kernel_size=1, groups=current_filters, stride=1, bias=False)) # depth pointwise
-            layer_list.append(hexagdly.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # normal hex conv
-            current_filters=filters
+            if hex:
+                layer_list.append(hexagdly.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=1, stride=1, bias=False)) # normal conv
+            else:
+                layer_list.append(nn.Conv2d(in_channels=current_filters, out_channels=filters, kernel_size=3, stride=1, bias=False)) # normal conv
 
+            current_filters=filters
             if filters != 1:
                 if batch_norm:
                     layer_list.append(nn.BatchNorm2d(num_features=filters))
@@ -327,12 +359,16 @@ class Strange_ValueHead(nn.Module):
  
 class Dense_ValueHead(nn.Module):
 
-    def __init__(self, width, conv_channels=32, batch_norm=False):
+    def __init__(self, width, conv_channels=32, batch_norm=False, hex=True):
         super().__init__()        
         
         layer_list = []
         
-        layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=conv_channels, kernel_size=1, stride=1, bias=False))
+        if hex:
+            layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=conv_channels, kernel_size=1, stride=1, bias=False))
+        else:
+            layer_list.append(nn.Conv2d(in_channels=width, out_channels=conv_channels, kernel_size=3, stride=1, bias=False))
+
         if batch_norm:
             layer_list.append(nn.BatchNorm2d(num_features=conv_channels))
         layer_list.append(nn.Flatten())
@@ -356,7 +392,7 @@ class Dense_ValueHead(nn.Module):
 
 class Conv_PolicyHead(nn.Module):
 
-    def __init__(self, width, policy_channels, batch_norm=False):
+    def __init__(self, width, policy_channels, batch_norm=False, hex=True):
         super().__init__()
         
 
@@ -367,15 +403,28 @@ class Conv_PolicyHead(nn.Module):
         
         layer_list = []
 
-        layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=first_reduction, kernel_size=1, stride=1, bias=False))
+        if hex:
+            layer_list.append(hexagdly.Conv2d(in_channels=width, out_channels=first_reduction, kernel_size=1, stride=1, bias=False))
+        else:
+            layer_list.append(nn.Conv2d(in_channels=width, out_channels=first_reduction, kernel_size=3, stride=1, bias=False))
+
         if batch_norm:
             layer_list.append(nn.BatchNorm2d(num_features=first_reduction))
         layer_list.append(nn.ReLU())
-        layer_list.append(hexagdly.Conv2d(in_channels=first_reduction, out_channels=policy_filters, kernel_size=1, stride=1, bias=False))
+
+        if hex:
+            layer_list.append(hexagdly.Conv2d(in_channels=first_reduction, out_channels=policy_filters, kernel_size=1, stride=1, bias=False))
+        else:
+            layer_list.append(nn.Conv2d(in_channels=first_reduction, out_channels=policy_filters, kernel_size=3, stride=1, bias=False))
+
         if batch_norm:
             layer_list.append(nn.BatchNorm2d(num_features=policy_filters))
         layer_list.append(nn.ReLU())
-        layer_list.append(hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False))
+
+        if hex:
+            layer_list.append(hexagdly.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=1, stride=1, bias=False))
+        else:
+            layer_list.append(nn.Conv2d(in_channels=policy_filters, out_channels=policy_channels, kernel_size=3, stride=1, bias=False))
 
         self.layers = nn.Sequential(*layer_list)
 

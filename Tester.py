@@ -58,7 +58,9 @@ class Tester():
             self.renderer.render.remote(player_unit_images=True)
             time.sleep(3)
 
-        
+        p1_agent.new_game(game)
+        p2_agent.new_game(game)
+
         # --- Main test loop --- #
         while True:
             

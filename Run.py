@@ -24,14 +24,9 @@ from Utils.PrintBar import PrintBar
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
 
-#from Neural_Networks.Orthogonal.Simple_Conv_Network import Simple_Conv_Network as Ort_ConvNet
-#from Neural_Networks.Orthogonal.ResNet import ResNet as Ort_ResNet
-#from Neural_Networks.Orthogonal.dt_neural_network import dt_net_2d as Ort_DTNet
-#from Neural_Networks.Orthogonal.dt_neural_network import dt_net_recall_2d as Ort_DTNet_recall
-
-from Neural_Networks.Hexagonal.ConvNet import ConvNet as Hex_ConvNet
-from Neural_Networks.Hexagonal.ResNet import ResNet as Hex_ResNet
-from Neural_Networks.Hexagonal.RecurrentNet import RecurrentNet as Hex_RecurrentNet
+from Neural_Networks.ConvNet import ConvNet
+from Neural_Networks.ResNet import ResNet
+from Neural_Networks.RecurrentNet import RecurrentNet
 
 from SCS.SCS_Game import SCS_Game
 from SCS.SCS_Renderer import SCS_Renderer
@@ -128,7 +123,7 @@ def main():
                 #model = MLP_Net(num_actions)
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Ort_DTNet(in_channels, policy_channels, 64, 1)
+                model = ConvNet(in_channels, policy_channels, kernel_size=3, num_filters=256, hex=False)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -138,23 +133,23 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
                 trained_network_name = "mirror_final_atempt"
-                continue_network_name = "mirror_final_atempt_c"
+                continue_network_name = "r_unbalanced_cl"
                 use_same_configs = False
-                curriculum_learning = False
+                curriculum_learning = True
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_mirrored_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
 
                 print("\n")
@@ -180,8 +175,8 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                #model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce")
+                #model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
                 for name, param in model.named_parameters():
@@ -201,7 +196,7 @@ def main():
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/unbalanced_config_5.yml"] ]
+                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"] ]
                 
                 game = game_class(*game_args_list[0])
 
@@ -213,12 +208,12 @@ def main():
                 ################################################
 
                 print(game.string_representation())
-                state_set = create_unbalanced_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
                 for name, param in model.named_parameters():
@@ -255,8 +250,8 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce")
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
                 for name, param in model.named_parameters():
@@ -294,8 +289,8 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                #model = Hex_RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce")
+                model = RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
                 for name, param in model.named_parameters():
@@ -378,7 +373,7 @@ def main():
                 mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
-                goal_agent = GoalRushAgent(game)
+                goal_agent = GoalRushAgent()
                 p1_agent = random_agent
                 p2_agent = policy_agent
                 
@@ -432,7 +427,7 @@ def main():
                 mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 1000)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
-                goal_agent = GoalRushAgent(game)
+                goal_agent = GoalRushAgent()
                 p1_agent = random_agent
                 p2_agent = policy_agent
 
@@ -542,7 +537,7 @@ def main():
                 #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless",1000)
                 #policy_agent = PolicyAgent(nn, rec_iter)
                 #random_agent = RandomAgent()
-                #goal_agent = GoalRushAgent(game)
+                #goal_agent = GoalRushAgent()
 
 
                 p1_wr_list = []
@@ -569,15 +564,15 @@ def main():
             case 5: # Graphs for several games (can be used to compared performance with board size for example)
                 ray.init()
 
-                game = SCS_Game("SCS/Game_configs/solo_soldier_config_4.yml")
+                game = SCS_Game("SCS/Game_configs/solo_soldier_config_5.yml")
 
                 num_testers = 5
                 num_games = 100
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 3860
-                recurrent_iterations = 30
+                net_name = "solo_res"
+                model_iteration = 1100
+                rec_iter = recurrent_iterations = 1
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -586,8 +581,7 @@ def main():
                 
                 # Game settings
                 game_class = SCS_Game
-                configs_list = ["SCS/Game_configs/solo_soldier_config_4.yml",
-                                "SCS/Game_configs/solo_soldier_config_5.yml",
+                configs_list = ["SCS/Game_configs/solo_soldier_config_5.yml",
                                 "SCS/Game_configs/solo_soldier_config_6.yml",
                                 "SCS/Game_configs/solo_soldier_config_7.yml",
                                 "SCS/Game_configs/solo_soldier_config_8.yml",
@@ -596,13 +590,13 @@ def main():
                             
                 
                 
-                name = net_name + "_" + str(model_iteration) + "_4x4_to_10x10_" + str(recurrent_iterations) + "-iterations"
+                name = net_name + "_" + str(model_iteration) + "_5x5_to_10x10_" + str(recurrent_iterations) + "-iterations_mcts"
                 figpath = "Graphs/sizes/" + name
                 print(figpath)
 
                 ################################################
 
-                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "per_game")
+                #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless",1000)
                 #policy_agent = PolicyAgent(nn, rec_iter)
                 #random_agent = RandomAgent()
                 #goal_agent = GoalRushAgent()
@@ -616,7 +610,7 @@ def main():
                     print("\n" + str(game_args))
                     test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                     p1_agent = RandomAgent()
-                    p2_agent = PolicyAgent(nn, recurrent_iterations)
+                    p2_agent = MctsAgent(search_config, nn, rec_iter, "dict")
                     p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                     p1_wr_list.append(p1_wr)
                     p2_wr_list.append(p2_wr)
@@ -628,6 +622,11 @@ def main():
                 plt.legend()
                 plt.savefig(figpath)
                 plt.clf()
+
+                name = "solo_res_5x5_to_10x10_mcts_extrapolation"
+                data = p2_wr_list
+                save_path = "Graphs/_graph_data/" + name + '.pkl'
+                pickle_save(save_path, data)
 
             case 6: # Graphs for sequence of games and iterations
                 ray.init()
@@ -775,7 +774,7 @@ def main():
             case 8: # Multiple extrapolation runs with different maps
                 start_ray_local(log_to_driver)
 
-                num_testers = 4
+                num_testers = 5
                 num_runs_per_game = 1
                 num_games = 100
 
@@ -796,10 +795,10 @@ def main():
                 # iteration options
                 min = 0
                 max = 100
-                step = 1
+                step = 5
                 recurrent_iterations_list = list(range(min,max+1,step))
                 
-                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations_extrapolation"
+                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations_extrapolation_mcts"
                 figpath = "Graphs/" + name
                 print(figpath)
 
@@ -815,7 +814,7 @@ def main():
                 #mcts_agent = MctsAgent(search_config, nn, rec_iter, "keyless",1000)
                 #policy_agent = PolicyAgent(nn, rec_iter)
                 #random_agent = RandomAgent()
-                #goal_agent = GoalRushAgent(game)
+                #goal_agent = GoalRushAgent()
 
                 num_rec_iters = len(recurrent_iterations_list)
                 #p1_wr_list = [([0] * num_rec_iters) for game in range(len(configs_list))]
@@ -833,7 +832,7 @@ def main():
                         for k in range(num_rec_iters):
                             rec_iter = recurrent_iterations_list[k]
                             p1_agent = RandomAgent()
-                            p2_agent = PolicyAgent(nn, rec_iter)
+                            p2_agent = MctsAgent(search_config, nn, rec_iter, "dict")
                             print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                             p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                             #p1_wr_list[i][k] += p1_wr/num_runs_per_game
@@ -896,8 +895,8 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = Hex_RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
-                #model = Hex_ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="dense")
 
                 print(model)
                 #'''
@@ -1354,12 +1353,10 @@ def choose_model(game):
             policy_channels = game.get_action_space_shape()[0]
 
             num_filters = input("\nNumber of filters: ")  
-            kernel_size = input("Kernel size (int): ")  
-
-            if hexagonal:
-                model = Hex_ConvNet(in_channels, policy_channels, int(kernel_size), int(num_filters))
-            else:
-                model = Ort_ConvNet(in_channels, policy_channels, int(kernel_size), int(num_filters))
+            kernel_size = input("Kernel size (int): ")
+            
+            model = ConvNet(in_channels, policy_channels, int(kernel_size), int(num_filters), hex=hexagonal)
+            
 
         case "ResNet":
             in_channels = game.get_state_shape()[0]
@@ -1369,10 +1366,9 @@ def choose_model(game):
             num_filters = input("Number of filters: ")  
             kernel_size = input("Kernel size (int): ")  
 
-            if hexagonal:
-                model = Hex_ResNet(in_channels, policy_channels, int(num_blocks), int(kernel_size), int(num_filters))
-            else:
-                model = Ort_ResNet(in_channels, policy_channels, int(num_blocks), int(kernel_size), int(num_filters))
+            
+            model = ResNet(in_channels, policy_channels, int(num_blocks), int(kernel_size), int(num_filters), hex=hexagonal)
+            
 
         case "Recurrent":
             in_channels = game.get_state_shape()[0]
@@ -1380,12 +1376,9 @@ def choose_model(game):
 
             filters = input("\nNumber of filters to use internally:")      
 
-            if hexagonal:
-                model = Hex_RecurrentNet(in_channels, policy_channels, int(filters))
-            else:
-                model = Ort_DTNet(in_channels, policy_channels, int(filters))
+            model = RecurrentNet(in_channels, policy_channels, int(filters), hex=hexagonal)
+            
                 
-
         case _:
             print("Model type unsupported in interative mode.")
             exit()

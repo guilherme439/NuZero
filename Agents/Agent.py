@@ -16,7 +16,7 @@ class Agent():
     def name(self):
         return "Abstract Agent"
     
-    def new_game(self, **kwargs):
+    def new_game(self, *args):
         return
 
 

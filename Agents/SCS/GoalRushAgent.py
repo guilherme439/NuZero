@@ -9,15 +9,16 @@ class GoalRushAgent(Agent):
     ''' Tries to move each unit towards the closest victory point. 
         Atacks enemies if they are in the path to the goal. '''
 
-    def __init__(self, game):
-        self.graph = self.create_graph(game)
-        # This agent's graph assumes the adjacencies of the game with which it was created.
-        # If you need to run it on a different game, you need to call new_game().
+    def __init__(self):
+        self.graph = None
         return
 
     def choose_action(self, game):
         if not isinstance(game, SCS_Game):
             print("GoalRushAgent can only be used for SCS Games")
+            exit()
+        if self.graph is None:
+            print("GoalRushAgent requires new_game() to be called before each game.")
             exit()
 
         player = game.current_player
@@ -169,9 +170,9 @@ class GoalRushAgent(Agent):
     def name(self):
         return "GoalRush Agent"
     
-    def new_game(self, game=None):
+    def new_game(self, game):
         if game is None:
-            print("WARNING: GoalRushAgent.new_game() called but no Game was provided.")
+            print("WARNING: GoalRushAgent.new_game() without a \"game\" argument.")
             print("When called this way the internal graph won't be updated,\n \
                    and the Agent will likely not trace the fastest paths to the VPs.")
         

@@ -11,7 +11,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-from copy import deepcopy
 from torch import nn
 
 from Neural_Networks.Torch_NN import Torch_NN
@@ -68,11 +67,11 @@ class TestManager():
 
 
         # We must use actor_pool.map instead of actor_pool.submit,
-        # because ray bugs if you do several submit calls with different values
+        # because ray bugs if you do several submit calls on the same actors with different values
         map_args = []
         for g in range(num_games):
             game = self.game_class(*self.game_args)
-            args_copy = copy.deepcopy(args)
+            args_copy = copy.copy(args)
             args_copy[0] = game
             map_args.append(args_copy)
 
