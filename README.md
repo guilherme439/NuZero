@@ -57,7 +57,7 @@ As an example, training preset 0 trains a recurrent network for tic tac toe, usi
 
 
 ### Testing
-To test a trained network just use/define a testing preset. Currently, preset 0 tests and provides statistics for a pretrained tic tac toe model, while presets 1 and 2 are used to visualize or get statistics from SCS games.
+To test a trained network just use/define a testing preset. Currently, preset 0 tests and provides statistics for a pretrained tic tac toe model, while the remaing presets are used for SCS Games.
 
 ```bash
 python Run.py --testing-preset 0
@@ -86,6 +86,7 @@ Workers: (usually several of these will run in parallel)
 
 * Gamer - Plays individual self-play games.
 * Test - Runs individual tests.
+
 Others:
 * Explorer - Contains the methods necessary to run MCTS both in self-play and testing.
 
