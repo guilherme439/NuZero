@@ -1432,8 +1432,12 @@ def continue_training(game_class, game_args_list, trained_network_name, continue
     plot_data_load_path = trained_model_folder_path + "plot_data.pkl"
 
     pickle_path =  trained_model_folder_path + "base_model.pkl"
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
+    #with open(pickle_path, 'rb') as file:
+    #    model = pickle.load(file)
+
+    in_channels = game.get_state_shape()[0]
+    policy_channels = game.get_action_space_shape()[0]
+    model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
 
     model_paths = glob.glob(trained_model_folder_path + "*_model")
             
@@ -1469,8 +1473,12 @@ def load_trained_network(game, net_name, model_iteration):
 
     trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
 
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
+    #with open(pickle_path, 'rb') as file:
+    #    model = pickle.load(file)
+
+    in_channels = game.get_state_shape()[0]
+    policy_channels = game.get_action_space_shape()[0]
+    model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
 
     model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
     
