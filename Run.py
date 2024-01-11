@@ -775,7 +775,7 @@ def main():
                 start_ray_local(log_to_driver)
 
                 num_testers = 5
-                num_runs_per_game = 1
+                num_runs_per_game = 2
                 num_games = 100
 
                 game_class = SCS_Game
@@ -795,10 +795,10 @@ def main():
                 # iteration options
                 min = 0
                 max = 100
-                step = 5
+                step = 1
                 recurrent_iterations_list = list(range(min,max+1,step))
                 
-                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations_extrapolation_mcts"
+                name = net_name + "_" + str(model_iteration) + "_" + str(min) + "-" + str(max) + "-iterations_extrapolation"
                 figpath = "Graphs/" + name
                 print(figpath)
 
@@ -832,7 +832,7 @@ def main():
                         for k in range(num_rec_iters):
                             rec_iter = recurrent_iterations_list[k]
                             p1_agent = RandomAgent()
-                            p2_agent = MctsAgent(search_config, nn, rec_iter, "dict")
+                            p2_agent = PolicyAgent(nn, rec_iter)
                             print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
                             p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
                             #p1_wr_list[i][k] += p1_wr/num_runs_per_game
