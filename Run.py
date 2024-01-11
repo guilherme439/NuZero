@@ -133,23 +133,23 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirror_final_atempt"
-                continue_network_name = "r_unbalanced_cl"
+                trained_network_name = "mirror_slice_c"
+                continue_network_name = "mirror_lower_lr"
                 use_same_configs = False
-                curriculum_learning = True
+                curriculum_learning = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
 
                 print("\n")
@@ -246,7 +246,7 @@ def main():
                 ################################################
 
                 print(game.string_representation())
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
