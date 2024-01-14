@@ -553,7 +553,7 @@ class AlphaZero():
         replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
         n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=120)
 
-        print("\nAfter Self-Play there are a total of " + str(replay_size) + " positions in the replay buffer.")
+        print("\nThere are a total of " + str(replay_size) + " positions in the replay buffer.")
         print("Total number of games: " + str(n_games))
         
 
@@ -874,19 +874,18 @@ class AlphaZero():
 
     def plot_epoch_loss(self, step_number):
         print("\nPlotting epochs...")
-        plt.plot(range(self.epoch_value_loss), self.epoch_value_loss)
+        plt.scatter(range(self.epoch_value_loss), self.epoch_value_loss, s=0.2, c="#13316e", marker="o")
         plt.title("Epoch value loss")
-        plt.legend()
         plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Value_loss.png')
         plt.clf()
 
-        plt.plot(range(self.epoch_policy_loss), self.epcoh_policy_loss)
+        plt.scatter(range(self.epoch_policy_loss), self.epcoh_policy_loss, s=0.2, c="#13316e", marker="o")
         plt.title("Epoch policy loss")
         plt.legend()
         plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Policy_loss.png')
         plt.clf()
 
-        plt.plot(range(self.epoch_combined_loss), self.epoch_combined_loss)
+        plt.scatter(range(self.epoch_combined_loss), self.epoch_combined_loss, s=0.2, c="#13316e", marker="o")
         plt.title("Epoch combined loss")
         plt.legend()
         plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Combined_loss.png')
@@ -898,28 +897,25 @@ class AlphaZero():
         num_points = len(self.train_global_value_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.plot(x, self.train_global_value_loss, label = "Training")
+            plt.scatter(x, self.train_global_value_loss, s=0.2, c="#13316e", marker="o")
             plt.title("Global Value loss")
-            plt.legend()
             plt.savefig(self.plots_path + '_global_value_loss.png')
             plt.clf()
 
         num_points = len(self.train_global_policy_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.plot(x, self.train_global_policy_loss, label = "Training")
+            plt.scatter(x, self.train_global_policy_loss, s=0.2, c="#13316e", marker="o")
             plt.title("Global Policy loss")
-            plt.legend()
             plt.savefig(self.plots_path + '_global_policy_loss.png')
             plt.clf()
 
         num_points = len(self.train_global_combined_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.plot(x, self.train_global_combined_loss, label = "Training")
+            plt.scatter(x, self.train_global_combined_loss, s=0.2, c="#13316e", marker="o")
             plt.title("Global Combined loss")
-            plt.legend()
-            plt.savefig(self.plots_path + '_global_total_loss.png')
+            plt.savefig(self.plots_path + '_global_combined_loss.png')
             plt.clf()
 
         print("Global loss plotting done.\n")
@@ -1040,8 +1036,8 @@ class AlphaZero():
         num_points = len(self.train_global_policy_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.plot(x, self.train_global_policy_loss)
-            plt.title("Before split global policy loss")
+            plt.scatter(x, self.train_global_policy_loss, s=0.2, c="#13316e", marker="o")
+            plt.title("Early global policy loss")
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
             plt.clf()
 
@@ -1054,8 +1050,8 @@ class AlphaZero():
         num_points = len(self.train_global_value_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.plot(x, self.train_global_value_loss)
-            plt.title("Before split global value loss")
+            plt.scatter(x, self.train_global_value_loss, s=0.2, c="#13316e", marker="o")
+            plt.title("Early global value loss")
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
             plt.clf()
 
@@ -1064,13 +1060,13 @@ class AlphaZero():
         return
     
     def split_combined_loss_graph(self):
-        print("\nSpliting cobmined loss graph...")
+        print("\nSpliting combined loss graph...")
         num_points = len(self.train_global_combined_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.plot(x, self.train_global_combined_loss)
-            plt.title("Before split global value loss")
-            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
+            plt.scatter(x, self.train_global_combined_loss, s=0.2, c="#13316e", marker="o")
+            plt.title("Early global combined loss")
+            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_combined_loss.png')
             plt.clf()
 
         self.train_global_combined_loss.clear()

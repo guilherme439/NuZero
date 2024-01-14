@@ -133,29 +133,30 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirror_slice_c"
-                continue_network_name = "mirror_lower_lr"
+                trained_network_name = "mirror_lower_lr"
+                continue_network_name = "r_unbalanced_cl"
+                iteration = 1600
                 use_same_configs = False
-                curriculum_learning = False
+                curriculum_learning = True
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_mirrored_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
                 continue_training(game_class, game_args_list, trained_network_name, continue_network_name, \
-                                  use_same_configs, curriculum_learning, new_train_config_path, new_search_config_path, state_set)
+                                  use_same_configs, curriculum_learning, iteration, new_train_config_path, new_search_config_path, state_set)
 
             case 2:
                 game_class = SCS_Game
@@ -274,7 +275,7 @@ def main():
             case 5: 
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
@@ -1418,7 +1419,7 @@ def choose_trained_network():
 # ----------------------------               --------------------------- #
 ##########################################################################
 
-def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, curriculum_learning, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
+def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, curriculum_learning, iteration, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
     game = game_class(*game_args_list[0])
 
     game_folder_name = game.get_name()
@@ -1433,22 +1434,26 @@ def continue_training(game_class, game_args_list, trained_network_name, continue
 
     pickle_path =  trained_model_folder_path + "base_model.pkl"
 
-    '''
+    #'''
     with open(pickle_path, 'rb') as file:
         model = pickle.load(file)
-    '''
+    #'''
 
-    #'''    
+    '''    
     in_channels = game.get_state_shape()[0]
     policy_channels = game.get_action_space_shape()[0]
     model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-    #'''
+    '''
 
     model_paths = glob.glob(trained_model_folder_path + "*_model")
-            
-    # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-    latest_iteration = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
-    latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(latest_iteration) + "_model"
+    
+    if iteration == "auto":
+        # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
+        iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
+    else:
+        iteration_number = iteration
+
+    latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(iteration_number) + "_model"
     model.load_state_dict(torch.load(latest_model_path, map_location=torch.device('cpu')))
 
     if use_same_configs:
@@ -1463,7 +1468,7 @@ def continue_training(game_class, game_args_list, trained_network_name, continue
 
     alpha_zero = AlphaZero(game_class, game_args_list, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
     if not curriculum_learning:
-        starting_iteration = latest_iteration
+        starting_iteration = iteration_number
     else:
         starting_iteration = 0
 
