@@ -133,12 +133,12 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirror_lower_lr"
-                continue_network_name = "mirror_lower_lr_c"
+                trained_network_name = "randomized_ilu_c"
+                continue_network_name = "randomized_ilu_c2"
                 iteration = "auto"
                 use_same_configs = False
                 curriculum_learning = False
