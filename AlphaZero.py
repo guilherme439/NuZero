@@ -874,18 +874,18 @@ class AlphaZero():
 
     def plot_epoch_loss(self, step_number):
         print("\nPlotting epochs...")
-        plt.scatter(range(self.epoch_value_loss), self.epoch_value_loss, s=0.2, c="#13316e", marker="o")
+        plt.scatter(range(self.epoch_value_loss), self.epoch_value_loss, s=0.3, c="#13316e", marker="o")
         plt.title("Epoch value loss")
         plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Value_loss.png')
         plt.clf()
 
-        plt.scatter(range(self.epoch_policy_loss), self.epcoh_policy_loss, s=0.2, c="#13316e", marker="o")
+        plt.scatter(range(self.epoch_policy_loss), self.epcoh_policy_loss, s=0.3, c="#13316e", marker="o")
         plt.title("Epoch policy loss")
         plt.legend()
         plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Policy_loss.png')
         plt.clf()
 
-        plt.scatter(range(self.epoch_combined_loss), self.epoch_combined_loss, s=0.2, c="#13316e", marker="o")
+        plt.scatter(range(self.epoch_combined_loss), self.epoch_combined_loss, s=0.3, c="#13316e", marker="o")
         plt.title("Epoch combined loss")
         plt.legend()
         plt.savefig(self.epochs_path + "step_" + str(step_number) + '-Combined_loss.png')
@@ -897,7 +897,7 @@ class AlphaZero():
         num_points = len(self.train_global_value_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.scatter(x, self.train_global_value_loss, s=0.2, c="#13316e", marker="o")
+            plt.scatter(x, self.train_global_value_loss, s=0.3, c="#13316e", marker="o")
             plt.title("Global Value loss")
             plt.savefig(self.plots_path + '_global_value_loss.png')
             plt.clf()
@@ -905,7 +905,7 @@ class AlphaZero():
         num_points = len(self.train_global_policy_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.scatter(x, self.train_global_policy_loss, s=0.2, c="#13316e", marker="o")
+            plt.scatter(x, self.train_global_policy_loss, s=0.3, c="#13316e", marker="o")
             plt.title("Global Policy loss")
             plt.savefig(self.plots_path + '_global_policy_loss.png')
             plt.clf()
@@ -913,7 +913,7 @@ class AlphaZero():
         num_points = len(self.train_global_combined_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.scatter(x, self.train_global_combined_loss, s=0.2, c="#13316e", marker="o")
+            plt.scatter(x, self.train_global_combined_loss, s=0.3, c="#13316e", marker="o")
             plt.title("Global Combined loss")
             plt.savefig(self.plots_path + '_global_combined_loss.png')
             plt.clf()
@@ -1036,7 +1036,7 @@ class AlphaZero():
         num_points = len(self.train_global_policy_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.scatter(x, self.train_global_policy_loss, s=0.2, c="#13316e", marker="o")
+            plt.scatter(x, self.train_global_policy_loss, s=0.3, c="#13316e", marker="o")
             plt.title("Early global policy loss")
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
             plt.clf()
@@ -1050,7 +1050,7 @@ class AlphaZero():
         num_points = len(self.train_global_value_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.scatter(x, self.train_global_value_loss, s=0.2, c="#13316e", marker="o")
+            plt.scatter(x, self.train_global_value_loss, s=0.3, c="#13316e", marker="o")
             plt.title("Early global value loss")
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
             plt.clf()
@@ -1064,7 +1064,7 @@ class AlphaZero():
         num_points = len(self.train_global_combined_loss)
         if num_points > 1:
             x = range(num_points)
-            plt.scatter(x, self.train_global_combined_loss, s=0.2, c="#13316e", marker="o")
+            plt.scatter(x, self.train_global_combined_loss, s=0.3, c="#13316e", marker="o")
             plt.title("Early global combined loss")
             plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_combined_loss.png')
             plt.clf()

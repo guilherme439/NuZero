@@ -55,7 +55,7 @@ class Tester():
 
         if self.render:
             ray.get(self.remote_storage.store.remote(game))
-            self.renderer.render.remote(player_unit_images=True)
+            self.renderer.render.remote()
             time.sleep(3)
 
         p1_agent.new_game(game)

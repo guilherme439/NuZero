@@ -133,24 +133,24 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
                 trained_network_name = "mirror_lower_lr"
-                continue_network_name = "r_unbalanced_cl"
-                iteration = 1600
+                continue_network_name = "mirror_lower_lr_c"
+                iteration = "auto"
                 use_same_configs = False
-                curriculum_learning = True
+                curriculum_learning = False
 
                 # In case of not using the same configs define the new configs to use like this
-                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
 
                 print("\n")
@@ -201,8 +201,8 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -359,16 +359,17 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/solo_soldier_config_8.yml"]
+                game_args = ["SCS/Game_configs/r_unbalanced_config_5.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 3860
-                recurrent_iterations = 30
+                net_name = "r_unbalanced_cl"
+                model_iteration = 220
+                recurrent_iterations = 6
 
 
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
+
                 
                 # Agents
                 mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
@@ -409,14 +410,14 @@ def main():
                 num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/solo_soldier_config_8.yml"
+                game_config = "SCS/Game_configs/r_unbalanced_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "solo_reduce_prog_4"
-                model_iteration = 1100
-                recurrent_iterations = 30
+                net_name = "r_unbalanced_cl"
+                model_iteration = 220
+                recurrent_iterations = 6
 
                 # Test Manager configuration
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
@@ -856,21 +857,29 @@ def main():
                 print("done!")
 
             case 9: # build graphs from data
-                plt.figure(figsize=(12, 9))
+                
+                figname = "30_vs_res"
+                titulo = "Extrapolation Solo"
+                plt.figure(figsize=(15, 10))
 
-                data_path = "Graphs/_graph_data/solo_final_1100_0-100-iterations.pkl"
+                data_path = "Graphs/_graph_data/solo_reduce_prog_4_1100_0-100-iterations_extrapolation.pkl"
                 win_rates = pickle_load(data_path)
+
+                data_path = "Graphs/_graph_data/solo_res_5x5_to_10x10_win_rates.pkl"
+                res_wr = pickle_load(data_path)
 
                 for size_i in range(len(win_rates)):
                     iterations = win_rates[size_i]
-                    plt.plot(range(len(iterations)), iterations, label = str(size_i+5) + "x" + str(size_i+5))
-
-                name = "Extrapolation Solo"
+                    line_lst = plt.plot(range(len(iterations)), iterations, label = str(size_i+5) + "x" + str(size_i+5))
+                    color = line_lst[0].get_color()
+                    wr = res_wr[size_i]
+                    plt.axhline(y=wr, linestyle='--', label = str(size_i+5) + "x" + str(size_i+5) + "_ResNet", color = color)
 
                 
-                plt.title(name)
+                plt.title(titulo)
                 plt.legend(bbox_to_anchor=(1,1))
-                plt.savefig("Graphs/" + name)
+                #plt.tight_layout()
+                plt.savefig("Graphs/" + figname)
                 plt.clf()
 
                 return
@@ -990,6 +999,7 @@ def create_mirrored_state_set(game):
     renderer = SCS_Renderer()
 
     state_set = []
+    game.reset_env()
     game.set_simple_game_state(9, [1], [(0,1)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
@@ -1003,7 +1013,6 @@ def create_mirrored_state_set(game):
     game.set_simple_game_state(9, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-
     
     game.reset_env()
     game.set_simple_game_state(9, [1,1,1,1], [(0,1),(0,1),(0,0),(0,0)], [2,2,1,1])
@@ -1014,7 +1023,6 @@ def create_mirrored_state_set(game):
     game.set_simple_game_state(9, [1,1,1], [(4,3),(3,3),(4,4)], [1,1,2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-
 
     game.reset_env()
     game.set_simple_game_state(9, [1], [(4,4)], [1])
@@ -1028,8 +1036,9 @@ def create_mirrored_state_set(game):
 def create_unbalanced_state_set(game):
     renderer = SCS_Renderer()
 
-
     state_set = []
+
+    game.reset_env()
     game.set_simple_game_state(7, [1], [(0,1)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
@@ -1043,7 +1052,6 @@ def create_unbalanced_state_set(game):
     game.set_simple_game_state(7, [1], [(4,4)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-
     
     game.reset_env()
     game.set_simple_game_state(7, [1,1], [(2,2),(2,1)], [2,1])
@@ -1078,7 +1086,6 @@ def create_r_unbalanced_state_set(game):
     game.set_simple_game_state(7, [1,1], [(0,1),(4,3)], [2,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
-
     
     game.reset_env()
     game.set_simple_game_state(7, [1,1], [(2,3),(3,3)], [1,2])
@@ -1095,6 +1102,7 @@ def create_r_unbalanced_state_set(game):
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
 
+    game.reset_env()
     game.set_simple_game_state(7, [1,1], [(4,3),(4,3)], [1,1])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
@@ -1107,6 +1115,7 @@ def create_solo_state_set(game):
     renderer = SCS_Renderer()
 
     state_set = []
+    game.reset_env()
     game.set_simple_game_state(7, [1], [(0,0)], [2])
     state_set.append(game.generate_state_image())
     #renderer.display_board(game)
