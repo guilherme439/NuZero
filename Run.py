@@ -133,17 +133,17 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/mirrored_plus_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "randomized_ilu_c2"
-                continue_network_name = "randomized_ilu_c2"
+                trained_network_name = "mirrored_lower_lr_c"
+                continue_network_name = "mirrored_plus_cl"
                 iteration = "auto"
-                use_same_configs = True
-                curriculum_learning = False
+                use_same_configs = False
+                curriculum_learning = True
 
-                # In case of not using the same configs define the new configs to use like this
+                # In case of not using the same configs define here the new configs to use like 
                 new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
                 new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
@@ -286,7 +286,7 @@ def main():
 
                 ################################################
 
-                state_set = create_solo_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -359,12 +359,12 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/r_unbalanced_config_5.yml"]
+                game_args = ["SCS/Game_configs/pretty_config.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "r_unbalanced_cl"
-                model_iteration = 220
+                net_name = "randomized_ilu_c2"
+                model_iteration = 1800
                 recurrent_iterations = 6
 
 
@@ -377,7 +377,7 @@ def main():
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
                 p1_agent = random_agent
-                p2_agent = policy_agent
+                p2_agent = random_agent
                 
                 ################################################
 
@@ -897,7 +897,7 @@ def main():
             
             case 0: # Test initialization
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/randomized_config.yml"]
+                game_args = ["SCS/Game_configs/randomized_config_5.yml"]
                 game = game_class(*game_args)
 
 
@@ -914,7 +914,7 @@ def main():
                     #print(name)
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.70)
+                        torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
                 nn = Torch_NN(model)
@@ -950,22 +950,24 @@ def main():
 
                 print(all_weights)
 
-            case 1:
-                import more_itertools
+            case 1: # Create unit images manually
+                
+                renderer = SCS_Renderer()
 
-                list_of_tuples = [("lala", (933,1), 1),
-                                  ("lawe", (20,0), 0),
-                                  ("weala", (13,1), 3),
-                                  ("lretla", (2243,2), 0),
-                                  ("lewrla", (234352,3), 1),
-                                  ("xladsala", (2003,7), 3),
-                                  ("lfaflefrewe", (2857233,2), 2)]
-                
-                s = more_itertools.bucket(list_of_tuples, key=lambda x: x[2]) 
-                for key in sorted(s):
-                    print(key)
-                    print(list(s[key]))
-                
+                renderer.create_marker_from_scratch("ally_soldier", (1,2,2), "infantary", color_str="dark_green")
+                renderer.add_border("green", "SCS/Images/ally_soldier.jpg")
+
+                renderer.create_marker_from_scratch("ally_tank", (2,2,4), "mechanized", color_str="dark_green")
+                renderer.add_border("green", "SCS/Images/ally_tank.jpg")
+
+                renderer.create_marker_from_scratch("axis_soldier", (1,1,3), "infantary", color_str="dark_red")
+                renderer.add_border("red", "SCS/Images/axis_soldier.jpg")
+
+                renderer.create_marker_from_scratch("axis_tank", (4,6,1), "mechanized", color_str="dark_red")
+                renderer.add_border("red", "SCS/Images/axis_tank.jpg")
+
+
+                print("\nImages created!\n")
 
                 
                 

@@ -20,7 +20,7 @@ class Color(Enum):
     DARK_RED = (90, 10, 25)
     BROWN = (90, 50, 0)
     DARK_GREEN = (60, 80, 40)
-    GREEN = (45, 110, 10)
+    GREEN = (45, 120, 5)
     LIGHT_BLUE = (40, 110, 230)
     BLUE = (0, 40, 90)
     BLACK = (0, 0, 0)
@@ -586,7 +586,7 @@ class SCS_Renderer():
 
     def add_border(self, color_str, source_path, dest_path=""):
         #pygame.init()
-        border_color = color_str
+        border_color = self.color_str_to_rgb(color_str)
 
         if dest_path == "":
             dest_path = source_path
