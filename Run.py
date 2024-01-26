@@ -137,8 +137,8 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "mirrored_lower_lr_c"
-                continue_network_name = "mirrored_plus_cl"
+                trained_network_name = "mirror_lower_lr_c"
+                continue_network_name = "mirror_plus_cl"
                 iteration = "auto"
                 use_same_configs = False
                 curriculum_learning = True
@@ -359,12 +359,12 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/pretty_config.yml"]
+                game_args = ["SCS/Game_configs/mirrored_config_5.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "randomized_ilu_c2"
-                model_iteration = 1800
+                net_name = "mirror_lower_lr_c"
+                model_iteration = 3100
                 recurrent_iterations = 6
 
 
@@ -377,7 +377,7 @@ def main():
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
                 p1_agent = random_agent
-                p2_agent = random_agent
+                p2_agent = policy_agent
                 
                 ################################################
 
