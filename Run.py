@@ -139,7 +139,7 @@ def main():
 
                 trained_network_name = "explor_unbalanced"
                 continue_network_name = "explor_unbalanced_c"
-                iteration = "660"
+                iteration = 660
                 use_same_configs = False
                 curriculum_learning = False
 
