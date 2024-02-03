@@ -133,24 +133,24 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "explor_unbalanced_c"
-                continue_network_name = "explor_unbalanced_c2"
-                iteration = "auto"
+                trained_network_name = "randomized_ilu_c2"
+                continue_network_name = "randomized_final"
+                iteration = 1700
                 use_same_configs = False
                 curriculum_learning = False
 
                 # In case of not using the same configs define here the new configs to use like 
-                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
 
                 print("\n")
@@ -406,17 +406,17 @@ def main():
                     renderer.analyse(game)
 
             case 2: # Statistics for multiple games
-                num_testers = 3
-                num_games = 100
+                num_testers = 4
+                num_games = 250
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/r_unbalanced_config_5.yml"
+                game_config = "SCS/Game_configs/mirrored_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "r_unbalanced_cl"
-                model_iteration = 220
+                net_name = "mirror_lower_lr_c"
+                model_iteration = 3220
                 recurrent_iterations = 6
 
                 # Test Manager configuration
@@ -426,12 +426,12 @@ def main():
                 test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 1000)
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 12000)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = random_agent
-                p2_agent = policy_agent
+                p1_agent = mcts_agent
+                p2_agent = goal_agent
 
                 ################################################
                 print("\n")
