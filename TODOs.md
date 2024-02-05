@@ -8,6 +8,7 @@
 
 ### Running the system
 - Creation of custom training/testing presets based on user interactive choices, probably using preset save files[hard, low]
+- Improve overall running interface [hard, low]
 
 ### Explorer
 
@@ -26,7 +27,7 @@
 
 
 ### SCS Game
-- Continue expanding game feature [medium, low]
+- Continue expanding game features [medium, low]
 
 ### Graphs
 
