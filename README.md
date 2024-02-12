@@ -3,7 +3,7 @@
 
 AlphaZero + DeepThinking + WarGames
 
-This system was developed as an attempt to tackle the enormous complexity of Wargames, more specifically Standard Combat Series (SCS) games, by combining the AlphaZero learning capabilities with the Deepthinking extrapolation capacity. The general idea was to train recurrent networks on small/simple maps using AlphaZero and then use the techniques described in the Deepthinking papers to extrapolate the learned strategies to the very large maps of SCS games. The system ended up developing into a wider project that can accommodate a larger set of games, network architectures and configurations. More information about the system and its conceptualization can be found in my [Master Thesis](www.google.com)
+This system was developed as an attempt to tackle the enormous complexity of Wargames, more specifically Standard Combat Series (SCS) games, by combining the AlphaZero learning capabilities with the Deepthinking extrapolation capacity. The general idea was to train recurrent networks on small/simple maps using AlphaZero and then use the techniques described in the Deepthinking papers to extrapolate the learned strategies to the very large maps of SCS games. The system ended up developing into a wider project to accommodate a larger set of games, network architectures and configurations. More information about the system and its conceptualization can be found in my [Master Thesis](www.google.com)
 
 Most important papers for this project:
 * [Hexagdly](https://www.semanticscholar.org/paper/HexagDLy-Processing-hexagonally-sampled-data-with-Steppa-Holch/817d9ae8f6843d56ce984fa2eccb95ce97de4720?sort=is-influential)
@@ -17,11 +17,11 @@ Most important papers for this project:
 * [X] Options for both sequential and fully asynchronous self-play, training and testing using [Ray](https://github.com/ray-project/ray).
 * [X] Saves checkpoints during training and allows continuing previous training in case anything goes wrong.
 * [X] Creates graphs for loss, win rates and others.
-* [X] Allows defining any custom games, network architectures and agents.
+* [X] Allows defining custom games, network architectures and agents.
 * [X] Tic Tac Toe and SCS games already implemented.
 * [X] Definition of any custom SCS games within the already implemented rules.
 * [X] Creation of custom SCS markers for units.
-* [ ] Already implemented network architectures for both hexagonal and orthogonal data.
+* [X] Already implemented network architectures for both hexagonal and orthogonal data.
 
 
 ### Future features
@@ -30,6 +30,7 @@ Most important papers for this project:
 * [ ] Visual Interface for users to play SCS games
 * [ ] Hyperparameter optimization
 * [ ] Distributed training updates
+* [ ] GPU optimization
 
 
 
