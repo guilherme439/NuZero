@@ -139,7 +139,7 @@ def main():
 
                 trained_network_name = "randomized_final"
                 continue_network_name = "randomized_final_2"
-                iteration = 2460
+                iteration = 2400
                 use_same_configs = False
                 curriculum_learning = False
 
