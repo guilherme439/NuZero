@@ -359,12 +359,12 @@ def main():
                 rendering_mode = "interactive"  # passive | interactive
 
                 game_class = SCS_Game
-                game_args = ["SCS/Game_configs/pretty_config.yml"]
+                game_args = ["SCS/Game_configs/r_unbalanced_config_5.yml"]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "mirror_lower_lr_c"
-                model_iteration = 3100
+                net_name = "explor_unbalanced_c3"
+                model_iteration = 2040
                 recurrent_iterations = 6
 
 
@@ -376,8 +376,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = policy_agent
-                p2_agent = random_agent
+                p1_agent = random_agent
+                p2_agent = policy_agent
                 
                 ################################################
 
