@@ -279,8 +279,8 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/test_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/large_test_training_config.ini"
+                search_config_path="Configs/Config_Files/Search/large_test_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -290,7 +290,7 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 64, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                model = RecurrentNet(in_channels, policy_channels, 128, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
