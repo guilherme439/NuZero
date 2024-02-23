@@ -30,10 +30,10 @@ from progress.spinner import PieSpinner
 class TestManager():
     '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, num_testers, shared_storage, state_set=None):
+    def __init__(self, game_class, game_args, num_actors, shared_storage, state_set=None):
         self.game_class = game_class
         self.game_args = game_args
-        self.num_testers = num_testers
+        self.num_actors = num_actors
         self.shared_storage = shared_storage
         self.state_set = state_set
 
@@ -42,7 +42,7 @@ class TestManager():
         # ------------------------------------------------------ #
 
         
-        actor_list = [RemoteTester.remote() for a in range(self.num_testers)]
+        actor_list = [RemoteTester.remote() for a in range(self.num_actors)]
         self.actor_pool = ray.util.ActorPool(actor_list)
 
     def run_group_of_test_batches(self, num_batches, games_per_batch, p1_agents_list, p2_agents_list, show_results):
@@ -63,6 +63,7 @@ class TestManager():
 
         wins = [0,0]
 
+        '''
         args = [None, p1_agent, p2_agent, False]
 
 
@@ -74,8 +75,6 @@ class TestManager():
             args_copy = copy.copy(args)
             args_copy[0] = game
             map_args.append(args_copy)
-
-        time.sleep(1)
 
         results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_using_agents.remote(*args), map_args)
             
@@ -89,6 +88,43 @@ class TestManager():
             bar.next()
 
         bar.finish()
+
+        '''
+
+        # FIXME: PLEEEEEEEEEEEEEEEAAASE
+        call_args = []
+        first_requests = min(self.num_actors, num_games)
+        for r in range(first_requests):
+            self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
+
+        first = True
+        games_played = 0
+        games_requested = first_requests
+        while games_played < num_games_per_type:
+        
+            stats, cache = actor_pool.get_next_unordered()
+            games_played += 1
+            stats_list.append(stats)
+
+            if keep_updated:
+                if first:   
+                    # The first game to finish initializes the cache
+                    latest_cache = cache
+                    first = False
+                else:       
+                    # The remaining games update the cache with the states they saw
+                    latest_cache.update(cache)
+            
+            # While there are games to play... we request more
+            if games_requested < num_games_per_type:
+                if keep_updated:
+                    call_args = [latest_cache]
+                else:
+                    call_args = []
+                actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
+                games_requested +=1
+
+            bar.next()
             
         
         # STATISTICS

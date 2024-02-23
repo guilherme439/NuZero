@@ -30,7 +30,8 @@ class Training_Config(Config):
         self.cache = dict \
         (
         cache_choice = 'disabled', # disabled | dict | keyless 
-        size_estimate = 10000
+        size_estimate = 10000,
+        keep_updated = True
         )
         
 
@@ -100,6 +101,7 @@ class Training_Config(Config):
         (
         batch_size = 2024,
         num_samples = 1,
+        with_replacement = True,
         late_heavy = False
         )
 

@@ -254,6 +254,31 @@ class AlphaZero():
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
         # ------------------------------------------------------ #
+        # ------------------- LOSS FUNCTIONS ------------------- #
+        # ------------------------------------------------------ #
+
+        value_loss_choice = self.train_config.learning["value_loss"]
+        policy_loss_choice = self.train_config.learning["policy_loss"]
+        normalize_CEL = self.train_config.learning["normalize_cel"]
+
+        normalize_policy = False
+        match policy_loss_choice:
+            case "CEL":
+                policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.02)
+                if normalize_CEL:
+                    normalize_policy = True
+            case "KLD":
+                policy_loss_function = KLDivergence
+            case "MSE":
+                policy_loss_function = MSError
+        
+        match value_loss_choice:
+            case "SE":
+                value_loss_function = SquaredError
+            case "AE":
+                value_loss_function = AbsoluteError
+
+        # ------------------------------------------------------ #
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
 
@@ -335,7 +360,7 @@ class AlphaZero():
                 self.run_selfplay(num_games_per_type_per_step, cache_choice, size_estimate=size_estimate, text="Self-Play Games")
 
             print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
-            self.train_network(optimizer, scheduler, batch_size, learning_method, prog_alpha)
+            self.train_network(optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, learning_method, batch_size, prog_alpha)
 
             # ---- TESTS ---- #
             test_policy = (policy_test_frequency and (((step+1) % policy_test_frequency) == 0)) 
@@ -438,7 +463,7 @@ class AlphaZero():
             ray.get(termination_futures) # wait for each of the actors to terminate the game that they are currently playing       
         
         print("All done.\nExiting")
-        return
+        return        
             
     def run_selfplay(self, num_games_per_type, cache_choice, size_estimate=10000, text="Self-Play", early_fill=False):
         start = time.time()
@@ -446,6 +471,7 @@ class AlphaZero():
 
         pred_iterations_list = self.train_config.recurrent_training["pred_iterations"]
         num_actors = self.train_config.running["num_actors"]
+        keep_updated = self.train_config.cache["keep_updated"]
 
         search_config = deepcopy(self.search_config)
         if early_fill:
@@ -477,16 +503,39 @@ class AlphaZero():
                         for a in range(num_actors)]
                 
             actor_pool = ray.util.ActorPool(actor_list)
-
+            
             call_args = []
-            for g in range(num_games_per_type):
+            first_requests = min(num_actors, num_games_per_type)
+            for r in range(first_requests):
                 actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
+
+            first = True
+            games_played = 0
+            games_requested = first_requests
+            while games_played < num_games_per_type:
             
-            time.sleep(1) # Sometimes ray bugs if we dont wait before getting the results
-            
-            for g in range(num_games_per_type):
-                stats = actor_pool.get_next_unordered()
+                stats, cache = actor_pool.get_next_unordered()
+                games_played += 1
                 stats_list.append(stats)
+
+                if keep_updated:
+                    if first:   
+                        # The first game to finish initializes the cache
+                        latest_cache = cache
+                        first = False
+                    else:       
+                        # The remaining games update the cache with the states they saw
+                        latest_cache.update(cache)
+                
+                # While there are games to play... we request more
+                if games_requested < num_games_per_type:
+                    if keep_updated:
+                        call_args = [latest_cache]
+                    else:
+                        call_args = []
+                    actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
+                    games_requested +=1
+
                 bar.next()
 
         bar.finish()
@@ -541,12 +590,12 @@ class AlphaZero():
 
         return
         
-    def train_network(self, optimizer, scheduler, batch_size, learning_method, prog_alpha):
+    def train_network(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, learning_method, batch_size, prog_alpha):
         '''Executes a training step'''
         print()
         start = time.time()
 
-        replace = True
+        
         train_iterations = self.train_config.recurrent_training["train_iterations"]
         batch_extraction = self.train_config.learning["batch_extraction"]
 
@@ -556,29 +605,6 @@ class AlphaZero():
         print("\nThere are a total of " + str(replay_size) + " positions in the replay buffer.")
         print("Total number of games: " + str(n_games))
         
-
-        # ----------- Loss functions -----------
-
-        value_loss_choice = self.train_config.learning["value_loss"]
-        policy_loss_choice = self.train_config.learning["policy_loss"]
-        normalize_CEL = self.train_config.learning["normalize_cel"]
-
-        normalize_policy = False
-        match policy_loss_choice:
-            case "CEL":
-                policy_loss_function = nn.CrossEntropyLoss(label_smoothing=0.02)
-                if normalize_CEL:
-                    normalize_policy = True
-            case "KLD":
-                policy_loss_function = KLDivergence
-            case "MSE":
-                policy_loss_function = MSError
-        
-        match value_loss_choice:
-            case "SE":
-                value_loss_function = SquaredError
-            case "AE":
-                value_loss_function = AbsoluteError
         
         # --------------------------------------
 
@@ -671,6 +697,7 @@ class AlphaZero():
         elif learning_method == "samples":
             num_samples = self.train_config.samples["num_samples"]
             late_heavy = self.train_config.samples["late_heavy"]
+            replace = self.train_config.samples["with_replacement"]
 
             if batch_extraction == 'local':
                 future_buffer = self.replay_buffer.get_buffer.remote()
@@ -744,6 +771,14 @@ class AlphaZero():
         print("\n\nTraining time(s): " + format(total_time, '.4') + "\n\n\n")
 
         return	
+    
+    def train_epochs(self):
+
+        return
+    
+    def train_samples(self):
+
+        return
 
     def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, train_iterations, alpha):
         '''updates network's weights based on loss values'''

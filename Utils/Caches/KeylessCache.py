@@ -21,7 +21,7 @@ class KeylessCache(Cache):
     ''' Implements a cache without storing the keys.'''
     
 
-    def __init__(self, size_estimate, hash_size=64):
+    def __init__(self, size_estimate):
         if size_estimate <= 0:
             print("\nThe cache size must be larger than 0")
             exit()
@@ -33,15 +33,17 @@ class KeylessCache(Cache):
         self.table = [[]] * self.size
         self.num_items = 0
         self.fill_ratio = 0
-        self.hash_size = hash_size
-        if hash_size == 64:
+        
+        if self.indexing_bits < 16:
             self.hash_function = self.hash_metro64
-        elif hash_size == 128:
+        elif self.indexing_bits < 32:
             self.hash_function = self.hash_metro128
-        elif hash_size == 256:
+        elif self.indexing_bits < 256:
             self.hash_function = self.hash_sha256
+            if self.indexing_bits > 64:
+                print("\nWARNING: Using more than 64 bits out of 256, for indexing.\n")
         else:
-            print("\nhash_size not available. Options: 64, 128, 256")
+            print("Cache size too large.")
             exit()
         return
     
@@ -83,6 +85,29 @@ class KeylessCache(Cache):
 
         cache_entry = (value, identifier)
         self.table[index].append(cache_entry)   
+        return
+    
+    def update(self, update_cache):
+        if update_cache.size != self.size:
+            print("\nCannot update using caches of different sizes.")
+            exit()
+        for i in range(self.size):
+            update_slot = update_cache.table[i]
+            my_slot = self.table[i]
+            for item in update_slot:
+                (value, identifier) = item
+                local_value = self.find_by_id(identifier, my_slot)
+                if local_value is None:
+                    my_slot.append(item)
+                else:
+                    if local_value != value:
+                        print("\n\n\n")
+                        print(local_value)
+                        print("\n\n\n\n\n")
+                        print(value)
+                        print("\n\nSomething wrong while updating!\n")
+                        exit()
+        
         return
     
     def get_fill_ratio(self):

@@ -36,7 +36,7 @@ class Gamer():
         
 
 
-    def play_game(self):
+    def play_game(self, cache=None):
         future_network = self.shared_storage.get.remote() # ask for a copy of the latest network
 
         stats = \
@@ -47,21 +47,13 @@ class Gamer():
         "final_tree_size" : 0,
         "average_bias_value" : 0,
         "final_bias_value" : 0,
-        "cache_fill_ratio" : 0,
         }
 
         game = self.game_class(*self.game_args)
         keep_subtree = self.search_config.simulation["keep_subtree"]
 
-        if self.cache_choice == "dict":
-            self.cache = DictCache()
-        elif self.cache_choice == "keyless":
-            self.cache = KeylessCache(self.size_estimate)
-        elif self.cache_choice == "disabled":
-            self.cache = None
-        else:
-            print("\nbad cache_choice")
-            exit()
+        if cache is None:
+            cache = self.create_cache(self.cache_choice, self.size_estimate)
 
         root_node = Node(0)
 
@@ -73,7 +65,7 @@ class Gamer():
             game.store_state(state)
             #game.store_player(game.get_current_player())
     
-            action_i, chosen_child, root_bias = self.explorer.run_mcts(game, network_copy, root_node, self.recurrent_iterations, self.cache)
+            action_i, chosen_child, root_bias = self.explorer.run_mcts(game, network_copy, root_node, self.recurrent_iterations, cache)
         
             tree_size = root_node.get_visit_count()
             node_children = root_node.num_children()
@@ -92,7 +84,6 @@ class Gamer():
             stats["final_bias_value"] = root_bias
             
             
-        stats["cache_fill_ratio"] = self.cache.get_fill_ratio()
         stats["number_of_moves"] = game.length
         stats["average_children"] /= game.length
         stats["average_tree_size"] /= game.length
@@ -101,11 +92,23 @@ class Gamer():
         #print(self.cache.get_fill_ratio())
         ray.get(self.buffer.save_game.remote(game, self.game_index)) # each actor waits for the game to be saved before returning
 
-        return stats
+        return stats, cache
     
     def play_forever(self):
         while not self.time_to_stop:
             self.play_game()
+
+    def create_cache(self, cache_choice, size_estimate):
+        if cache_choice == "dict":
+            cache = DictCache()
+        elif cache_choice == "keyless":
+            cache = KeylessCache(size_estimate)
+        elif cache_choice == "disabled":
+            cache = None
+        else:
+            print("\nbad cache_choice")
+            exit()
+        return cache
 
     def stop(self):
         self.time_to_stop = True
