@@ -5,23 +5,20 @@ from Node import Node
 from Explorer import Explorer
 from Agents.Agent import Agent
 
-from Utils.Caches.DictCache import DictCache
-from Utils.Caches.KeylessCache import KeylessCache
+from Utils.other_utils import *
 
 
 class MctsAgent(Agent):
     ''' Chooses the action most visited using AlphaZero's MCTS'''
 
-    def __init__(self, search_config, network, recurrent_iterations=2, cache_choice="disabled", size_estimate=10000):
+    def __init__(self, search_config, network, recurrent_iterations=2, cache=None):
         self.explorer = Explorer(search_config, False)
         self.keep_subtree = search_config.simulation["keep_subtree"]
         self.root_node = Node(0)
 
         self.network = network
         self.recurrent_iterations = recurrent_iterations
-        self.cache_choice = cache_choice
-        self.size_estimate = size_estimate
-        self.cache = None
+        self.cache = cache
 
         return
 
@@ -39,18 +36,13 @@ class MctsAgent(Agent):
         return
     
     
-    def new_game(self, *args):
+    def new_game(self, *args, cache=None):
         self.root_node = Node(0)
-        if self.cache_choice == "dict":
-            self.cache = DictCache()
-        elif self.cache_choice == "keyless":
-            self.cache = KeylessCache(self.size_estimate)
-        elif self.cache_choice == "disabled":
-            self.cache = None
-        else:
-            print("\nbad cache_choice")
-            exit()
-        return
+        if cache is not None:
+            self.cache = cache
+
+    def get_cache(self):
+        return self.cache
     
     def name(self):
         return "MCTS Agent"

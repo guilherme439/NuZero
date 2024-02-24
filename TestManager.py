@@ -21,6 +21,7 @@ from RemoteTester import RemoteTester
 
 from Utils.stats_utilities import *
 from Utils.loss_functions import *
+from Utils.other_utils import *
 from Utils.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
@@ -30,12 +31,14 @@ from progress.spinner import PieSpinner
 class TestManager():
     '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, num_actors, shared_storage, state_set=None):
+    def __init__(self, game_class, game_args, num_actors, shared_storage, keep_updated, cache_choice, cache_max_size):
         self.game_class = game_class
         self.game_args = game_args
         self.num_actors = num_actors
         self.shared_storage = shared_storage
-        self.state_set = state_set
+        self.keep_updated = keep_updated
+        self.cache_choice = cache_choice
+        self.cache_max_size = cache_max_size
 
         # ------------------------------------------------------ #
         # --------------------- ACTOR POOL --------------------- #
@@ -90,42 +93,52 @@ class TestManager():
         bar.finish()
 
         '''
+        bar = PrintBar('Testing', num_games, 15)
 
-        # FIXME: PLEEEEEEEEEEEEEEEAAASE
-        call_args = []
+        call_args = [None, p1_agent, p2_agent]
+
         first_requests = min(self.num_actors, num_games)
         for r in range(first_requests):
+            game = self.game_class(*self.game_args)
+            call_args[0] = game
             self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
 
         first = True
         games_played = 0
         games_requested = first_requests
-        while games_played < num_games_per_type:
+        while games_played < num_games:
         
-            stats, cache = actor_pool.get_next_unordered()
+            winner, _, p1_cache, p2_cache = self.actor_pool.get_next_unordered()
             games_played += 1
-            stats_list.append(stats)
+            bar.next()
+            if winner != 0:
+                wins[winner-1] +=1
 
-            if keep_updated:
+            if self.keep_updated:
                 if first:   
                     # The first game to finish initializes the cache
-                    latest_cache = cache
+                    p1_latest_cache = p1_cache
+                    p2_latest_cache = p2_cache
                     first = False
                 else:       
                     # The remaining games update the cache with the states they saw
-                    latest_cache.update(cache)
+                    if p1_latest_cache.get_fill_ratio() < 0.7:
+                        p1_latest_cache.update(p1_cache)
+                    if p2_latest_cache.get_fill_ratio() < 0.7:
+                        p2_latest_cache.update(p1_cache)
             
             # While there are games to play... we request more
-            if games_requested < num_games_per_type:
-                if keep_updated:
-                    call_args = [latest_cache]
-                else:
-                    call_args = []
-                actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
+            if games_requested < num_games:
+                if self.keep_updated:
+                    call_args = [None, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
+
+                game = self.game_class(*self.game_args)
+                call_args[0] = game
+                self.actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
                 games_requested +=1
 
-            bar.next()
-            
+        
+        bar.finish()    
         
         # STATISTICS
         cmp_winrate_1 = 0.0

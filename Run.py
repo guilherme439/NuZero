@@ -272,7 +272,7 @@ def main():
 
                 
 
-            case 5: 
+            case 5:
                 
                 game_class = SCS_Game
                 game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
@@ -280,7 +280,7 @@ def main():
                 game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/large_test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/large_test_search_config.ini"
+                search_config_path="Configs/Config_Files/Search/small_test_search_config.ini"
 
                 network_name = "local_net_test"
 
@@ -353,7 +353,7 @@ def main():
                 game = game_class(*game_args)
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 
-                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+                print("\n\nNeeds to be updated. Currently not working...\n")
 
             case 1: # Render Game
                 rendering_mode = "interactive"  # passive | interactive
@@ -1346,7 +1346,7 @@ def testing_mode():
         game = game_class(*game_args)
         nn, search_config = load_trained_network(game, net_name, model_iteration)
         
-        test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+        print("\n\nNeeds to be updated. Currently not working...\n")
 
 def training_mode():
     game_class, game_args = choose_game()
@@ -1616,83 +1616,6 @@ def load_trained_network(game, net_name, model_iteration):
     search_config.load(search_config_path)
 
     return nn, search_config
-
-def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=None, search_config=None, nn=None, recurrent_iterations=None, use_state_cache=None):
-
-    wins = [0,0]
-    
-    if method == "random":
-        args_list = [None]
-        game_index = 0
-    elif method == "policy":
-        args_list = [AI_player, None, nn, None, recurrent_iterations, False]
-        game_index = 1
-    elif method == "mcts":
-        args_list = [AI_player, search_config, None, nn, None, recurrent_iterations, False, False]
-        game_index = 2
-    elif method == "agent":
-        args_list = [AI_player, None, False]
-        game_index = 1
-
-    actor_list = [RemoteTester.remote(print=False) for a in range(num_testers)]
-    actor_pool = ray.util.ActorPool(actor_list)
-
-    text = "Testing using " + method
-    bar = PrintBar(text, num_games, 15)
-
-    # We must use map instead of submit,
-    # because ray bugs if you do several submit calls with different values
-    map_args = []
-    for g in range(num_games):
-        args_copy = copy.copy(args_list)
-        args_copy[game_index] = game_class(*game_args)
-        map_args.append(args_copy)
-
-
-    if method == "random":
-        results = actor_pool.map_unordered(lambda actor, args: actor.random_vs_random.remote(*args), map_args)
-    elif method == "policy":
-        results = actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_policy.remote(*args), map_args)
-    elif method == "mcts":
-        results = actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), map_args)
-    elif method == "agent":
-        results = actor_pool.map_unordered(lambda actor, args: actor.Test_agent_vs_random.remote(*args), map_args)
-        
-    time.sleep(2)
-
-    for res in results:
-        winner, _ = res
-        if winner != 0:
-            wins[winner-1] +=1
-        bar.next()
-			
-    bar.finish()
-
-    # STATISTICS
-    cmp_winrate_1 = 0.0
-    cmp_winrate_2 = 0.0
-    draws = num_games - wins[0] - wins[1]
-    p1_winrate = wins[0]/num_games
-    p2_winrate = wins[1]/num_games
-    draw_percentage = draws/num_games
-    cmp_2_string = "inf"
-    cmp_1_string = "inf"
-
-    if wins[0] > 0:
-        cmp_winrate_2 = wins[1]/wins[0]
-        cmp_2_string = format(cmp_winrate_2, '.4')
-    if wins[1] > 0:  
-        cmp_winrate_1 = wins[0]/wins[1]
-        cmp_1_string = format(cmp_winrate_1, '.4')
-
-  
-    print("P1 Win ratio: " + format(p1_winrate, '.4'))
-    print("P2 Win ratio: " + format(p2_winrate, '.4'))
-    print("Draw percentage: " + format(draw_percentage, '.4'))
-    print("Comparative Win ratio(p1/p2): " + cmp_1_string)
-    print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
-
-    return p1_winrate, p2_winrate, draw_percentage
 
 def str_to_class(classname):
     return getattr(sys.modules[__name__], classname)

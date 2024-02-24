@@ -170,7 +170,7 @@ class GoalRushAgent(Agent):
     def name(self):
         return "GoalRush Agent"
     
-    def new_game(self, game):
+    def new_game(self, game, *args, **kwargs):
         if game is None:
             print("WARNING: GoalRushAgent.new_game() without a \"game\" argument.")
             print("When called this way the internal graph won't be updated,\n \

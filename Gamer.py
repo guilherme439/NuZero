@@ -7,10 +7,10 @@ import numpy as np
 from Node import Node
 from Explorer import Explorer
 
-from Utils.Caches.DictCache import DictCache
-from Utils.Caches.KeylessCache import KeylessCache
+from Utils.other_utils import *
 
 from functools import reduce
+
 
 
 
@@ -53,7 +53,7 @@ class Gamer():
         keep_subtree = self.search_config.simulation["keep_subtree"]
 
         if cache is None:
-            cache = self.create_cache(self.cache_choice, self.size_estimate)
+            cache = create_cache(self.cache_choice, self.size_estimate)
 
         root_node = Node(0)
 
@@ -89,7 +89,7 @@ class Gamer():
         stats["average_tree_size"] /= game.length
         stats["average_bias_value"] /= game.length
 
-        #print(self.cache.get_fill_ratio())
+        #print("hit ratio: " + str(cache.get_hit_ratio()))
         ray.get(self.buffer.save_game.remote(game, self.game_index)) # each actor waits for the game to be saved before returning
 
         return stats, cache
@@ -97,18 +97,6 @@ class Gamer():
     def play_forever(self):
         while not self.time_to_stop:
             self.play_game()
-
-    def create_cache(self, cache_choice, size_estimate):
-        if cache_choice == "dict":
-            cache = DictCache()
-        elif cache_choice == "keyless":
-            cache = KeylessCache(size_estimate)
-        elif cache_choice == "disabled":
-            cache = None
-        else:
-            print("\nbad cache_choice")
-            exit()
-        return cache
 
     def stop(self):
         self.time_to_stop = True

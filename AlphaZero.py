@@ -37,6 +37,7 @@ from Agents.Generic.RandomAgent import RandomAgent
 
 from Utils.stats_utilities import *
 from Utils.loss_functions import *
+from Utils.other_utils import *
 from Utils.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
@@ -139,7 +140,8 @@ class AlphaZero():
             
 
         cache_choice = self.train_config.cache["cache_choice"]
-        size_estimate = self.train_config.cache["size_estimate"]
+        cache_max = self.train_config.cache["max_size"]
+        keep_updated = self.train_config.cache["keep_updated"]
 
         save_frequency = self.train_config.saving["save_frequency"]
         storage_frequency = self.train_config.saving["storage_frequency"]
@@ -286,10 +288,10 @@ class AlphaZero():
         if asynchronous_testing:
             self.test_futures = []
             self.test_manager = RemoteTestManager.remote(self.game_class, test_game_args, num_testers,
-                                                        self.network_storage, self.state_set)
+                                                        self.network_storage, keep_updated, cache_choice, cache_max)
         else:
             self.test_manager = TestManager(self.game_class, test_game_args, num_testers,
-                                            self.network_storage, self.state_set)
+                                            self.network_storage, keep_updated, cache_choice, cache_max)
 
         if running_mode == "sequential":
             self.games_per_step = num_games_per_type_per_step * self.num_game_types
@@ -327,12 +329,12 @@ class AlphaZero():
                 test_mcts = (mcts_test_frequency != 0)
                 policy_games = num_policy_test_games if test_policy else 0
                 mcts_games = num_mcts_test_games if test_mcts else 0
-                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, size_estimate)
+                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max)
                 print("\nLaunched early tests.")
 
         if early_fill_games_per_type > 0:
             print("\n\n\n\nEarly Buffer Fill\n")
-            self.run_selfplay(early_fill_games_per_type, cache_choice, size_estimate=size_estimate, text="Playing initial games", early_fill=True)
+            self.run_selfplay(early_fill_games_per_type, cache_choice, keep_updated, cache_max=cache_max, text="Playing initial games", early_fill=True)
 
         if running_mode == "asynchronous":
             actor_list= [Gamer.options(max_concurrency=2).remote
@@ -345,7 +347,7 @@ class AlphaZero():
                         self.search_config,
                         pred_iterations[0],
                         cache_choice,
-                        size_estimate
+                        cache_max
                         )
                         for a in range(num_actors)]
             
@@ -357,7 +359,7 @@ class AlphaZero():
             print("\n\n\n\nStep: " + str(step+1) + "\n")
 
             if running_mode == "sequential":
-                self.run_selfplay(num_games_per_type_per_step, cache_choice, size_estimate=size_estimate, text="Self-Play Games")
+                self.run_selfplay(num_games_per_type_per_step, cache_choice, keep_updated, cache_max=cache_max, text="Self-Play Games")
 
             print("\n\nLearning rate: " + str(scheduler.get_last_lr()[0]))
             self.train_network(optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, learning_method, batch_size, prog_alpha)
@@ -381,7 +383,7 @@ class AlphaZero():
                         self.test_futures.pop(i)
                 
             if policy_games or mcts_games:
-                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, size_estimate)
+                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max)
 
             # ---- PLOTS ---- #
             # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
@@ -465,13 +467,13 @@ class AlphaZero():
         print("All done.\nExiting")
         return        
             
-    def run_selfplay(self, num_games_per_type, cache_choice, size_estimate=10000, text="Self-Play", early_fill=False):
+    def run_selfplay(self, num_games_per_type, cache_choice, keep_updated, cache_max=10000, text="Self-Play", early_fill=False):
         start = time.time()
         stats_list = []
 
         pred_iterations_list = self.train_config.recurrent_training["pred_iterations"]
         num_actors = self.train_config.running["num_actors"]
-        keep_updated = self.train_config.cache["keep_updated"]
+        
 
         search_config = deepcopy(self.search_config)
         if early_fill:
@@ -498,7 +500,7 @@ class AlphaZero():
                         search_config,
                         iterations,
                         cache_choice,
-                        size_estimate
+                        cache_max
                         )
                         for a in range(num_actors)]
                 
@@ -513,10 +515,11 @@ class AlphaZero():
             games_played = 0
             games_requested = first_requests
             while games_played < num_games_per_type:
-            
+                
                 stats, cache = actor_pool.get_next_unordered()
-                games_played += 1
                 stats_list.append(stats)
+                games_played += 1
+                bar.next()
 
                 if keep_updated:
                     if first:   
@@ -525,7 +528,8 @@ class AlphaZero():
                         first = False
                     else:       
                         # The remaining games update the cache with the states they saw
-                        latest_cache.update(cache)
+                        if latest_cache.get_fill_ratio() < 0.7:
+                            latest_cache.update(cache)
                 
                 # While there are games to play... we request more
                 if games_requested < num_games_per_type:
@@ -536,8 +540,10 @@ class AlphaZero():
                     actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
                     games_requested +=1
 
-                bar.next()
-
+        print("size: " + str(latest_cache.length()))
+        print("hit ratio: " + str(latest_cache.get_hit_ratio()))
+        print(latest_cache.hits)
+        print(latest_cache.misses)
         bar.finish()
         print_stats_list(stats_list)
 
@@ -548,13 +554,16 @@ class AlphaZero():
 
         return
 
-    def run_tests(self, policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, size_estimate=10000):
+    def run_tests(self, policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max=10000):
         latest_network = ray.get(self.network_storage.get.remote()) # ask for a copy of the latest network
+
+        mcts_agent_cache = create_cache(cache_choice, cache_max)
+        policy_agent_cache = create_cache(cache_choice, cache_max)
         
         if mcts_games:
-            mcts_agent = MctsAgent(self.search_config, latest_network, test_iterations, cache_choice, size_estimate)
+            mcts_agent = MctsAgent(self.search_config, latest_network, test_iterations, mcts_agent_cache)
         if policy_games:
-            policy_agent = PolicyAgent(latest_network, test_iterations)
+            policy_agent = PolicyAgent(latest_network, test_iterations, policy_agent_cache)
 
         random_agent = RandomAgent()
 
