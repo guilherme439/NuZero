@@ -56,13 +56,13 @@ class Explorer():
                 action_coords = scratch_game.get_action_coords(action_i)
                 scratch_game.step_function(action_coords)
                 search_path.append(node)
-        
+
             value = self.evaluate(node, scratch_game, cache)
             self.backpropagate(search_path, value)
         
         final_root_bias = self.calculate_exploration_bias(search_start)
         action = self.select_action(game, search_start)
-        print("hit ratio: " + str(cache.get_hit_ratio()))
+        
         # final_root_bias is returned just for stats purposes
         return action, search_start.children[action], final_root_bias
     

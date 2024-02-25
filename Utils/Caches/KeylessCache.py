@@ -32,6 +32,8 @@ class KeylessCache(Cache):
         self.size = self.closest_power_of_2(max_size)
         self.indexing_bits = int(math.log2(self.size))
         self.max_index = self.size - 1
+
+        self.update_threshold = 0.8
         
         self.table = [None] * self.size
         self.num_items = 0
@@ -65,6 +67,7 @@ class KeylessCache(Cache):
             if id == identifier:
                 self.hits += 1
                 return value
+
         self.misses +=1
         return None
         
@@ -75,10 +78,10 @@ class KeylessCache(Cache):
         full_hash, index, identifier = self.hash(key)
 
         cache_entry = (value, identifier)
-        slot = self.table[index]
-        if slot is None:
+        if self.table[index] is None:
             self.num_items += 1
-        slot = cache_entry
+        
+        self.table[index] = cache_entry
         return
     
     def update(self, update_cache):
@@ -92,13 +95,15 @@ class KeylessCache(Cache):
 
         for i in range(self.size):
             update_slot = update_cache.table[i]
-            my_slot = self.table[i]
             if update_slot is not None:
-                if my_slot is None:
+                if self.table[i] is None:
                     self.num_items += 1
-                my_slot = update_slot
+                self.table[i] = update_slot
 
         return
+    
+    def get_update_threshold(self):
+        return self.update_threshold
     
     def get_fill_ratio(self):
         return self.length()/self.size

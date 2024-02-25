@@ -7,7 +7,8 @@ class DictCache(Cache):
     def __init__(self, max_size):
         self.max_size = max_size
         self.dict = {}
-        self.num_items_to_remove = 0.2 * self.max_size # amount of items to remove when the dict gets full
+        self.num_items_to_remove = 0.1 * self.max_size # amount of items to remove when the dict gets full
+        self.update_threshold = 0.7
 
         self.hits = 0
         self.misses = 0
@@ -34,7 +35,9 @@ class DictCache(Cache):
         key = self.tensor_to_key(tensor_key)
 
         if len(self.dict) >= self.max_size:
+            print("clearing")
             self.clear_space(self.num_items_to_remove)
+            print("done clearing")
 
         self.dict[key] = value
         return
@@ -60,6 +63,9 @@ class DictCache(Cache):
             items_to_remove = extra + self.num_items_to_remove
             self.clear_space(items_to_remove)
         return
+    
+    def get_update_threshold(self):
+        return self.update_threshold
     
     def length(self):
         ''' Returns the number of items in the cache '''

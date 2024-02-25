@@ -517,6 +517,7 @@ class AlphaZero():
             while games_played < num_games_per_type:
                 
                 stats, cache = actor_pool.get_next_unordered()
+                print("cache len: " + str(cache.length()))
                 stats_list.append(stats)
                 games_played += 1
                 bar.next()
@@ -528,8 +529,10 @@ class AlphaZero():
                         first = False
                     else:       
                         # The remaining games update the cache with the states they saw
-                        if latest_cache.get_fill_ratio() < 0.7:
+                        if latest_cache.get_fill_ratio() < latest_cache.get_update_threshold():
                             latest_cache.update(cache)
+
+                    
                 
                 # While there are games to play... we request more
                 if games_requested < num_games_per_type:

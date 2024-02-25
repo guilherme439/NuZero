@@ -122,10 +122,10 @@ class TestManager():
                     first = False
                 else:       
                     # The remaining games update the cache with the states they saw
-                    if p1_latest_cache.get_fill_ratio() < 0.7:
+                    if p1_latest_cache.get_fill_ratio() < p1_latest_cache.get_update_threshold():
                         p1_latest_cache.update(p1_cache)
-                    if p2_latest_cache.get_fill_ratio() < 0.7:
-                        p2_latest_cache.update(p1_cache)
+                    if p2_latest_cache.get_fill_ratio() < p2_latest_cache.get_update_threshold():
+                        p2_latest_cache.update(p2_cache)
             
             # While there are games to play... we request more
             if games_requested < num_games:

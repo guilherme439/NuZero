@@ -29,8 +29,8 @@ class Training_Config(Config):
 
         self.cache = dict \
         (
-        cache_choice = 'disabled',  # disabled | dict | keyless 
-        max_size = 10000,
+        cache_choice = 'disabled',  # disabled | dict | keyless
+        max_size = 10000,           
         keep_updated = True         # makes sure the latest cache is always used for training and testing
         )
         
