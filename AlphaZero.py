@@ -288,10 +288,10 @@ class AlphaZero():
         if asynchronous_testing:
             self.test_futures = []
             self.test_manager = RemoteTestManager.remote(self.game_class, test_game_args, num_testers,
-                                                        self.network_storage, keep_updated, cache_choice, cache_max)
+                                                        self.network_storage, keep_updated)
         else:
             self.test_manager = TestManager(self.game_class, test_game_args, num_testers,
-                                            self.network_storage, keep_updated, cache_choice, cache_max)
+                                            self.network_storage, keep_updated)
 
         if running_mode == "sequential":
             self.games_per_step = num_games_per_type_per_step * self.num_game_types
@@ -517,7 +517,8 @@ class AlphaZero():
             while games_played < num_games_per_type:
                 
                 stats, cache = actor_pool.get_next_unordered()
-                print("cache len: " + str(cache.length()))
+                #print("cache len: " + str(cache.length()))
+                #print("hit ratio: " + str(cache.get_hit_ratio()))
                 stats_list.append(stats)
                 games_played += 1
                 bar.next()
@@ -532,6 +533,7 @@ class AlphaZero():
                         if latest_cache.get_fill_ratio() < latest_cache.get_update_threshold():
                             latest_cache.update(cache)
 
+                    #print("latest_cache len: " + str(latest_cache.length()))
                     
                 
                 # While there are games to play... we request more
@@ -543,10 +545,6 @@ class AlphaZero():
                     actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
                     games_requested +=1
 
-        print("size: " + str(latest_cache.length()))
-        print("hit ratio: " + str(latest_cache.get_hit_ratio()))
-        print(latest_cache.hits)
-        print(latest_cache.misses)
         bar.finish()
         print_stats_list(stats_list)
 
@@ -574,11 +572,11 @@ class AlphaZero():
 
         if asynchronous_testing:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, show_results=True)
-                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, show_results=True)
+                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, show_results=False)
+                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, show_results=False)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, show_results=True)
-                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, show_results=True)
+                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, show_results=False)
+                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, show_results=False)
             
             futures = [p1_policy, p2_policy, p1_mcts, p2_mcts]
             for i in range(len(futures)):

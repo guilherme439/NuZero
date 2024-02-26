@@ -31,14 +31,12 @@ from progress.spinner import PieSpinner
 class TestManager():
     '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, num_actors, shared_storage, keep_updated, cache_choice, cache_max_size):
+    def __init__(self, game_class, game_args, num_actors, shared_storage, keep_updated):
         self.game_class = game_class
         self.game_args = game_args
         self.num_actors = num_actors
         self.shared_storage = shared_storage
         self.keep_updated = keep_updated
-        self.cache_choice = cache_choice
-        self.cache_max_size = cache_max_size
 
         # ------------------------------------------------------ #
         # --------------------- ACTOR POOL --------------------- #
@@ -62,45 +60,17 @@ class TestManager():
 
     def run_test_batch(self, num_games, p1_agent, p2_agent, show_results=True):
         start = time.time()
-        print("\n")
 
         wins = [0,0]
-
-        '''
-        args = [None, p1_agent, p2_agent, False]
-
-
-        # We must use actor_pool.map instead of actor_pool.submit,
-        # because ray bugs if you do several submit calls on the same actors with different values
-        map_args = []
-        for g in range(num_games):
-            game = self.game_class(*self.game_args)
-            args_copy = copy.copy(args)
-            args_copy[0] = game
-            map_args.append(args_copy)
-
-        results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_using_agents.remote(*args), map_args)
-            
-        time.sleep(1)
-
-        bar = PrintBar('Testing', num_games, 15)
-        for res in results:
-            winner, _ = res
-            if winner != 0:
-                wins[winner-1] +=1
-            bar.next()
-
-        bar.finish()
-
-        '''
-        bar = PrintBar('Testing', num_games, 15)
-
-        call_args = [None, p1_agent, p2_agent]
+        
+        if show_results:
+            print("\n")
+            bar = PrintBar('Testing', num_games, 15)
 
         first_requests = min(self.num_actors, num_games)
         for r in range(first_requests):
             game = self.game_class(*self.game_args)
-            call_args[0] = game
+            call_args = [game, p1_agent, p2_agent]
             self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
 
         first = True
@@ -110,7 +80,8 @@ class TestManager():
         
             winner, _, p1_cache, p2_cache = self.actor_pool.get_next_unordered()
             games_played += 1
-            bar.next()
+            if show_results:
+                bar.next()
             if winner != 0:
                 wins[winner-1] +=1
 
@@ -129,16 +100,18 @@ class TestManager():
             
             # While there are games to play... we request more
             if games_requested < num_games:
-                if self.keep_updated:
-                    call_args = [None, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
-
                 game = self.game_class(*self.game_args)
-                call_args[0] = game
-                self.actor_pool.submit(lambda actor, args: actor.play_game.remote(*args), call_args)
+                
+                if self.keep_updated:
+                    call_args = [game, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
+                else:
+                    call_args = [game, p1_agent, p2_agent]
+                
+                self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
                 games_requested +=1
 
-        
-        bar.finish()    
+        if show_results:
+            bar.finish()    
         
         # STATISTICS
         cmp_winrate_1 = 0.0
@@ -170,15 +143,13 @@ class TestManager():
 
         end = time.time()
         total_time = end-start
-        print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
-        print("Average time per game(s): " + format(total_time/num_games, '.4'))
-        print("\n\n")
+        if show_results:
+            print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
+            print("Average time per game(s): " + format(total_time/num_games, '.4'))
+            print("\n\n")
 
         return (p1_winrate, p2_winrate, draw_percentage)
     
-
-    def run_mcts_batch_with_stats(self):
-        return
         
 
     

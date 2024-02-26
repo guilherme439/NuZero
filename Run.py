@@ -41,6 +41,7 @@ from Tester import Tester
 from RemoteTester import RemoteTester
 
 from Utils.stats_utilities import *
+from Utils.other_utils import *
 
 from Gamer import Gamer
 from ReplayBuffer import ReplayBuffer
@@ -54,6 +55,7 @@ from Agents.SCS.GoalRushAgent import GoalRushAgent
 from TestManager import TestManager
 
 from Utils.Caches.KeylessCache import KeylessCache
+from Utils.Caches.DictCache import DictCache
 
 
 def main():
@@ -273,31 +275,31 @@ def main():
                 
 
             case 5:
-                
+
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/large_test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/small_test_search_config.ini"
+                search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 network_name = "local_net_test"
 
                 ################################################
 
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 128, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.85)
+                        torch.nn.init.xavier_uniform_(param)
                     
                 #'''
 
@@ -308,7 +310,6 @@ def main():
                 context = start_ray_local(log_to_driver)
                 alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
                 alpha_zero.run()
-
 
 
 
@@ -370,9 +371,14 @@ def main():
 
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
 
+                # cache
+                cache_choice = "keyless"
+                max_size = 5000
+                keep_updated = False
+
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
@@ -406,31 +412,57 @@ def main():
                     renderer.analyse(game)
 
             case 2: # Statistics for multiple games
-                num_testers = 5
-                num_games = 250
+                num_testers = 4
+                num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/mirrored_plus_config_5.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
-                # network options
+
+                # cache
+                cache_choice = "keyless"
+                max_size = 5000
+                keep_updated = False
+
+                cache = create_cache(cache_choice, max_size)
+                
+                ## trained network
                 net_name = "mirror_plus_cl"
                 model_iteration = 800
                 recurrent_iterations = 6
 
-                # Test Manager configuration
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                # search config
+                search_config_path = "Configs/Config_Files/Search/small_test_search_config.ini"
+
+                new_net = True
+                if new_net:
+                    in_channels = game.get_state_shape()[0]
+                    policy_channels = game.get_action_space_shape()[0]
+                    model = RecurrentNet(in_channels, policy_channels, 128, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                    nn = Torch_NN(model)
+                else:
+                    nn, search_config = load_trained_network(game, net_name, model_iteration)
+
+                load_config = True
+                if load_config:
+                    search_config = Search_Config()
+                    search_config.load(search_config_path)
+
+
+                # test manager
                 shared_storage = RemoteStorage.remote(window_size=1)
                 shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, keep_updated)
+
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 12000)
-                policy_agent = PolicyAgent(nn, recurrent_iterations)
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, cache)
+                policy_agent = PolicyAgent(nn, recurrent_iterations, cache)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = goal_agent
+                p1_agent = mcts_agent
                 p2_agent = mcts_agent
 
                 ################################################

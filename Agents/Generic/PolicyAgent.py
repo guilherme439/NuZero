@@ -73,6 +73,9 @@ class PolicyAgent(Agent):
     def get_cache(self):
         return self.cache
     
+    def set_cache(self, cache):
+        self.cache = cache
+    
     def name(self):
         return "Policy Agent"
 

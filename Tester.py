@@ -65,6 +65,7 @@ class Tester():
         p1_agent.new_game(game, cache=p1_cache)
         p2_agent.new_game(game, cache=p2_cache)
 
+
         # --- Main test loop --- #
         while True:
             

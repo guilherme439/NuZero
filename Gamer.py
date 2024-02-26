@@ -38,7 +38,7 @@ class Gamer():
 
     def play_game(self, cache=None):
         future_network = self.shared_storage.get.remote() # ask for a copy of the latest network
-
+        
         stats = \
         {
         "number_of_moves" : 0,
