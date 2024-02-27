@@ -36,29 +36,29 @@ class PolicyAgent(Agent):
             policy_logits, _ = self.network.inference(state, False, self.recurrent_iterations)
             action_probs = softmax(policy_logits).flatten()
 
-        raw_action = np.argmax(probs)
+        raw_action = np.argmax(action_probs)
         valid_actions_mask = game.possible_actions().flatten()
         n_valids = sum(valid_actions_mask)
         if not valid_actions_mask[raw_action]:
             # Check if the network returned a possible action,
             # if it didn't, do the necessary workarounds
             
-            probs = probs * valid_actions_mask
-            total = np.sum(probs)
+            action_probs = action_probs * valid_actions_mask
+            total = np.sum(action_probs)
 
             if (total != 0): 
-                probs /= total
-                chance_action = np.random.choice(game.num_actions, p=probs)
+                action_probs /= total
+                chance_action = np.random.choice(game.num_actions, p=action_probs)
 
-                max_action = np.argmax(probs)
+                max_action = np.argmax(action_probs)
                 action_i = max_action
 
             else:
                 # happens if the network gave 0 probablity to all valid actions and high probability to invalid actions
-                # There was a problem in training... using random action instead
-                probs = probs + valid_actions_mask
-                probs /= n_valids
-                action_i = np.random.choice(game.num_actions, p=probs)
+                # There was a problem in the network's training... using random action instead
+                action_probs = action_probs + valid_actions_mask
+                action_probs /= n_valids
+                action_i = np.random.choice(game.num_actions, p=action_probs)
         
         else:
             action_i = raw_action

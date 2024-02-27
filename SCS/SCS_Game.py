@@ -115,7 +115,7 @@ class SCS_Game(Game):
         self.renderer = SCS_Renderer()
         
         if game_config_path != "":
-            self.load_from_config(game_config_path)
+            self.load_game_from_config(game_config_path)
 
 
         # ------------------------------------------------------ #
@@ -1421,14 +1421,15 @@ class SCS_Game(Game):
 # -------------------------                    ------------------------- #
 ##########################################################################
 
-    def load_from_config(self, filename):
-        # Read YAML file
+    def load_game_from_config(self, filename):
+        # Load config into dictionary
         with open(filename, 'r') as stream:
             data_loaded = yaml.safe_load(stream)
 
         self.units_by_id = {}
         self.terrain_by_id = {}
         
+        # Parse the dictionary information
         for section_name, values in data_loaded.items():
             match section_name:
                 case "Board_dimensions":

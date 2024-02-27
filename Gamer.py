@@ -55,6 +55,7 @@ class Gamer():
         if cache is None:
             cache = create_cache(self.cache_choice, self.size_estimate)
 
+
         root_node = Node(0)
 
         network_copy = ray.get(future_network, timeout=200)
@@ -82,6 +83,7 @@ class Gamer():
             stats["final_tree_size"] = tree_size
             stats["average_bias_value"] += root_bias
             stats["final_bias_value"] = root_bias
+
             
             
         stats["number_of_moves"] = game.length

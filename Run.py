@@ -33,9 +33,6 @@ from SCS.SCS_Renderer import SCS_Renderer
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from Configs.Training_Config import Training_Config
-from Configs.Search_Config import Search_Config
-
 from AlphaZero import AlphaZero
 from Tester import Tester
 from RemoteTester import RemoteTester
@@ -91,7 +88,7 @@ def main():
 
     args = parser.parse_args()
 
-    print("CUDA: " + str(torch.cuda.is_available()))
+    print("\n\nCUDA Available: " + str(torch.cuda.is_available()))
 
     log_to_driver = False
     if args.log_driver:
@@ -281,8 +278,8 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/large_test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
+                search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
                 network_name = "local_net_test"
 
@@ -308,7 +305,7 @@ def main():
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
 
 
@@ -1102,6 +1099,23 @@ def main():
 
 
                 print("\nImages created!\n")
+
+            case 2:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/randomized_config_5.yml"]
+                game = game_class(*game_args)
+
+                in_channels = game.get_state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+
+                
+                optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3,20,100], gamma=0.1)
+
+                torch.save(optimizer, "optimizer")
+                loaded_optimizer = torch.load("optimizer")
+                print(loaded_optimizer)
 
                 
                 

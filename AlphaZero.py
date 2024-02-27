@@ -1,16 +1,20 @@
-import os
-import psutil
-import gc
-import resource
+import ray
+import torch
+import math
 import random
 import pickle
 import time
+import os
+import io
 import sys
-import ray
+import psutil
+import resource
 import glob
 import re
-import torch
-import math
+
+import ruamel
+from ruamel.yaml import YAML
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -20,9 +24,6 @@ from random import randrange
 import more_itertools
 
 from Neural_Networks.Torch_NN import Torch_NN
-
-from Configs.Training_Config import Training_Config
-from Configs.Search_Config import Search_Config
 
 from Gamer import Gamer
 from ReplayBuffer import ReplayBuffer
@@ -49,20 +50,30 @@ from progress.spinner import PieSpinner
 class AlphaZero():
 
 	
-    def __init__(self, game_class, game_args_list, model, net_name, train_config_path, search_config_path, plot_data_path=None, state_set=None):
-
-        
-        # ------------------------------------------------------ #
-        # -------------------- SYSTEM SETUP -------------------- #
-        # ------------------------------------------------------ #
-
-        self.game_args_list = game_args_list  # Args for the game's __init__()
-        self.game_class = game_class
+    def __init__(self, game_class, game_args_list, train_config_path, search_config_path, model=None, plot_data_path=None, state_set=None):
 
         current_directory = os.getcwd()
         print("\nCurrent working directory: " + str(current_directory))
 
-        self.network_name = net_name
+        # ------------------------------------------------------ #
+        # -------------------- SYSTEM SETUP -------------------- #
+        # ------------------------------------------------------ #
+
+        self.game_args_list = game_args_list  # list of args for the game's __init__()
+        self.game_class = game_class
+
+        self.yaml_parser = YAML()
+        self.yaml_parser.default_flow_style = False  
+        self.search_config = self.load_yaml_config(search_config_path)
+        self.train_config = self.load_yaml_config(train_config_path)
+
+        self.state_set = state_set
+
+        # ------------------------------------------------------ #
+        # ------------------- FOLDERS SETUP -------------------- #
+        # ------------------------------------------------------ #
+
+        self.network_name = self.train_config["Initialization"]["network_name"]
 
         self.game_folder_name = self.game_class().get_name()
         self.model_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
@@ -72,20 +83,81 @@ class AlphaZero():
         self.plots_path = self.model_folder_path + "plots/"
         if not os.path.exists(self.plots_path):
             os.mkdir(self.plots_path)
-
         
         self.plot_data_save_path = self.model_folder_path + "plot_data.pkl"
         self.plot_data_load_path = plot_data_path
 
         self.latest_network = Torch_NN(model)
-            
-        self.search_config = Search_Config()
-        self.search_config.load(search_config_path)
 
-        self.train_config = Training_Config()
-        self.train_config.load(train_config_path)
+        # ------------------------------------------------------ #
+        # -------------------- NETWORK SETUP ------------------- #
+        # ------------------------------------------------------ #
+
+        ### Optimizer ###
+        optimizer_name = self.train_config["Optimizer"]["optimizer"]
+        learning_rate = self.train_config["Optimizer"]["learning_rate"]
+
+        weight_decay = self.train_config["Optimizer"]["SGD"]["weight_decay"]
+        momentum = self.train_config["Optimizer"]["SGD"]["momentum"]
+        nesterov = self.train_config["Optimizer"]["SGD"]["nesterov"]
+
+        if optimizer_name == "Adam":
+            self.optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
+        elif optimizer_name == "SGD":
+            self.optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
+        else:
+            selfoptimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
+            print("Bad optimizer config.\nUsing default optimizer (Adam)...")
+
+        ### Scheduler ###
+        scheduler_boundaries = self.train_config["Optimizer"]["scheduler_boundaries"]
+        scheduler_gamma = self.train_config["Optimizer"]["scheduler_gamma"]
+
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
+
+        ### Checkpoint ###
+        load_checkpoint = self.train_config["Initialization"]["load_checkpoint"]
+        if load_checkpoint:
+            iteration_number = self.train_config["Initialization"]["Checkpoint"]["iteration_number"]
+
         
-        self.state_set = state_set
+
+        # ------------------------------------------------------ #
+        # ------------------- BACKUP FILES --------------------- #
+        # ------------------------------------------------------ #
+
+        # create copies of the config files
+        print("\nCreating config file copies:")
+        search_config_copy_path = self.model_folder_path + "search_config_copy.ini"
+        train_config_copy_path = self.model_folder_path + "train_config_copy.ini"
+        self.train_config.save(train_config_copy_path)
+        self.search_config.save(search_config_copy_path)
+        print("\n\n--------------------------------\n")
+
+        # write model summary and game args to file
+        file_name = self.model_folder_path + "model_and_game_config.txt"
+        with open(file_name, "w") as file:
+            file.write(self.game_args_list.__str__())
+            file.write("\n\n\n\n----------------------------------\n\n")
+            file.write(self.latest_network.get_model().__str__())
+    
+        # pickle the model class
+        file_name = self.model_folder_path + "base_model.pkl"
+        with open(file_name, 'wb') as file:
+            pickle.dump(self.latest_network.get_model(), file)
+            print(f'Successfully pickled model class at "{file_name}".\n')
+
+        # pickle the optimizer class
+        file_name = self.model_folder_path + "base_optimizer.pkl"
+        with open(file_name, 'wb') as file:
+            pickle.dump(self.optimizer, file)
+            print(f'Successfully pickled optimizer class at "{file_name}".\n')
+
+        # pickle the scheduler class
+        file_name = self.model_folder_path + "base_scheduler.pkl"
+        with open(file_name, 'wb') as file:
+            pickle.dump(self.scheduler, file)
+            print(f'Successfully pickled scheduler class at "{file_name}".\n')
 
         # ------------------------------------------------------ #
         # ----------------------- PLOTS ------------------------ #
@@ -114,7 +186,7 @@ class AlphaZero():
 
         
 
-    def run(self, starting_iteration=0):
+    def run(self):
         pid = os.getpid()
         process = psutil.Process(pid)
 
@@ -124,92 +196,64 @@ class AlphaZero():
 
         print("\n\n--------------------------------\n")
 
-        running_mode = self.train_config.running["running_mode"]
-        num_actors = self.train_config.running["num_actors"]
-        early_fill_games_per_type = self.train_config.running["early_fill_per_type"]
+        running_mode = self.train_config["running"]["running_mode"]
+        num_actors = self.train_config["Running"]["num_actors"]
+        early_fill_games_per_type = self.train_config["Running"]["early_fill_per_type"]
 
-        training_steps = int(self.train_config.running["training_steps"])
+        training_steps = int(self.train_config["Running"]["training_steps"])
         self.num_game_types = len(self.game_args_list)
         if running_mode == "asynchronous":
             if self.num_game_types > 1:
-                print("Asynchronous mode does not support training with multiple games.\nExiting.")
-                exit()
-            update_delay = self.train_config.asynchronous["update_delay"]
+                raise Exception("Asynchronous mode does not support training with multiple games.")
+            
+            update_delay = self.train_config["Running"]["Asynchronous"]["update_delay"]
         elif running_mode == "sequential":
-            num_games_per_type_per_step = self.train_config.sequential["num_games_per_type_per_step"]
+            num_games_per_type_per_step = self.train_config["Running"]["Sequential"]["num_games_per_type_per_step"]
             
 
-        cache_choice = self.train_config.cache["cache_choice"]
-        cache_max = self.train_config.cache["max_size"]
-        keep_updated = self.train_config.cache["keep_updated"]
+        cache_choice = self.train_config["Cache"]["cache_choice"]
+        cache_max = self.train_config["Cache"]["max_size"]
+        keep_updated = self.train_config["Cache"]["keep_updated"]
 
-        save_frequency = self.train_config.saving["save_frequency"]
-        storage_frequency = self.train_config.saving["storage_frequency"]
+        save_frequency = self.train_config["Saving"]["save_frequency"]
+        storage_frequency = self.train_config["Saving"]["storage_frequency"]
 
-        train_iterations = self.train_config.recurrent_training["train_iterations"]
-        pred_iterations = self.train_config.recurrent_training["pred_iterations"]
-        prog_alpha = self.train_config.recurrent_training["alpha"]
+        train_iterations = self.train_config["Recurrent Options"]["train_iterations"]
+        pred_iterations = self.train_config["Recurrent Options"]["pred_iterations"]
+        prog_alpha = self.train_config["Recurrent Options"]["alpha"]
 
-        asynchronous_testing = self.train_config.testing["asynchronous_testing"]
-        num_testers = self.train_config.testing["testing_actors"]
-        early_testing = self.train_config.testing["early_testing"]
-        policy_test_frequency = self.train_config.testing["policy_test_frequency"]
-        mcts_test_frequency = self.train_config.testing["mcts_test_frequency"]
-        num_policy_test_games = self.train_config.testing["num_policy_test_games"]
-        num_mcts_test_games = self.train_config.testing["num_mcts_test_games"]
-        test_iterations = self.train_config.testing["test_iterations"]
-        test_game_index = self.train_config.testing["test_game_index"]
+        asynchronous_testing = self.train_config["Testing"]["asynchronous_testing"]
+        num_testers = self.train_config["Testing"]["testing_actors"]
+        early_testing = self.train_config["Testing"]["early_testing"]
+        policy_test_frequency = self.train_config["Testing"]["policy_test_frequency"]
+        mcts_test_frequency = self.train_config["Testing"]["mcts_test_frequency"]
+        num_policy_test_games = self.train_config["Testing"]["num_policy_test_games"]
+        num_mcts_test_games = self.train_config["Testing"]["num_mcts_test_games"]
+        test_iterations = self.train_config["Testing"]["test_iterations"]
+        test_game_index = self.train_config["Testing"]["test_game_index"]
         
-        plot_frequency = self.train_config.plotting["plot_frequency"]
-        policy_split = self.train_config.plotting["policy_split"]
-        value_split = self.train_config.plotting["value_split"]
-        combined_split = self.train_config.plotting["combined_split"]
-        self.plot_loss = self.train_config.plotting["plot_loss"]
-        self.plot_weights = self.train_config.plotting["plot_weights"]
+        plot_frequency = self.train_config["Plotting"]["plot_frequency"]
+        policy_split = self.train_config["Plotting"]["policy_split"]
+        value_split = self.train_config["Plotting"]["value_split"]
+        combined_split = self.train_config["Plotting"]["combined_split"]
+        self.plot_loss = self.train_config["Plotting"]["plot_loss"]
+        self.plot_weights = self.train_config["Plotting"]["plot_weights"]
 
         if running_mode == "asynchronous":
             asynchronous_testing = True
             # When running asynchronously, tests need to also be async.
         
-        
-        # ------------------------------------------------------ #
-        # ------------------- BACKUP FILES --------------------- #
-        # ------------------------------------------------------ #
-        
         # dummy forward pass to initialize the weights
-
         game = self.game_class(*self.game_args_list[0])
-        self.latest_network.inference(game.generate_state_image(), False, 1)
-
-        # write model summary and game args to file
-        file_name = self.model_folder_path + "model_and_game_config.txt"
-        with open(file_name, "w") as file:
-            file.write(self.game_args_list.__str__())
-            file.write("\n\n\n\n----------------------------------\n\n")
-            file.write(self.latest_network.get_model().__str__())
-            
-
-        # pickle the network class
-        file_name = self.model_folder_path + "base_model.pkl"
-        with open(file_name, 'wb') as file:
-            pickle.dump(self.latest_network.get_model().cpu(), file)
-            print(f'Successfully pickled model class at "{file_name}".\n')
-
-        # create copies of the config files
-        print("\nCreating config file copies:")
-        search_config_copy_path = self.model_folder_path + "search_config_copy.ini"
-        train_config_copy_path = self.model_folder_path + "train_config_copy.ini"
-        self.train_config.save(train_config_copy_path)
-        self.search_config.save(search_config_copy_path)
-        print("\n\n--------------------------------\n")
+        self.latest_network.inference(game.generate_state_image(), False, 1)        
 
         # ------------------------------------------------------ #
         # ------------- STORAGE AND BUFFERS SETUP -------------- #
         # ------------------------------------------------------ #
 
-        shared_storage_size = self.train_config.learning["shared_storage_size"]
-        replay_window_size = self.train_config.learning["replay_window_size"]
-        learning_method = self.train_config.learning["learning_method"]
+        shared_storage_size = self.train_config["Learning"]["shared_storage_size"]
+        replay_window_size = self.train_config["Learning"]["replay_window_size"]
+        learning_method = self.train_config["Learning"]["learning_method"]
 
         self.network_storage = RemoteStorage.remote(shared_storage_size)
         self.latest_network.model_to_cpu()
@@ -218,50 +262,26 @@ class AlphaZero():
 
         plot_epochs = False
         if learning_method == "epochs":
-            batch_size = self.train_config.epochs["batch_size"]
-            learning_epochs = self.train_config.epochs["learning_epochs"]
-            plot_epochs = self.train_config.epochs["plot_epoch"]	
+            batch_size = self.train_config["Learning"]["Epochs"]["batch_size"]
+            learning_epochs = self.train_config["Learning"]["Epochs"]["learning_epochs"]
+            plot_epochs = self.train_config["Learning"]["Epochs"]["plot_epoch"]	
             if plot_epochs:
                 self.epochs_path = self.plots_path + "Epochs/"
                 if not os.path.exists(self.epochs_path):
                     os.mkdir(self.epochs_path)
         elif learning_method == "samples":
-            batch_size = self.train_config.samples["batch_size"]
+            batch_size = self.train_config["Learning"]["Samples"]["batch_size"]
 
         self.replay_buffer = ReplayBuffer.remote(replay_window_size, batch_size)
             
-
-        # ------------------------------------------------------ #
-        # ------------------ OPTIMIZER SETUP ------------------- #
-        # ------------------------------------------------------ #
-
-        optimizer_name = self.train_config.optimizer["optimizer"]
-        learning_rate = self.train_config.optimizer["learning_rate"]
-
-        weight_decay = self.train_config.optimizer["weight_decay"]
-        momentum = self.train_config.optimizer["momentum"]
-        nesterov = self.train_config.optimizer["nesterov"]
-
-        scheduler_boundaries = self.train_config.optimizer["scheduler_boundaries"]
-        scheduler_gamma = self.train_config.optimizer["scheduler_gamma"]
         
-        if optimizer_name == "Adam":
-            optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
-        elif optimizer_name == "SGD":
-            optimizer = torch.optim.SGD(self.latest_network.get_model().parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
-        else:
-            optimizer = torch.optim.Adam(self.latest_network.get_model().parameters(), lr=learning_rate)
-            print("Bad optimizer config.\nUsing default optimizer (Adam)...")
-
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
-
         # ------------------------------------------------------ #
         # ------------------- LOSS FUNCTIONS ------------------- #
         # ------------------------------------------------------ #
 
-        value_loss_choice = self.train_config.learning["value_loss"]
-        policy_loss_choice = self.train_config.learning["policy_loss"]
-        normalize_CEL = self.train_config.learning["normalize_cel"]
+        value_loss_choice = self.train_config["Learning"]["value_loss"]
+        policy_loss_choice = self.train_config["Learning"]["policy_loss"]
+        normalize_CEL = self.train_config["Learning"]["normalize_cel"]
 
         normalize_policy = False
         match policy_loss_choice:
@@ -306,9 +326,6 @@ class AlphaZero():
         if starting_iteration != 0:
             print("\n-Starting from iteration " + str(starting_iteration+1) + ".\n")
 
-        model = self.latest_network.get_model()
-        model_dict = model.state_dict()
-
         print("\n\n--------------------------------\n")
 
         if starting_iteration != 0:
@@ -318,7 +335,13 @@ class AlphaZero():
         else:
             # Initial save (untrained network)
             save_path = self.model_folder_path + self.network_name + "_" + str(starting_iteration) + "_model"
-            torch.save(model_dict, save_path)
+            checkpoint = {
+                        'model_state_dict': self.latest_network.get_model().state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'scheduler_state_dict': scheduler.state_dict(),
+                         }
+            torch.save(checkpoint, save_path)
+            
 
             if self.plot_weights:
                 self.update_weight_data()
@@ -414,8 +437,14 @@ class AlphaZero():
                 self.split_combined_loss_graph()
                     
             if save_frequency and (((step+1) % save_frequency) == 0):
-                save_path = self.model_folder_path + self.network_name + "_" + str(step+1) + "_model"
-                torch.save(self.latest_network.get_model().state_dict(), save_path)
+                save_path = self.model_folder_path + self.network_name + "_" + str(step+1) + "_model"                
+                checkpoint = {
+                            'model_state_dict': self.latest_network.get_model().state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict(),
+                             }
+                torch.save(checkpoint, save_path)
+                
             
             if storage_frequency and (((step+1) % storage_frequency) == 0):
                 self.latest_network.model_to_cpu()
@@ -471,18 +500,18 @@ class AlphaZero():
         start = time.time()
         stats_list = []
 
-        pred_iterations_list = self.train_config.recurrent_training["pred_iterations"]
-        num_actors = self.train_config.running["num_actors"]
+        pred_iterations_list = self.train_config["Recurrent Options"]["pred_iterations"]
+        num_actors = self.train_config["Running"]["num_actors"]
         
 
         search_config = deepcopy(self.search_config)
         if early_fill:
-            softmax_moves = self.train_config.running["early_softmax_moves"]
-            softmax_exploration = self.train_config.running["early_softmax_exploration"]
-            random_exploration = self.train_config.running["early_random_exploration"]
-            search_config.exploration["number_of_softmax_moves"] = softmax_moves
-            search_config.exploration["epsilon_softmax_exploration"] = softmax_exploration
-            search_config.exploration["epsilon_random_exploration"] = random_exploration
+            softmax_moves = self.train_config["Running"]["early_softmax_moves"]
+            softmax_exploration = self.train_config["Running"]["early_softmax_exploration"]
+            random_exploration = self.train_config["Running"]["early_random_exploration"]
+            search_config["Exploration"]["number_of_softmax_moves"] = softmax_moves
+            search_config["Exploration"]["epsilon_softmax_exploration"] = softmax_exploration
+            search_config["Exploration"]["epsilon_random_exploration"] = random_exploration
 
         total_games = self.num_game_types * num_games_per_type
         bar = PrintBar(text, total_games, 15)
@@ -514,11 +543,13 @@ class AlphaZero():
             first = True
             games_played = 0
             games_requested = first_requests
+            avg_hit_ratio = 0
+            avg_cache_len = 0
             while games_played < num_games_per_type:
                 
                 stats, cache = actor_pool.get_next_unordered()
-                #print("cache len: " + str(cache.length()))
-                #print("hit ratio: " + str(cache.get_hit_ratio()))
+                avg_hit_ratio += cache.get_hit_ratio()
+                avg_cache_len += cache.length()
                 stats_list.append(stats)
                 games_played += 1
                 bar.next()
@@ -532,8 +563,6 @@ class AlphaZero():
                         # The remaining games update the cache with the states they saw
                         if latest_cache.get_fill_ratio() < latest_cache.get_update_threshold():
                             latest_cache.update(cache)
-
-                    #print("latest_cache len: " + str(latest_cache.length()))
                     
                 
                 # While there are games to play... we request more
@@ -547,10 +576,12 @@ class AlphaZero():
 
         bar.finish()
         print_stats_list(stats_list)
+        print("\navg hit ratio: " + str(avg_hit_ratio/num_games_per_type))
+        print("avg cache len: " + str(avg_cache_len/num_games_per_type))
 
         end = time.time()
         total_time = end-start
-        print("\n\nTotal time(m): " + format(total_time/60, '.4'))
+        print("\nTotal time(m): " + format(total_time/60, '.4'))
         print("Average time per game(s): " + format(total_time/total_games, '.4'))
 
         return
@@ -606,8 +637,8 @@ class AlphaZero():
         start = time.time()
 
         
-        train_iterations = self.train_config.recurrent_training["train_iterations"]
-        batch_extraction = self.train_config.learning["batch_extraction"]
+        train_iterations = self.train_config["Recurrent Options"]["train_iterations"]
+        batch_extraction = self.train_config["Learning"]["batch_extraction"]
 
         replay_size = ray.get(self.replay_buffer.len.remote(), timeout=120)
         n_games = ray.get(self.replay_buffer.played_games.remote(), timeout=120)
@@ -620,14 +651,13 @@ class AlphaZero():
 
         
         if learning_method == "epochs":
-            learning_epochs = self.train_config.epochs["learning_epochs"]
-            plot_epoch = self.train_config.epochs["plot_epoch"]	
+            learning_epochs = self.train_config["Learning"]["Epochs"]["learning_epochs"]
+            plot_epoch = self.train_config["Learning"]["Epochs"]["plot_epoch"]	
             
             if  batch_size > replay_size:
-                print("Batch size too large.\n" + 
+                raise Exception("Batch size too large.\n" + 
                     "If you want to use batch_size with more moves than the first batch of games played " + 
                     "you need to use, the \"early_fill\" config to fill the replay buffer with random games at the start.\n")
-                exit()
             else:
                 number_of_batches = replay_size // batch_size
                 print("Batches in replay buffer: " + str(number_of_batches))
@@ -705,9 +735,9 @@ class AlphaZero():
 
                 
         elif learning_method == "samples":
-            num_samples = self.train_config.samples["num_samples"]
-            late_heavy = self.train_config.samples["late_heavy"]
-            replace = self.train_config.samples["with_replacement"]
+            num_samples = self.train_config["Learning"]["Samples"]["num_samples"]
+            late_heavy = self.train_config["Learning"]["Samples"]["late_heavy"]
+            replace = self.train_config["Learning"]["Samples"]["with_replacement"]
 
             if batch_extraction == 'local':
                 future_buffer = self.replay_buffer.get_buffer.remote()
@@ -772,8 +802,7 @@ class AlphaZero():
             self.train_global_combined_loss.extend([average_combined_loss])
 
         else:
-            print("Bad learning_method config.\nExiting")
-            exit()
+            raise Exception("Bad learning_method config.")
 
         
         end = time.time()
@@ -783,11 +812,11 @@ class AlphaZero():
         return	
     
     def train_epochs(self):
-
+        # Waiting for refactor
         return
     
     def train_samples(self):
-
+        # Waiting for refactor
         return
 
     def batch_update_weights(self, optimizer, scheduler, policy_loss_function, value_loss_function, normalize_policy, batch, train_iterations, alpha):
@@ -891,7 +920,7 @@ class AlphaZero():
             print(predicted_values)
             print("\n\n")
             print(predicted_policies)
-            exit()
+            raise Exception("Nan value found when calculatin loss.")
 
         return value_loss, policy_loss, combined_loss
 
@@ -1164,3 +1193,17 @@ class AlphaZero():
             if self.state_set is not None:
                 self.state_set_stats = pickle.load(file)
     
+    ##########################################################################
+    # -----------------------------            ----------------------------- #
+    # ---------------------------    CONFIGS    --------------------------- #
+    # -----------------------------            ----------------------------- #
+    ##########################################################################
+                
+    def load_yaml_config(self, file_path):
+        with open(file_path, 'r') as stream:
+            config_dict = self.yaml_parser.load(stream)
+        return config_dict
+
+    def save_yaml_config(self, file_path, config_dict):  
+        with open(file_path, 'w') as stream:
+            self.yaml_parser.dump(config_dict, stream)
