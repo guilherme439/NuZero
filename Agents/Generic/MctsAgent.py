@@ -1,5 +1,3 @@
-from SCS.SCS_Game import SCS_Game
-
 import numpy as np
 from Node import Node
 from Explorer import Explorer

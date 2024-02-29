@@ -12,13 +12,13 @@ from enum import Enum
 from collections import Counter
 from termcolor import colored
 
-from SCS.Unit import Unit
-from SCS.Tile import Tile
-from SCS.Terrain import Terrain
+from Games.SCS.Unit import Unit
+from Games.SCS.Tile import Tile
+from Games.SCS.Terrain import Terrain
 
-from SCS.SCS_Renderer import SCS_Renderer
+from Games.SCS.SCS_Renderer import SCS_Renderer
 
-from Game import Game
+from Games.Game import Game
 
 
 '''
@@ -1635,7 +1635,7 @@ class SCS_Game(Game):
         image_path = unit_details.get("image_path")
         if image_path is None:
             image_name = "p" + str(player) + "_" + name
-            image_path = "SCS/Images/" + image_name + ".jpg"
+            image_path = "Games/SCS/Images/" + image_name + ".jpg"
             if not os.path.isfile(image_path):
                 print("No image path provided")
                 print("Automatically creating image for unit.")

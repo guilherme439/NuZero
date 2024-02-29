@@ -1,24 +1,18 @@
-import math
 import time
-
+import math
 import ray
 import torch
 import numpy as np
-
 
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
 from Utils.PrintBar import PrintBar
 
-
-from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
+from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Agents.Generic.MctsAgent import MctsAgent
 from Agents.Generic.PolicyAgent import PolicyAgent
-
-
-
 
 
 
@@ -34,7 +28,7 @@ class Tester():
         if render == True:
             self.slow=True
             # Render is only supported for SCS games
-            from SCS.SCS_RemoteRenderer import SCS_RemoteRenderer
+            from Games.SCS.SCS_RemoteRenderer import SCS_RemoteRenderer
             from RemoteStorage import RemoteStorage
 
             self.remote_storage = RemoteStorage.remote(window_size=1)

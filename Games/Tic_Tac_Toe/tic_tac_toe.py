@@ -5,12 +5,10 @@ import enum
 import sys
 import gc
 
-
 from collections import Counter
 from termcolor import colored
 
-
-from Game import Game
+from Games.Game import Game
 
 
 class tic_tac_toe(Game):

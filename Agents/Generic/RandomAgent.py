@@ -1,8 +1,6 @@
-from SCS.SCS_Game import SCS_Game
 
 import numpy as np
 from Agents.Agent import Agent
-    
 
 class RandomAgent(Agent):
     ''' Chooses actions at random (within legal actions)'''

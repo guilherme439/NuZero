@@ -153,7 +153,7 @@ class AlphaZero():
 
         self.network_name = self.train_config["Initialization"]["network_name"]
 
-        self.game_folder_name = self.game_class().get_name()
+        self.game_folder_name = "Games/" + self.game_class().get_name()
         self.network_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
         if not os.path.exists(self.network_folder_path):
             os.mkdir(self.network_folder_path)
@@ -229,7 +229,7 @@ class AlphaZero():
         elif running_mode == "sequential":
             num_games_per_type_per_step = self.train_config["Running"]["Sequential"]["num_games_per_type_per_step"]
             
-
+#region
         cache_choice = self.train_config["Cache"]["cache_choice"]
         cache_max = self.train_config["Cache"]["max_size"]
         keep_updated = self.train_config["Cache"]["keep_updated"]
@@ -258,7 +258,8 @@ class AlphaZero():
         combined_split = self.train_config["Plotting"]["combined_split"]
         self.plot_loss = self.train_config["Plotting"]["plot_loss"]
         self.plot_weights = self.train_config["Plotting"]["plot_weights"]
-
+#endregion
+        
         if running_mode == "asynchronous":
             asynchronous_testing = True
             # When running asynchronously, tests need to also be async.
@@ -342,16 +343,16 @@ class AlphaZero():
 
         if running_mode == "sequential":
             self.games_per_step = num_games_per_type_per_step * self.num_game_types
-            print("\nRunning unit training step number " + str(training_steps) + " with " + str(self.games_per_step) + " games in each step.")
+            print("\n\nRunning until training step number " + str(training_steps) + " with " + str(self.games_per_step) + " games in each step:")
         elif running_mode == "asynchronous":
-            print("\nRunning unit training step number " + str(training_steps) + " with " + str(update_delay) + "s of delay between each step.")
+            print("\n\nRunning until training step number " + str(training_steps) + " with " + str(update_delay) + "s of delay between each step:")
         if early_fill_games_per_type > 0:
             total_early_fill = early_fill_games_per_type * self.num_game_types
-            print("\n-Playing " + str(total_early_fill) + " initial games to fill the replay buffer.")
+            print("-Playing " + str(total_early_fill) + " initial games to fill the replay buffer.")
         if cache_choice != "disabled":
-            print("\n-Using cache for inference results.")			  
+            print("-Using cache for inference results.")			  
         if self.starting_iteration != 0:
-            print("\n-Starting from iteration " + str(self.starting_iteration+1) + ".\n")
+            print("-Starting from iteration " + str(self.starting_iteration+1) + ".\n")
 
         print("\n\n--------------------------------\n")            
         
@@ -1244,7 +1245,7 @@ class AlphaZero():
     ##########################################################################
 
     def load_from_checkpoint(self, network_name, iteration_number):
-        game_folder = self.example_game.get_name() + "/"
+        game_folder = "Games/" + self.example_game.get_name() + "/"
         cp_network_folder = game_folder + "models/" + network_name + "/"
         if not os.path.exists(cp_network_folder):
             raise Exception("Could not find a model with that name.\n \
