@@ -27,7 +27,7 @@ class PolicyAgent(Agent):
                 (action_probs, value_pred) = result
             else:
                 policy_logits, value_pred = self.network.inference(state, False, self.recurrent_iterations)
-                action_probs = softmax(policy_logits)
+                action_probs = softmax(policy_logits).flatten()
                 key = state
                 value = (action_probs, value_pred)
                 self.cache.put((key, value))

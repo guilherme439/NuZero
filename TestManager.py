@@ -86,22 +86,22 @@ class TestManager():
                 wins[winner-1] +=1
 
             if self.keep_updated:
+                # The first game to finish initializes the cache
                 if first:   
-                    # The first game to finish initializes the cache
                     p1_latest_cache = p1_cache
                     p2_latest_cache = p2_cache
                     first = False
+                # The remaining games update the cache with the states they saw
                 else:       
-                    # The remaining games update the cache with the states they saw
-                    if p1_latest_cache.get_fill_ratio() < p1_latest_cache.get_update_threshold():
+                    # The latest cache could be None if the cache is disabled
+                    if (p1_latest_cache is not None) and (p1_latest_cache.get_fill_ratio() < p1_latest_cache.get_update_threshold()):
                         p1_latest_cache.update(p1_cache)
-                    if p2_latest_cache.get_fill_ratio() < p2_latest_cache.get_update_threshold():
+                    if (p2_latest_cache is not None) and (p2_latest_cache.get_fill_ratio() < p2_latest_cache.get_update_threshold()):
                         p2_latest_cache.update(p2_cache)
             
             # While there are games to play... we request more
             if games_requested < num_games:
                 game = self.game_class(*self.game_args)
-                
                 if self.keep_updated:
                     call_args = [game, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
                 else:

@@ -4,14 +4,12 @@ Initialization:
   load_checkpoint: True
 
   Checkpoint:
-    network_name: checkpoint_net
+    cp_network_name: checkpoint_net
     iteration_number: 2000
     keep_optimizer: True
     keep_scheduler: False
     fresh_start: False
-
-  
-
+    
 
 ###
 Running:
@@ -52,7 +50,6 @@ Testing:
   mcts_test_frequency: 65
   num_policy_test_games: 100
   num_mcts_test_games: 100
-  test_iterations: 6
   test_game_index: 0
 
 
@@ -70,6 +67,7 @@ Plotting:
 Recurrent Options:
   train_iterations: [6]
   pred_iterations: [6]
+  test_iterations: 6
   alpha: 0.01
   
 
@@ -97,12 +95,16 @@ Learning:
 
 ###
 Optimizer:
-  learning_rate: 5.0e-5
-  scheduler_boundaries: [15000, 30000, 50000]
-  scheduler_gamma: 0.5
-  optimizer: Adam
+  optimizer_choice: Adam
 
   SGD:
     weight_decay: 1.0e-07
     momentum: 0.9
     nesterov: True
+
+
+###
+Scheduler:
+  starting_lr: 5.0e-5
+  scheduler_boundaries: [15000, 30000, 50000]
+  scheduler_gamma: 0.5

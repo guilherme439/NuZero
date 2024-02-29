@@ -12,7 +12,7 @@ stats = \
 
 '''
 def print_stats(stats):
-    print("\n")
+    print()
     for key, value in stats.items():
         print(key + ": " + format(value, '<.5g'))
 
@@ -26,7 +26,6 @@ def print_stats_list(stats_list):
     "average_bias_value" : 0,
     }
 
-    print("\n")
     size = len(stats_list)
     for stats in stats_list:
         for key, value in stats.items():

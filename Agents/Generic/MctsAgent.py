@@ -13,7 +13,7 @@ class MctsAgent(Agent):
 
     def __init__(self, search_config, network, recurrent_iterations=2, cache=None):
         self.explorer = Explorer(search_config, False)
-        self.keep_subtree = search_config.simulation["keep_subtree"]
+        self.keep_subtree = search_config["Simulation"]["keep_subtree"]
         self.root_node = Node(0)
 
         self.network = network

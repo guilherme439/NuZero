@@ -11,7 +11,7 @@ UCT:
 ###
 Exploration:
   value_factor: 1
-  number_of_softmax_moves: 0
+  number_of_softmax_moves: 10
   epsilon_softmax_exploration: 0.04
   epsilon_random_exploration: 0.001
   root_exploration_destribution: gamma

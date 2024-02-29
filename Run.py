@@ -69,22 +69,19 @@ def main():
         "--training-preset", type=int,
         help="Choose one of the preset training setups"
     )
-    parser.add_argument(
-        "--name", type=str, default="",
-        help="Change the name of network trained with the preset"
-    )
-    parser.add_argument(
-        "--log-driver", action='store_true',
-        help="log_to_driver=True"
+    exclusive_group.add_argument(
+        "--testing-preset", type=int,
+        help="Choose one of the preset testing setups"
     )
     exclusive_group.add_argument(
         "--debug", type=int,
         help="Choose one of the debug modes"
     )
-    exclusive_group.add_argument(
-        "--testing-preset", type=int,
-        help="Choose one of the preset testing setups"
+    parser.add_argument(
+        "--log-driver", action='store_true',
+        help="log_to_driver=True"
     )
+    
 
     args = parser.parse_args()
 
@@ -154,8 +151,7 @@ def main():
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                continue_training(game_class, game_args_list, trained_network_name, continue_network_name, \
-                                  use_same_configs, curriculum_learning, iteration, new_train_config_path, new_search_config_path, state_set)
+                
 
             case 2:
                 game_class = SCS_Game
@@ -274,18 +270,15 @@ def main():
             case 5:
 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
-                
+                game_args_list = [["SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
                 alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
                 search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
-                network_name = "local_net_test"
-
                 ################################################
 
-                state_set = create_mirrored_state_set(game)
+                state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
@@ -299,9 +292,6 @@ def main():
                         torch.nn.init.xavier_uniform_(param)
                     
                 #'''
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -1113,9 +1103,20 @@ def main():
                 optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
                 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3,20,100], gamma=0.1)
 
-                torch.save(optimizer, "optimizer")
-                loaded_optimizer = torch.load("optimizer")
-                print(loaded_optimizer)
+                file_name = "optimizer"
+                torch.save(optimizer.state_dict(), file_name)
+                optimizer_sd = torch.load(file_name)
+                
+
+                print("\n\n\n\n\n")
+
+                file_name = "scheduler"
+                torch.save(scheduler.state_dict(), file_name)
+                loaded_data = torch.load(file_name)
+                print(loaded_data)
+                os.remove(file_name)
+
+
 
                 
                 
@@ -1571,109 +1572,6 @@ def choose_trained_network():
     model_iteration = int(model_iteration_answer)
     recurrent_iterations = int(recurrent_answer)
     return network_name, model_iteration, recurrent_iterations
-
-##########################################################################
-# ----------------------------               --------------------------- #
-# ---------------------------    UTILITIES    -------------------------- #
-# ----------------------------               --------------------------- #
-##########################################################################
-
-def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, curriculum_learning, iteration, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
-    game = game_class(*game_args_list[0])
-
-    game_folder_name = game.get_name()
-    trained_model_folder_path = game_folder_name + "/models/" + trained_network_name + "/"
-    if not os.path.exists(trained_model_folder_path):
-        print("Could not find a model with that name.\n \
-                If you are using Ray jobs with a working_directory,\
-                only the models uploaded to git will be available.")
-        exit()
-
-    plot_data_load_path = trained_model_folder_path + "plot_data.pkl"
-
-    pickle_path =  trained_model_folder_path + "base_model.pkl"
-
-    #'''
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
-    #'''
-
-    '''    
-    in_channels = game.get_state_shape()[0]
-    policy_channels = game.get_action_space_shape()[0]
-    model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-    '''
-
-    model_paths = glob.glob(trained_model_folder_path + "*_model")
-    
-    if iteration == "auto":
-        # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-        iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
-    else:
-        iteration_number = iteration
-
-    latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(iteration_number) + "_model"
-    model.load_state_dict(torch.load(latest_model_path, map_location=torch.device('cpu')))
-
-    if use_same_configs:
-        alpha_config_path = trained_model_folder_path + "train_config_copy.ini"
-        search_config_path = trained_model_folder_path + "search_config_copy.ini"
-    else:
-        if new_search_config_path is None or new_alpha_config_path is None:
-            print("If you are not using the same configs, you need to provide the new configs.")
-            exit()
-        alpha_config_path = new_alpha_config_path
-        search_config_path = new_search_config_path
-
-    alpha_zero = AlphaZero(game_class, game_args_list, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
-    if not curriculum_learning:
-        starting_iteration = iteration_number
-    else:
-        starting_iteration = 0
-
-    alpha_zero.run(starting_iteration)
-
-def load_trained_network(game, net_name, model_iteration):
-
-    game_folder = game.get_name() + "/"
-    model_folder = game_folder + "models/" + net_name + "/" 
-    pickle_path =  model_folder + "base_model.pkl"
-    search_config_path = model_folder + "search_config_copy.ini"
-
-    trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
-
-    #'''
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
-    #'''
-
-    '''
-    in_channels = game.get_state_shape()[0]
-    policy_channels = game.get_action_space_shape()[0]
-    model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-    '''
-
-    model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
-    
-
-    nn = Torch_NN(model)
-
-    search_config = Search_Config()
-    search_config.load(search_config_path)
-
-    return nn, search_config
-
-def str_to_class(classname):
-    return getattr(sys.modules[__name__], classname)
-
-def pickle_save(save_path, data):
-    with open(save_path, 'wb') as file:
-        pickle.dump(data,file)
-
-def pickle_load(load_path):
-    with open(load_path, 'rb') as file:
-        data = pickle.load(file)
-    return data
 
 
 

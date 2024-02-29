@@ -1,18 +1,24 @@
 ###
 Initialization:
   network_name: test_net
-  use_checkpoint: True
+  load_checkpoint: True
 
+  Checkpoint:
+    cp_network_name: checkpoint_net
+    iteration_number: 2000
+    keep_optimizer: True
+    keep_scheduler: False
+    fresh_start: False
 
 ###
 Running:
   running_mode: sequential
   num_actors: 4
-  early_fill_per_type: 50
-  early_softmax_moves: 0
+  early_fill_per_type: 10
+  early_softmax_moves: 4
   early_softmax_exploration: 0.04
   early_random_exploration: 0.001
-  training_steps: 100
+  training_steps: 10
 
   Sequential:
     num_games_per_type_per_step: 12
@@ -33,7 +39,6 @@ Saving:
   storage_frequency: 1
   save_frequency: 1
 
-
 ###
 Testing:
   asynchronous_testing: True
@@ -43,7 +48,6 @@ Testing:
   mcts_test_frequency: 16
   num_policy_test_games: 25
   num_mcts_test_games: 25
-  test_iterations: 8
   test_game_index: 0
 
 
@@ -61,6 +65,7 @@ Plotting:
 Recurrent Options:
   train_iterations: [8]
   pred_iterations: [8]
+  test_iterations: 8
   alpha: 0.0
   
 
@@ -88,12 +93,16 @@ Learning:
 
 ###
 Optimizer:
-  learning_rate: 1.0e-2
-  scheduler_boundaries: [1000, 5000, 10000]
-  scheduler_gamma: 0.2
-  optimizer: Adam
+  optimizer_choice: Adam
 
   SGD:
     weight_decay: 1.0e-07
     momentum: 0.9
     nesterov: True
+
+
+###
+Scheduler:
+  starting_lr: 1.0e-2
+  scheduler_boundaries: [1000, 5000, 10000]
+  scheduler_gamma: 0.2

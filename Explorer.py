@@ -45,7 +45,7 @@ class Explorer():
         if self.training:
             self.add_exploration_noise(search_start)
         
-        num_searches = self.config.simulation["mcts_simulations"]
+        num_searches = self.config["Simulation"]["mcts_simulations"]
         for i in range(num_searches):
             node = search_start
             scratch_game = game.shallow_clone()
@@ -71,13 +71,13 @@ class Explorer():
         visit_counts = [(child.visit_count, action) for action, child in node.children.items()]
 
         if self.training:
-            if game.get_length() < self.config.exploration["number_of_softmax_moves"]:
+            if game.get_length() < self.config["Exploration"]["number_of_softmax_moves"]:
                 action_i = self.softmax_action(visit_counts)
             else:
                 epsilon_softmax = np.random.random()
                 epsilon_random = np.random.random()
-                softmax_threshold = self.config.exploration["epsilon_softmax_exploration"]
-                random_threshold = self.config.exploration["epsilon_random_exploration"]
+                softmax_threshold = self.config["Exploration"]["epsilon_softmax_exploration"]
+                random_threshold = self.config["Exploration"]["epsilon_random_exploration"]
 
                 if epsilon_softmax < softmax_threshold:
                     action_i = self.softmax_action(visit_counts)
@@ -102,8 +102,8 @@ class Explorer():
     
     def calculate_exploration_bias(self, node):
         # Relative importance between value and prior as the game progresses
-        pb_c_base = self.config.uct["pb_c_base"]
-        pb_c_init = self.config.uct["pb_c_init"]
+        pb_c_base = self.config["UCT"]["pb_c_base"]
+        pb_c_init = self.config["UCT"]["pb_c_init"]
 
         return math.log((node.visit_count + pb_c_base + 1) / pb_c_base) + pb_c_init
     
@@ -119,7 +119,7 @@ class Explorer():
         confidence_score = confidence_score * c
 
 
-        value_factor = self.config.exploration["value_factor"]
+        value_factor = self.config["Exploration"]["value_factor"]
         value_score = child.value()
         if parent.to_play == 2:
             value_score = (-value_score)
@@ -199,9 +199,9 @@ class Explorer():
         return np.random.choice(actions, p=probs)
     
     def add_exploration_noise(self, node):
-        frac = self.config.exploration["root_exploration_fraction"]
-        alpha = self.config.exploration["dist_alpha"]
-        beta = self.config.exploration["dist_beta"]
+        frac = self.config["Exploration"]["root_exploration_fraction"]
+        alpha = self.config["Exploration"]["dist_alpha"]
+        beta = self.config["Exploration"]["dist_beta"]
 
         actions = node.children.keys()
         noise = np.random.gamma(alpha, beta, len(actions))

@@ -50,7 +50,7 @@ class Gamer():
         }
 
         game = self.game_class(*self.game_args)
-        keep_subtree = self.search_config.simulation["keep_subtree"]
+        keep_subtree = self.search_config["Simulation"]["keep_subtree"]
 
         if cache is None:
             cache = create_cache(self.cache_choice, self.size_estimate)
