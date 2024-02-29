@@ -21,6 +21,7 @@ from RemoteTester import RemoteTester
 
 from Utils.stats_utilities import *
 from Utils.loss_functions import *
+from Utils.other_utils import *
 from Utils.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
@@ -30,19 +31,19 @@ from progress.spinner import PieSpinner
 class TestManager():
     '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, num_testers, shared_storage, state_set=None):
+    def __init__(self, game_class, game_args, num_actors, shared_storage, keep_updated):
         self.game_class = game_class
         self.game_args = game_args
-        self.num_testers = num_testers
+        self.num_actors = num_actors
         self.shared_storage = shared_storage
-        self.state_set = state_set
+        self.keep_updated = keep_updated
 
         # ------------------------------------------------------ #
         # --------------------- ACTOR POOL --------------------- #
         # ------------------------------------------------------ #
 
         
-        actor_list = [RemoteTester.remote() for a in range(self.num_testers)]
+        actor_list = [RemoteTester.remote() for a in range(self.num_actors)]
         self.actor_pool = ray.util.ActorPool(actor_list)
 
     def run_group_of_test_batches(self, num_batches, games_per_batch, p1_agents_list, p2_agents_list, show_results):
@@ -59,37 +60,58 @@ class TestManager():
 
     def run_test_batch(self, num_games, p1_agent, p2_agent, show_results=True):
         start = time.time()
-        print("\n")
 
         wins = [0,0]
+        
+        if show_results:
+            print("\n")
+            bar = PrintBar('Testing', num_games, 15)
 
-        args = [None, p1_agent, p2_agent, False]
-
-
-        # We must use actor_pool.map instead of actor_pool.submit,
-        # because ray bugs if you do several submit calls on the same actors with different values
-        map_args = []
-        for g in range(num_games):
+        first_requests = min(self.num_actors, num_games)
+        for r in range(first_requests):
             game = self.game_class(*self.game_args)
-            args_copy = copy.copy(args)
-            args_copy[0] = game
-            map_args.append(args_copy)
+            call_args = [game, p1_agent, p2_agent]
+            self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
 
-        time.sleep(1)
-
-        results = self.actor_pool.map_unordered(lambda actor, args: actor.Test_using_agents.remote(*args), map_args)
-            
-        time.sleep(1)
-
-        bar = PrintBar('Testing', num_games, 15)
-        for res in results:
-            winner, _ = res
+        first = True
+        games_played = 0
+        games_requested = first_requests
+        while games_played < num_games:
+        
+            winner, _, p1_cache, p2_cache = self.actor_pool.get_next_unordered()
+            games_played += 1
+            if show_results:
+                bar.next()
             if winner != 0:
                 wins[winner-1] +=1
-            bar.next()
 
-        bar.finish()
+            if self.keep_updated:
+                # The first game to finish initializes the cache
+                if first:   
+                    p1_latest_cache = p1_cache
+                    p2_latest_cache = p2_cache
+                    first = False
+                # The remaining games update the cache with the states they saw
+                else:       
+                    # The latest cache could be None if the cache is disabled
+                    if (p1_latest_cache is not None) and (p1_latest_cache.get_fill_ratio() < p1_latest_cache.get_update_threshold()):
+                        p1_latest_cache.update(p1_cache)
+                    if (p2_latest_cache is not None) and (p2_latest_cache.get_fill_ratio() < p2_latest_cache.get_update_threshold()):
+                        p2_latest_cache.update(p2_cache)
             
+            # While there are games to play... we request more
+            if games_requested < num_games:
+                game = self.game_class(*self.game_args)
+                if self.keep_updated:
+                    call_args = [game, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
+                else:
+                    call_args = [game, p1_agent, p2_agent]
+                
+                self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
+                games_requested +=1
+
+        if show_results:
+            bar.finish()    
         
         # STATISTICS
         cmp_winrate_1 = 0.0
@@ -121,15 +143,13 @@ class TestManager():
 
         end = time.time()
         total_time = end-start
-        print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
-        print("Average time per game(s): " + format(total_time/num_games, '.4'))
-        print("\n\n")
+        if show_results:
+            print("\n\nTotal testing time(m): " + format(total_time/60, '.4'))
+            print("Average time per game(s): " + format(total_time/num_games, '.4'))
+            print("\n\n")
 
         return (p1_winrate, p2_winrate, draw_percentage)
     
-
-    def run_mcts_batch_with_stats(self):
-        return
         
 
     

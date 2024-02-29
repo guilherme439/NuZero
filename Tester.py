@@ -15,6 +15,9 @@ from Utils.PrintBar import PrintBar
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Agents.Generic.MctsAgent import MctsAgent
+from Agents.Generic.PolicyAgent import PolicyAgent
+
+
 
 
 
@@ -46,8 +49,8 @@ class Tester():
 # ----------------- TEST METHODS ----------------- #
 # ------------------------------------------------ #
 
-    def Test_using_agents(self, game, p1_agent, p2_agent, keep_state_history=False):
-
+    def Test_using_agents(self, game, p1_agent, p2_agent, p1_cache=None, p2_cache=None, keep_state_history=False):
+        stats = {} # stats are not used in testing yet
         
         # --- Printing and rendering preparations --- #
         if self.print:
@@ -58,8 +61,10 @@ class Tester():
             self.renderer.render.remote()
             time.sleep(3)
 
-        p1_agent.new_game(game)
-        p2_agent.new_game(game)
+
+        p1_agent.new_game(game, cache=p1_cache)
+        p2_agent.new_game(game, cache=p2_cache)
+
 
         # --- Main test loop --- #
         while True:
@@ -111,8 +116,9 @@ class Tester():
                 winner = game.get_winner()
                 break
             
-            
-        return winner, {}
+            p1_cache = p1_agent.get_cache()
+            p2_cache = p2_agent.get_cache()
+        return winner, stats, p1_cache, p2_cache
 
     def ttt_vs_agent(self, user_player, agent):
 

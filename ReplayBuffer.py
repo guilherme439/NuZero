@@ -1,6 +1,8 @@
 import ray
 import random
 import math
+import pickle 
+
 import numpy as np
 
 
@@ -28,7 +30,6 @@ class ReplayBuffer():
                 self.buffer.pop(0)
             self.buffer.append(tuple)
 
-
     def shuffle(self):
         random.shuffle(self.buffer)
 
@@ -55,6 +56,14 @@ class ReplayBuffer():
     def played_games(self):
         return self.n_games
 
-    
+    def save_to_file(self, file_path):
+        ''' save buffer as pickle '''
+        with open(file_path, 'wb') as file:
+            pickle.dump(self.buffer, file)
+
+    def load_from_file(self, file_path):
+        ''' loads buffer from pickle '''
+        with open(file_path, 'rb') as file:
+            self.buffer = pickle.load(file)
 
     

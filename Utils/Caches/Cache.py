@@ -1,7 +1,3 @@
-import torch
-import math
-
-
 
 
 class Cache():
@@ -20,6 +16,10 @@ class Cache():
       
     def put(self, item):
         ''' Places the item in the cache '''
+        return
+
+    def update(self, cache):
+        ''' Updates this cache with items from a cache of the same type '''
         return
     
     def length(self):

@@ -33,14 +33,12 @@ from SCS.SCS_Renderer import SCS_Renderer
 
 from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from Configs.Training_Config import Training_Config
-from Configs.Search_Config import Search_Config
-
 from AlphaZero import AlphaZero
 from Tester import Tester
 from RemoteTester import RemoteTester
 
 from Utils.stats_utilities import *
+from Utils.other_utils import *
 
 from Gamer import Gamer
 from ReplayBuffer import ReplayBuffer
@@ -54,6 +52,7 @@ from Agents.SCS.GoalRushAgent import GoalRushAgent
 from TestManager import TestManager
 
 from Utils.Caches.KeylessCache import KeylessCache
+from Utils.Caches.DictCache import DictCache
 
 
 def main():
@@ -70,26 +69,23 @@ def main():
         "--training-preset", type=int,
         help="Choose one of the preset training setups"
     )
-    parser.add_argument(
-        "--name", type=str, default="",
-        help="Change the name of network trained with the preset"
-    )
-    parser.add_argument(
-        "--log-driver", action='store_true',
-        help="log_to_driver=True"
+    exclusive_group.add_argument(
+        "--testing-preset", type=int,
+        help="Choose one of the preset testing setups"
     )
     exclusive_group.add_argument(
         "--debug", type=int,
         help="Choose one of the debug modes"
     )
-    exclusive_group.add_argument(
-        "--testing-preset", type=int,
-        help="Choose one of the preset testing setups"
+    parser.add_argument(
+        "--log-driver", action='store_true',
+        help="log_to_driver=True"
     )
+    
 
     args = parser.parse_args()
 
-    print("CUDA: " + str(torch.cuda.is_available()))
+    print("\n\nCUDA Available: " + str(torch.cuda.is_available()))
 
     log_to_driver = False
     if args.log_driver:
@@ -155,8 +151,7 @@ def main():
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                continue_training(game_class, game_args_list, trained_network_name, continue_network_name, \
-                                  use_same_configs, curriculum_learning, iteration, new_train_config_path, new_search_config_path, state_set)
+                
 
             case 2:
                 game_class = SCS_Game
@@ -272,17 +267,14 @@ def main():
 
                 
 
-            case 5: 
-                
+            case 5:
+
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
-                
+                game_args_list = [["SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/large_test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/large_test_search_config.ini"
-
-                network_name = "local_net_test"
+                alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
+                search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
                 ################################################
 
@@ -290,25 +282,21 @@ def main():
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 128, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 #'''
                 for name, param in model.named_parameters():
                     if ".weight" not in name:
                         #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.85)
+                        torch.nn.init.xavier_uniform_(param)
                     
                 #'''
 
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
-
 
 
 
@@ -353,7 +341,7 @@ def main():
                 game = game_class(*game_args)
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
                 
-                test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+                print("\n\nNeeds to be updated. Currently not working...\n")
 
             case 1: # Render Game
                 rendering_mode = "interactive"  # passive | interactive
@@ -370,9 +358,14 @@ def main():
 
                 nn, search_config = load_trained_network(game, net_name, model_iteration)
 
+                # cache
+                cache_choice = "keyless"
+                max_size = 5000
+                keep_updated = False
+
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "disabled")
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations)
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
@@ -406,31 +399,57 @@ def main():
                     renderer.analyse(game)
 
             case 2: # Statistics for multiple games
-                num_testers = 5
-                num_games = 250
+                num_testers = 4
+                num_games = 100
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/mirrored_plus_config_5.yml"
+                game_config = "SCS/Game_configs/solo_soldier_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
-                # network options
+
+                # cache
+                cache_choice = "keyless"
+                max_size = 5000
+                keep_updated = False
+
+                cache = create_cache(cache_choice, max_size)
+                
+                ## trained network
                 net_name = "mirror_plus_cl"
                 model_iteration = 800
                 recurrent_iterations = 6
 
-                # Test Manager configuration
-                nn, search_config = load_trained_network(game, net_name, model_iteration)
+                # search config
+                search_config_path = "Configs/Config_Files/Search/small_test_search_config.ini"
+
+                new_net = True
+                if new_net:
+                    in_channels = game.get_state_shape()[0]
+                    policy_channels = game.get_action_space_shape()[0]
+                    model = RecurrentNet(in_channels, policy_channels, 128, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
+                    nn = Torch_NN(model)
+                else:
+                    nn, search_config = load_trained_network(game, net_name, model_iteration)
+
+                load_config = True
+                if load_config:
+                    search_config = Search_Config()
+                    search_config.load(search_config_path)
+
+
+                # test manager
                 shared_storage = RemoteStorage.remote(window_size=1)
                 shared_storage.store.remote(nn)
-                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, None)
+                test_manager = TestManager(game_class, game_args, num_testers, shared_storage, keep_updated)
+
                 
                 # Agents
-                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, "keyless", 12000)
-                policy_agent = PolicyAgent(nn, recurrent_iterations)
+                mcts_agent = MctsAgent(search_config, nn, recurrent_iterations, cache)
+                policy_agent = PolicyAgent(nn, recurrent_iterations, cache)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = goal_agent
+                p1_agent = mcts_agent
                 p2_agent = mcts_agent
 
                 ################################################
@@ -1071,6 +1090,34 @@ def main():
 
                 print("\nImages created!\n")
 
+            case 2:
+                game_class = SCS_Game
+                game_args = ["SCS/Game_configs/randomized_config_5.yml"]
+                game = game_class(*game_args)
+
+                in_channels = game.get_state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu")
+
+                
+                optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3,20,100], gamma=0.1)
+
+                file_name = "optimizer"
+                torch.save(optimizer.state_dict(), file_name)
+                optimizer_sd = torch.load(file_name)
+                
+
+                print("\n\n\n\n\n")
+
+                file_name = "scheduler"
+                torch.save(scheduler.state_dict(), file_name)
+                loaded_data = torch.load(file_name)
+                print(loaded_data)
+                os.remove(file_name)
+
+
+
                 
                 
 
@@ -1346,7 +1393,7 @@ def testing_mode():
         game = game_class(*game_args)
         nn, search_config = load_trained_network(game, net_name, model_iteration)
         
-        test_loop(number_of_testers, method, num_games, game_class, game_args, AI_player, search_config, nn, recurrent_iterations, False)
+        print("\n\nNeeds to be updated. Currently not working...\n")
 
 def training_mode():
     game_class, game_args = choose_game()
@@ -1525,186 +1572,6 @@ def choose_trained_network():
     model_iteration = int(model_iteration_answer)
     recurrent_iterations = int(recurrent_answer)
     return network_name, model_iteration, recurrent_iterations
-
-##########################################################################
-# ----------------------------               --------------------------- #
-# ---------------------------    UTILITIES    -------------------------- #
-# ----------------------------               --------------------------- #
-##########################################################################
-
-def continue_training(game_class, game_args_list, trained_network_name, continue_network_name, use_same_configs, curriculum_learning, iteration, new_alpha_config_path=None, new_search_config_path=None, state_set=None):
-    game = game_class(*game_args_list[0])
-
-    game_folder_name = game.get_name()
-    trained_model_folder_path = game_folder_name + "/models/" + trained_network_name + "/"
-    if not os.path.exists(trained_model_folder_path):
-        print("Could not find a model with that name.\n \
-                If you are using Ray jobs with a working_directory,\
-                only the models uploaded to git will be available.")
-        exit()
-
-    plot_data_load_path = trained_model_folder_path + "plot_data.pkl"
-
-    pickle_path =  trained_model_folder_path + "base_model.pkl"
-
-    #'''
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
-    #'''
-
-    '''    
-    in_channels = game.get_state_shape()[0]
-    policy_channels = game.get_action_space_shape()[0]
-    model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-    '''
-
-    model_paths = glob.glob(trained_model_folder_path + "*_model")
-    
-    if iteration == "auto":
-        # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-        iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), model_paths)))[-1]
-    else:
-        iteration_number = iteration
-
-    latest_model_path = trained_model_folder_path + trained_network_name + "_" + str(iteration_number) + "_model"
-    model.load_state_dict(torch.load(latest_model_path, map_location=torch.device('cpu')))
-
-    if use_same_configs:
-        alpha_config_path = trained_model_folder_path + "train_config_copy.ini"
-        search_config_path = trained_model_folder_path + "search_config_copy.ini"
-    else:
-        if new_search_config_path is None or new_alpha_config_path is None:
-            print("If you are not using the same configs, you need to provide the new configs.")
-            exit()
-        alpha_config_path = new_alpha_config_path
-        search_config_path = new_search_config_path
-
-    alpha_zero = AlphaZero(game_class, game_args_list, model, continue_network_name, alpha_config_path, search_config_path, plot_data_path=plot_data_load_path, state_set=state_set)
-    if not curriculum_learning:
-        starting_iteration = iteration_number
-    else:
-        starting_iteration = 0
-
-    alpha_zero.run(starting_iteration)
-
-def load_trained_network(game, net_name, model_iteration):
-
-    game_folder = game.get_name() + "/"
-    model_folder = game_folder + "models/" + net_name + "/" 
-    pickle_path =  model_folder + "base_model.pkl"
-    search_config_path = model_folder + "search_config_copy.ini"
-
-    trained_model_path =  model_folder + net_name + "_" + str(model_iteration) + "_model"
-
-    #'''
-    with open(pickle_path, 'rb') as file:
-        model = pickle.load(file)
-    #'''
-
-    '''
-    in_channels = game.get_state_shape()[0]
-    policy_channels = game.get_action_space_shape()[0]
-    model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-    '''
-
-    model.load_state_dict(torch.load(trained_model_path, map_location=torch.device('cpu')))
-    
-
-    nn = Torch_NN(model)
-
-    search_config = Search_Config()
-    search_config.load(search_config_path)
-
-    return nn, search_config
-
-def test_loop(num_testers, method, num_games, game_class, game_args, AI_player=None, search_config=None, nn=None, recurrent_iterations=None, use_state_cache=None):
-
-    wins = [0,0]
-    
-    if method == "random":
-        args_list = [None]
-        game_index = 0
-    elif method == "policy":
-        args_list = [AI_player, None, nn, None, recurrent_iterations, False]
-        game_index = 1
-    elif method == "mcts":
-        args_list = [AI_player, search_config, None, nn, None, recurrent_iterations, False, False]
-        game_index = 2
-    elif method == "agent":
-        args_list = [AI_player, None, False]
-        game_index = 1
-
-    actor_list = [RemoteTester.remote(print=False) for a in range(num_testers)]
-    actor_pool = ray.util.ActorPool(actor_list)
-
-    text = "Testing using " + method
-    bar = PrintBar(text, num_games, 15)
-
-    # We must use map instead of submit,
-    # because ray bugs if you do several submit calls with different values
-    map_args = []
-    for g in range(num_games):
-        args_copy = copy.copy(args_list)
-        args_copy[game_index] = game_class(*game_args)
-        map_args.append(args_copy)
-
-
-    if method == "random":
-        results = actor_pool.map_unordered(lambda actor, args: actor.random_vs_random.remote(*args), map_args)
-    elif method == "policy":
-        results = actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_policy.remote(*args), map_args)
-    elif method == "mcts":
-        results = actor_pool.map_unordered(lambda actor, args: actor.Test_AI_with_mcts.remote(*args), map_args)
-    elif method == "agent":
-        results = actor_pool.map_unordered(lambda actor, args: actor.Test_agent_vs_random.remote(*args), map_args)
-        
-    time.sleep(2)
-
-    for res in results:
-        winner, _ = res
-        if winner != 0:
-            wins[winner-1] +=1
-        bar.next()
-			
-    bar.finish()
-
-    # STATISTICS
-    cmp_winrate_1 = 0.0
-    cmp_winrate_2 = 0.0
-    draws = num_games - wins[0] - wins[1]
-    p1_winrate = wins[0]/num_games
-    p2_winrate = wins[1]/num_games
-    draw_percentage = draws/num_games
-    cmp_2_string = "inf"
-    cmp_1_string = "inf"
-
-    if wins[0] > 0:
-        cmp_winrate_2 = wins[1]/wins[0]
-        cmp_2_string = format(cmp_winrate_2, '.4')
-    if wins[1] > 0:  
-        cmp_winrate_1 = wins[0]/wins[1]
-        cmp_1_string = format(cmp_winrate_1, '.4')
-
-  
-    print("P1 Win ratio: " + format(p1_winrate, '.4'))
-    print("P2 Win ratio: " + format(p2_winrate, '.4'))
-    print("Draw percentage: " + format(draw_percentage, '.4'))
-    print("Comparative Win ratio(p1/p2): " + cmp_1_string)
-    print("Comparative Win ratio(p2/p1): " + cmp_2_string + "\n", flush=True)
-
-    return p1_winrate, p2_winrate, draw_percentage
-
-def str_to_class(classname):
-    return getattr(sys.modules[__name__], classname)
-
-def pickle_save(save_path, data):
-    with open(save_path, 'wb') as file:
-        pickle.dump(data,file)
-
-def pickle_load(load_path):
-    with open(load_path, 'rb') as file:
-        data = pickle.load(file)
-    return data
 
 
 

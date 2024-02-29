@@ -17,7 +17,6 @@ class Torch_NN():
         self.model = model
         self.check_devices()
 
-        self.model = model.to(self.device)
         if not hasattr(self.model, "recurrent"):
             print("You need to add a \"recurrent\" bollean atribute to the model,\n \
                    Specifing if the model is or not recurrent.")
@@ -40,6 +39,7 @@ class Torch_NN():
         return torch.cuda.is_available()
 
     def check_devices(self):
+        ''' Sends model do gpu if available, otherwise to cpu '''
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = self.model.to(self.device)
     

@@ -115,7 +115,7 @@ class SCS_Game(Game):
         self.renderer = SCS_Renderer()
         
         if game_config_path != "":
-            self.load_from_config(game_config_path)
+            self.load_game_from_config(game_config_path)
 
 
         # ------------------------------------------------------ #
@@ -360,8 +360,7 @@ class SCS_Game(Game):
                 confirm_attack_planes[0][x][y] = 1 # confirm attack action
         
         else:
-            print("Error in possible_actions! Exiting")
-            exit()
+            raise Exception("Error in possible_actions! Exiting")
 
         planes_list = [placement_planes, movement_planes, choose_target_planes, choose_attackers_planes, confirm_attack_planes, no_move_planes, no_fight_planes]
         valid_actions_mask = np.concatenate(planes_list)
@@ -411,8 +410,7 @@ class SCS_Game(Game):
             elif direction == 5:  # NW
                 dest = self.get_nw_coords(start)
             else:
-                print("Problem parsing action...Exiting")
-                exit()
+                raise Exception("Problem parsing action...Exiting")
             
         # FIGHT PLANES
         elif current_plane < self.target_limit:
@@ -447,8 +445,7 @@ class SCS_Game(Game):
             start = (action_coords[1],action_coords[2])
 
         else:
-            print("Problem parsing action...Exiting")
-            exit()
+            raise Exception("Problem parsing action...Exiting")
 
         return (act, start, stacking_lvl, dest)
 
@@ -486,10 +483,8 @@ class SCS_Game(Game):
                 # This verification is done here to avoid checking all the units, or keeping an 'updated_units_list'
            
             else:
-                print("Problem playing action.\n \
-                      Probably there is a bug in possible_actions().\n \
-                      Exiting")
-                exit()
+                raise Exception("Problem playing action.\n \
+                      Probably there is a bug in possible_actions().")
 
         elif (act == 2): # Choosing target
             target_tile = self.get_tile(start)
@@ -516,8 +511,7 @@ class SCS_Game(Game):
             self.end_fighting(unit)
 
         else:
-            print("Unknown action. Exiting...")
-            exit()
+            raise Exception("Play_action: Unknown action.")
 
         return
 
@@ -584,8 +578,7 @@ class SCS_Game(Game):
             match stage:
                 case -2:
                     if self.current_turn != 0:
-                        print("Sanity check went wrong. Something wrong with game environment.")
-                        exit()
+                        raise Exception("Sanity check went wrong. Something wrong with game environment.")
                     
                     if self.player_ended_reinforcements(1, self.current_turn):
                         stage+=1
@@ -593,8 +586,7 @@ class SCS_Game(Game):
 
                 case -1:
                     if self.current_turn != 0:
-                        print("Sanity check went wrong. Something wrong with game environment.")
-                        exit()
+                        raise Exception("Sanity check went wrong. Something wrong with game environment.")
                     
                     if self.player_ended_reinforcements(2, self.current_turn):
                         self.current_turn+=1
@@ -670,8 +662,7 @@ class SCS_Game(Game):
         elif stage in p2_stages:
             self.current_player = 2
         else:
-            print("Error in function: \'update_game_env()\'.Exiting")
-            exit()
+            raise Exception("Error in function: \'update_game_env()\'.")
 
 
         reinforcement_stages = self.reinforcement_stages()
@@ -688,8 +679,7 @@ class SCS_Game(Game):
         elif stage in choosing_attackers_stages:
             self.current_sub_phase = 3
         else:
-            print("Error in function: \'update_game_env()\'.Exiting")
-            exit()
+            raise Exception("Error in function: \'update_game_env()\'.")
 
         
         if self.current_sub_phase in (0,1):
@@ -697,8 +687,7 @@ class SCS_Game(Game):
         elif self.current_sub_phase in (2,3):
             self.current_phase = 1
         else:
-            print("Error in function: \'update_game_env()\'.Exiting")
-            exit()
+            raise Exception("Error in function: \'update_game_env()\'.")
 
         self.current_stage = stage
 
@@ -808,8 +797,7 @@ class SCS_Game(Game):
         self.lenght = 0 # artificial game states don't have previous actions
 
         if len(unit_ids_list) != len(unit_position_list) or len(unit_ids_list) != len(player_list):
-            print("set_simple_game_state()\nAll lists must have the same length.\nExiting")
-            exit()
+            raise Exception("set_simple_game_state()\nAll lists must have the same length.")
 
         # Create the units and place them at the specified position
         for i in range(len(unit_ids_list)):
@@ -850,9 +838,7 @@ class SCS_Game(Game):
         try:
             all_statuses[unit.status][player_index].remove(unit)
         except ValueError:
-            print("Can not destroy this unit.")
-            print("Possible error tracking unit's status. Exiting")
-            exit()
+            raise Exception("Could not destroy unit.\nPossible error tracking the unit's status.")
 
         return
 
@@ -1056,8 +1042,7 @@ class SCS_Game(Game):
                 return "se"
 
             case _:
-                print("get_direction() invalid vector.")
-                exit()
+                raise Exception("get_direction() invalid vector.")
 
     def get_n_coords(self, coords):
         (row, col) = coords
@@ -1421,14 +1406,15 @@ class SCS_Game(Game):
 # -------------------------                    ------------------------- #
 ##########################################################################
 
-    def load_from_config(self, filename):
-        # Read YAML file
+    def load_game_from_config(self, filename):
+        # Load config into dictionary
         with open(filename, 'r') as stream:
             data_loaded = yaml.safe_load(stream)
 
         self.units_by_id = {}
         self.terrain_by_id = {}
         
+        # Parse the dictionary information
         for section_name, values in data_loaded.items():
             match section_name:
                 case "Board_dimensions":
@@ -1474,10 +1460,10 @@ class SCS_Game(Game):
                     for p, reinforcement_schedule in schedule.items():
                         num_turns = len(reinforcement_schedule)
                         if num_turns != (self.turns + 1):
-                            print("\nError in config.\n" +
+                            raise Exception("\nError in config.\n" +
                                   "Reinforcement schedule should have \'turns + 1\' entries.\n" +
                                   "In order to account for initial troop placement (turn 0).")
-                            exit()
+    
                         player = int(p[-1])
                         player_index = player - 1
                         self.all_reinforcements[player_index] = []
@@ -1541,8 +1527,7 @@ class SCS_Game(Game):
                         map_configuration = values["map_configuration"]
                         map_shape = np.shape(map_configuration)
                         if map_shape != (self.rows, self.columns):
-                            print("Wrong shape for map configuration. Exiting")
-                            exit()
+                            raise Exception("Wrong shape for map configuration, when loading game config.")
                         else:
                             for i in range(self.rows):
                                 self.board.append([])
@@ -1551,8 +1536,7 @@ class SCS_Game(Game):
                                     terrain = self.terrain_by_id[terrain_id]["instance"]
                                     self.board[i].append(Tile((i,j), terrain))
                     else:
-                        print("Unrecognized map creation method. Exiting")
-                        exit()
+                        raise Exception("Unrecognized map creation method, when loading game config.")
 
                 case "Victory_points":
                     method = values["creation_method"]
@@ -1565,11 +1549,10 @@ class SCS_Game(Game):
                         p1_available_tiles = self.rows * (self.p1_last_index+1)
                         p2_available_tiles = self.rows * ((self.columns - (self.p2_first_index+1)) + 1)
                         if p1_vp > p1_available_tiles:
-                            print("Game config has too many victory points for p1.")
-                            exit()
+                            raise Exception("Game config has too many victory points for p1.")
+                        
                         if p2_vp > p2_available_tiles:
-                            print("Game config has too many victory points for p2.")
-                            exit()
+                            raise Exception("Game config has too many victory points for p2.")
 
                         for _ in range(p1_vp):
                             row = np.random.choice(range(self.rows))
@@ -1605,18 +1588,17 @@ class SCS_Game(Game):
                             game_list = self.victory_points[player]
                             for point in loaded_list:
                                 if len(point) != 2:
-                                    print(str(point) + " --> Points must have two coordenates.")
-                                    exit()
+                                    raise Exception(str(point) + " --> Points must have two coordenates. (game config)")
+                                    
                                 elif point in game_list:
-                                    print(str(point) + " --> Repeated point. Cannot have two points with the same coordenates.")
-                                    exit()
+                                    raise Exception(str(point) + " --> Repeated point. Cannot have two points with the same coordenates. (game config)")
+                                    
                                 else:
                                     vp_tuple = (point[0], point[1])
                                     game_list.append(vp_tuple)        
 
                     else:
-                        print("Unrecognized victory points creation method. Exiting")
-                        exit()
+                        raise Exception("Unrecognized victory points creation method. (game config)")
 
                     self.n_vp = [0, 0]
                     for point in self.victory_points[0]:
@@ -1667,19 +1649,15 @@ class SCS_Game(Game):
                     color_str = "dark_red"
                     border_color = "red"
                 else:
-                    print("Unknown player.\nexiting")
-                    exit()
+                    raise Exception("Found Unknown player when creating unit.")
                     
                 source_path = self.renderer.create_marker_from_scratch(image_name, stats, "infantary", color_str=color_str)
                 image_path = self.renderer.add_border(border_color, source_path)
 
         else:
             if not os.path.isfile(image_path):
-                print(image_path)
-                print("Image path doesn't point to any file.\nexiting")
-                exit()
+                raise Exception(str(image_path) + " --> Image path provided to create unit, does not point to any file.")
 
-            
 
         new_unit = Unit(name, attack, defense, mov_allowance, player, [], image_path)
         return new_unit
