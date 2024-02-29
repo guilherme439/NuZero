@@ -111,15 +111,18 @@ class AlphaZero():
             iteration_number = self.train_config["Initialization"]["Checkpoint"]["iteration_number"]
             keep_optimizer = self.train_config["Initialization"]["Checkpoint"]["keep_optimizer"]
             keep_scheduler = self.train_config["Initialization"]["Checkpoint"]["keep_scheduler"]
+            load_buffer = self.train_config["Initialization"]["Checkpoint"]["load_buffer"]
             self.fresh_start = self.train_config["Initialization"]["Checkpoint"]["fresh_start"]
 
-            nn, optimizer, scheduler = self.load_from_checkpoint(cp_network_name, iteration_number)
+            network_cp_data = self.load_from_checkpoint(cp_network_name, iteration_number)
+            nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict = network_cp_data
             self.latest_network = nn
             if keep_optimizer:
-                self.optimizer = optimizer
-                # FIXME: Optimizer seems to not be working correctly... probably need to do the same trick I did for the scheduler
+                self.optimizer = base_optimizer.__class__(self.latest_network.get_model().parameters())
+                self.optimizer.load_state_dict(optimizer_dict)
                 if keep_scheduler:
-                    self.scheduler = scheduler
+                    self.scheduler = base_scheduler.__class__(self.optimizer, milestones=[1])
+                    self.scheduler.load_state_dict(scheduler_dict)
                 else:
                     for g in self.optimizer.param_groups:
                         g['lr'] = starting_lr
@@ -128,10 +131,8 @@ class AlphaZero():
             else:
                 self.optimizer = self.create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
                 if keep_scheduler:
-                    scheduler_class = scheduler.__class__
-                    self.scheduler = scheduler_class(self.optimizer, milestones=[1])
-                    self.scheduler.load_state_dict(scheduler.state_dict())
-                    
+                    self.scheduler = base_scheduler.__class__(self.optimizer, milestones=[1])
+                    self.scheduler.load_state_dict(scheduler_dict)
                 else:
                     self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
@@ -143,6 +144,8 @@ class AlphaZero():
             self.optimizer = self.create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
+        if not load_buffer:
+            self.buffer_load_path = None
 
         # ------------------------------------------------------ #
         # ------------------- FOLDERS SETUP -------------------- #
@@ -233,6 +236,7 @@ class AlphaZero():
 
         save_frequency = self.train_config["Saving"]["save_frequency"]
         storage_frequency = self.train_config["Saving"]["storage_frequency"]
+        save_replay_buffer = self.train_config["Saving"]["save_buffer"]
 
         train_iterations = self.train_config["Recurrent Options"]["train_iterations"]
         pred_iterations = self.train_config["Recurrent Options"]["pred_iterations"]
@@ -289,6 +293,10 @@ class AlphaZero():
             batch_size = self.train_config["Learning"]["Samples"]["batch_size"]
 
         self.replay_buffer = ReplayBuffer.remote(replay_window_size, batch_size)
+        if self.buffer_load_path is not None:
+            print("\nLoading replay buffer...")
+            ray.get(self.replay_buffer.load_from_file.remote(self.buffer_load_path))
+            print("Loading done.")
             
         
         # ------------------------------------------------------ #
@@ -437,8 +445,10 @@ class AlphaZero():
                 self.split_combined_loss_graph()
                     
             if save_frequency and (((step+1) % save_frequency) == 0):
-                save_path = self.network_folder_path + self.network_name + "_" + str(step+1) + "_cp"                
-                self.save_checkpoint(save_path)
+                checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step+1) + "_cp"
+                buffer_path = self.network_folder_path + "replay_buffer.pkl"              
+                self.save_checkpoint(checkpoint_path)
+                self.replay_buffer.save_to_file.remote(buffer_path)
                 
             if storage_frequency and (((step+1) % storage_frequency) == 0):
                 self.latest_network.model_to_cpu()
@@ -1240,6 +1250,8 @@ class AlphaZero():
             raise Exception("Could not find a model with that name.\n \
                     If you are using Ray jobs with a working_directory,\
                     only the models uploaded to git will be available.")
+        
+        self.buffer_load_path = cp_network_folder + "replay_buffer.pkl"
 
         if iteration_number == "auto":
             cp_paths = glob.glob(cp_network_folder + "*_cp")
@@ -1254,12 +1266,12 @@ class AlphaZero():
         model.load_state_dict(checkpoint["model_state_dict"])
 
         optimizer_pickle_path =  cp_network_folder + "base_optimizer.pkl"
-        optimizer = self.load_pickle(optimizer_pickle_path)
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        base_optimizer = self.load_pickle(optimizer_pickle_path)
+        optimizer_dict = checkpoint["optimizer_state_dict"]
 
         scheduler_pickle_path =  cp_network_folder + "base_scheduler.pkl"
-        scheduler = self.load_pickle(scheduler_pickle_path)
-        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        base_scheduler = self.load_pickle(scheduler_pickle_path)
+        scheduler_dict = checkpoint["scheduler_state_dict"]
 
         if not self.fresh_start:
             self.starting_iteration = iteration_number
@@ -1267,7 +1279,7 @@ class AlphaZero():
             self.load_plot_data(cp_plot_data_path, iteration_number-1)
 
         nn = Torch_NN(model)
-        return nn, optimizer, scheduler
+        return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict
 
     def create_optimizer(self, model, optimizer_name, learning_rate, weight_decay=1.0e-7, momentum=0.9, nesterov=False):
         if optimizer_name == "Adam":
@@ -1328,6 +1340,4 @@ class AlphaZero():
         'scheduler_state_dict': self.scheduler.state_dict(),
         }
         torch.save(checkpoint, save_path)
-
-
 

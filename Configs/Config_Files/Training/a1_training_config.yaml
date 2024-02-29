@@ -8,6 +8,7 @@ Initialization:
     iteration_number: 2000
     keep_optimizer: True
     keep_scheduler: False
+    load_buffer: True
     fresh_start: False
     
 
@@ -39,6 +40,7 @@ Cache:
 Saving:
   storage_frequency: 1
   save_frequency: 20
+  save_buffer: True
 
 
 ###
