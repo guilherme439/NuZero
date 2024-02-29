@@ -342,9 +342,9 @@ class AlphaZero():
 
         if running_mode == "sequential":
             self.games_per_step = num_games_per_type_per_step * self.num_game_types
-            print("\nRunning unit training setup number " + str(training_steps) + " with " + str(self.games_per_step) + " games in each step.")
+            print("\nRunning unit training step number " + str(training_steps) + " with " + str(self.games_per_step) + " games in each step.")
         elif running_mode == "asynchronous":
-            print("\nRunning unit training setup number " + str(training_steps) + " with " + str(update_delay) + "s of delay between each step.")
+            print("\nRunning unit training step number " + str(training_steps) + " with " + str(update_delay) + "s of delay between each step.")
         if early_fill_games_per_type > 0:
             total_early_fill = early_fill_games_per_type * self.num_game_types
             print("\n-Playing " + str(total_early_fill) + " initial games to fill the replay buffer.")

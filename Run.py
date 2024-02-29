@@ -133,9 +133,9 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "randomized_final"
-                continue_network_name = "randomized_final_2"
-                iteration = 2400
+                trained_network_name = "randomized_final_2"
+                continue_network_name = "randomized_final_3"
+                iteration = 3300
                 use_same_configs = False
                 curriculum_learning = False
 
