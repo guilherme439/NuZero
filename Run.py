@@ -133,24 +133,24 @@ def main():
             case 1: # Continue training
                 
                 game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "explor_unbalanced_c3"
-                continue_network_name = "explor_unbalanced_c4"
-                iteration = 2140
+                trained_network_name = "randomized_final_2"
+                continue_network_name = "randomized_final_3"
+                iteration = 3300
                 use_same_configs = False
                 curriculum_learning = False
 
                 # In case of not using the same configs define here the new configs to use like 
-                new_train_config_path="Configs/Config_Files/Training/a2_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
+                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
+                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
 
                 ################################################
 
                 state_set = None
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
 
                 print("\n")
