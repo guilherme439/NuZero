@@ -1,11 +1,11 @@
 ###
 Initialization:
-  network_name: test_net_continue_load
-  load_checkpoint: True
+  network_name: test_net
+  load_checkpoint: False
 
   Checkpoint:
-    cp_network_name: test_net_continue_buf
-    iteration_number: 100
+    cp_network_name: test_net
+    iteration_number: 160
     keep_optimizer: True
     keep_scheduler: True
     load_buffer: True
@@ -15,14 +15,14 @@ Initialization:
 Running:
   running_mode: sequential
   num_actors: 4
-  early_fill_per_type: 0
-  early_softmax_moves: 4
+  early_fill_per_type: 100
+  early_softmax_moves: 0
   early_softmax_exploration: 0.5
   early_random_exploration: 0.5
-  training_steps: 200
+  training_steps: 300
 
   Sequential:
-    num_games_per_type_per_step: 12
+    num_games_per_type_per_step: 16
 
   Asynchronous:
     update_delay : 120
@@ -38,18 +38,18 @@ Cache:
 ###
 Saving:
   storage_frequency: 1
-  save_frequency: 1
+  save_frequency: 10
   save_buffer: True
 
 ###
 Testing:
   asynchronous_testing: True
   testing_actors: 1
-  early_testing: False
-  policy_test_frequency: 7
-  mcts_test_frequency: 9
-  num_policy_test_games: 12
-  num_mcts_test_games: 8
+  early_testing: True
+  policy_test_frequency: 37
+  mcts_test_frequency: 91
+  num_policy_test_games: 100
+  num_mcts_test_games: 100
   test_game_index: 0
 
 
@@ -57,10 +57,10 @@ Testing:
 Plotting:
   plot_loss: True
   plot_weights: False
-  plot_frequency: 1
-  value_split: 0
-  policy_split: 0
-  combined_split: 0
+  plot_frequency: 5
+  value_split: 250
+  policy_split: 250
+  combined_split: 250
 
 
 ###
@@ -106,5 +106,5 @@ Optimizer:
 ###
 Scheduler:
   starting_lr: 1.0e-3
-  scheduler_boundaries: [200, 600, 900]
+  scheduler_boundaries: [500, 2000, 5000]
   scheduler_gamma: 0.25

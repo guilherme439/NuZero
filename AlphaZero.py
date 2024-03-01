@@ -11,6 +11,7 @@ import psutil
 import resource
 import glob
 import re
+import bisect 
 
 import ruamel
 from ruamel.yaml import YAML
@@ -137,6 +138,7 @@ class AlphaZero():
                     self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
         else:
+            load_buffer = False
             self.fresh_start = True
             if model is None:
                 raise Exception("When not loading from a network checkpoint, a \"model\" argument must be provided.")
@@ -330,7 +332,9 @@ class AlphaZero():
         # ------------------------------------------------------ #
                 
         if self.fresh_start:
-            self.starting_iteration = 0
+            self.starting_step = 0
+
+        self.current_step = self.starting_step
 
         test_game_args = self.game_args_list[test_game_index]
         if asynchronous_testing:
@@ -351,14 +355,14 @@ class AlphaZero():
             print("-Playing " + str(total_early_fill) + " initial games to fill the replay buffer.")
         if cache_choice != "disabled":
             print("-Using cache for inference results.")			  
-        if self.starting_iteration != 0:
-            print("-Starting from iteration " + str(self.starting_iteration+1) + ".\n")
+        if self.starting_step != 0:
+            print("-Starting from iteration " + str(self.starting_step+1) + ".\n")
 
         print("\n\n--------------------------------\n")            
         
         if self.fresh_start:
             # Initial save (untrained network)
-            save_path = self.network_folder_path + self.network_name + "_" + str(self.starting_iteration) + "_cp"
+            save_path = self.network_folder_path + self.network_name + "_" + str(self.starting_step) + "_cp"
             self.save_checkpoint(save_path)
             
             if self.plot_weights:
@@ -395,10 +399,10 @@ class AlphaZero():
             termination_futures = [actor.play_forever.remote() for actor in actor_list]
 
         # ---- MAIN TRAINING LOOP ---- #
-        steps_to_run = range(self.starting_iteration, training_steps)
+        steps_to_run = range(self.starting_step+1, training_steps+1)
         for step in steps_to_run:
             self.current_step = step
-            print("\n\n\n\nStep: " + str(step+1) + "\n")
+            print("\n\n\n\nStep: " + str(step) + "\n")
 
             if running_mode == "sequential":
                 self.run_selfplay(num_games_per_type_per_step, cache_choice, keep_updated, cache_max=cache_max, text="Self-Play Games")
@@ -407,8 +411,8 @@ class AlphaZero():
             self.train_network(learning_method, policy_loss_function, value_loss_function, normalize_policy, prog_alpha, batch_size)
 
             # ---- TESTS ---- #
-            test_policy = (policy_test_frequency and (((step+1) % policy_test_frequency) == 0)) 
-            test_mcts = (mcts_test_frequency and (((step+1) % mcts_test_frequency) == 0))
+            test_policy = (policy_test_frequency and (((step) % policy_test_frequency) == 0)) 
+            test_mcts = (mcts_test_frequency and (((step) % mcts_test_frequency) == 0))
             policy_games = num_policy_test_games if test_policy else 0
             mcts_games = num_mcts_test_games if test_mcts else 0
             if asynchronous_testing:
@@ -419,7 +423,7 @@ class AlphaZero():
 
             # ---- PLOTS ---- #
             # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
-            if plot_frequency and (((step+1) % plot_frequency) == 0):
+            if plot_frequency and (((step) % plot_frequency) == 0):
                 
                 if self.plot_weights:
                     self.update_weight_data()
@@ -436,22 +440,22 @@ class AlphaZero():
                     
                 self.plot_wr()
 
-            if policy_split and ((step+1) == policy_split):
+            if policy_split and ((step) == policy_split):
                 self.split_policy_loss_graph()
 
-            if value_split and ((step+1) == value_split):
+            if value_split and ((step) == value_split):
                 self.split_value_loss_graph()
 
-            if combined_split and ((step+1) == combined_split):
+            if combined_split and ((step) == combined_split):
                 self.split_combined_loss_graph()
                     
-            if save_frequency and (((step+1) % save_frequency) == 0):
-                checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step+1) + "_cp"
-                buffer_path = self.network_folder_path + "replay_buffer.pkl"              
+            if save_frequency and (((step) % save_frequency) == 0):
+                checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step) + "_cp"
+                buffer_path = self.network_folder_path + "replay_buffer.cp"              
                 self.save_checkpoint(checkpoint_path)
-                self.replay_buffer.save_to_file.remote(buffer_path)
+                ray.get(self.replay_buffer.save_to_file.remote(buffer_path))
                 
-            if storage_frequency and (((step+1) % storage_frequency) == 0):
+            if storage_frequency and (((step) % storage_frequency) == 0):
                 self.latest_network.model_to_cpu()
                 ray.get(self.network_storage.store.remote(self.latest_network))
                 self.latest_network.model_to_device()
@@ -1004,6 +1008,7 @@ class AlphaZero():
 
     def plot_wr(self):
         print("\nPloting wr graphs...")
+    
         if len(self.p1_policy_wr_stats[0]) > 1:
             x, y = zip(*self.p1_policy_wr_stats[1])
             plt.plot(x, y, label = "P2")
@@ -1093,19 +1098,29 @@ class AlphaZero():
             print("State plotting done\n")
 
     def update_wr_data(self, result, result_type, step):
-        # The test type is an integer between 0 and 3 that is used to determine which list to update
+        # The test/result type is an integer between 0 and 3 that is used to determine which list to update
+        array = []
         for player in (0,1):
             if result_type == 0:
-                self.p1_policy_wr_stats[player].append((step, result[player]))
+                update_list = self.p1_policy_wr_stats
 
-            if result_type == 1:   
-                self.p2_policy_wr_stats[player].append((step, result[player]))
+            elif result_type == 1:   
+                update_list = self.p2_policy_wr_stats
 
-            if result_type == 2:
-                self.p1_mcts_wr_stats[player].append((step, result[player]))
+            elif result_type == 2:
+                update_list = self.p1_mcts_wr_stats
 
-            if result_type == 3:
-                self.p2_mcts_wr_stats[player].append((step, result[player]))
+            elif result_type == 3:
+                update_list = self.p2_mcts_wr_stats
+
+            # Because of asynchronous testng, sometimes values might arrive out of order
+            point_to_insert = (step, result[player])
+            # access player_index -> last_entry -> step_number
+            if update_list[player][-1][0] > step:
+                bisect.insort(update_list[player], point_to_insert, key=lambda entry: entry[0])
+            else:
+                update_list[player].append(point_to_insert)
+
         return
 
     def update_weight_data(self):
@@ -1252,7 +1267,7 @@ class AlphaZero():
                     If you are using Ray jobs with a working_directory,\
                     only the models uploaded to git will be available.")
         
-        self.buffer_load_path = cp_network_folder + "replay_buffer.pkl"
+        self.buffer_load_path = cp_network_folder + "replay_buffer.cp"
 
         if iteration_number == "auto":
             cp_paths = glob.glob(cp_network_folder + "*_cp")
@@ -1275,7 +1290,7 @@ class AlphaZero():
         scheduler_dict = checkpoint["scheduler_state_dict"]
 
         if not self.fresh_start:
-            self.starting_iteration = iteration_number
+            self.starting_step = iteration_number
             cp_plot_data_path = cp_network_folder + "plot_data.pkl"
             self.load_plot_data(cp_plot_data_path, iteration_number-1)
 

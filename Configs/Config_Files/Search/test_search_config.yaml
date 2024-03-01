@@ -1,17 +1,17 @@
 ###
 Simulation:
-  mcts_simulations: 50
+  mcts_simulations: 100
   keep_subtree: True
 
 ###
 UCT:
-  pb_c_base: 5000
+  pb_c_base: 7000
   pb_c_init: 1.15
 
 ###
 Exploration:
   value_factor: 1
-  number_of_softmax_moves: 10
+  number_of_softmax_moves: 12
   epsilon_softmax_exploration: 0.03
   epsilon_random_exploration: 0.002
   root_exploration_destribution: gamma
