@@ -211,6 +211,11 @@ class AlphaZero():
         pid = os.getpid()
         process = psutil.Process(pid)
 
+        if self.fresh_start:
+            self.starting_step = 0
+
+        self.current_step = self.starting_step
+
         # ------------------------------------------------------ #
         # ------------------ RUNTIME CONFIGS ------------------- #
         # ------------------------------------------------------ #
@@ -298,7 +303,7 @@ class AlphaZero():
         self.replay_buffer = ReplayBuffer.remote(replay_window_size, batch_size)
         if self.buffer_load_path is not None:
             print("\nLoading replay buffer...")
-            ray.get(self.replay_buffer.load_from_file.remote(self.buffer_load_path))
+            ray.get(self.replay_buffer.load_from_file.remote(self.buffer_load_path, self.starting_step))
             print("Loading done.")
             
         
@@ -331,10 +336,6 @@ class AlphaZero():
         # --------------------- ALPHAZERO ---------------------- #
         # ------------------------------------------------------ #
                 
-        if self.fresh_start:
-            self.starting_step = 0
-
-        self.current_step = self.starting_step
 
         test_game_args = self.game_args_list[test_game_index]
         if asynchronous_testing:
@@ -453,7 +454,7 @@ class AlphaZero():
                 checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step) + "_cp"
                 buffer_path = self.network_folder_path + "replay_buffer.cp"              
                 self.save_checkpoint(checkpoint_path)
-                ray.get(self.replay_buffer.save_to_file.remote(buffer_path))
+                ray.get(self.replay_buffer.save_to_file.remote(buffer_path, step))
                 
             if storage_frequency and (((step) % storage_frequency) == 0):
                 self.latest_network.model_to_cpu()
@@ -1099,7 +1100,6 @@ class AlphaZero():
 
     def update_wr_data(self, result, result_type, step):
         # The test/result type is an integer between 0 and 3 that is used to determine which list to update
-        array = []
         for player in (0,1):
             if result_type == 0:
                 update_list = self.p1_policy_wr_stats
@@ -1116,7 +1116,7 @@ class AlphaZero():
             # Because of asynchronous testng, sometimes values might arrive out of order
             point_to_insert = (step, result[player])
             # access player_index -> last_entry -> step_number
-            if update_list[player][-1][0] > step:
+            if (len(update_list[player]) > 0) and (update_list[player][-1][0] > step):
                 bisect.insort(update_list[player], point_to_insert, key=lambda entry: entry[0])
             else:
                 update_list[player].append(point_to_insert)

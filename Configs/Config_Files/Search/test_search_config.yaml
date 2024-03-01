@@ -1,6 +1,6 @@
 ###
 Simulation:
-  mcts_simulations: 100
+  mcts_simulations: 120
   keep_subtree: True
 
 ###

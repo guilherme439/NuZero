@@ -31,14 +31,14 @@ Running:
 ###
 Cache:
   cache_choice: keyless
-  max_size: 4000
+  max_size: 2500
   keep_updated: True
 
 
 ###
 Saving:
-  storage_frequency: 1
   save_frequency: 10
+  storage_frequency: 1
   save_buffer: True
 
 ###
@@ -55,9 +55,9 @@ Testing:
 
 ###
 Plotting:
+  plot_frequency: 5
   plot_loss: True
   plot_weights: False
-  plot_frequency: 5
   value_split: 250
   policy_split: 250
   combined_split: 250
