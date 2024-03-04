@@ -100,175 +100,26 @@ def main():
         ##############################################################################################################
 
         match args.training_preset:
+
             case 0: # Tic_tac_toe example
                 game_class = tic_tac_toe
-                game_args = []
-                game = game_class(*game_args)
+                game_args_list = [[]]
+                game = game_class()
 
-                alpha_config_path="Configs/Config_Files/Training/test_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/ttt_search_config.ini"
+                alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
+                search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
-                network_name = "ttt_example_net"
-
-                ################################################
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-
-                #num_actions = game.get_num_actions()
-                #model = MLP_Net(num_actions)
-                in_channels = game.get_state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = ConvNet(in_channels, policy_channels, kernel_size=3, num_filters=256, hex=False)
-
-                print("\n")
-                context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
-                alpha_zero.run()
-
-            case 1: # Continue training
-                
-                game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/randomized_config_5.yml"]]
-                
-                game = game_class(*game_args_list[0])
-
-                trained_network_name = "randomized_final_2"
-                continue_network_name = "randomized_final_3"
-                iteration = 3300
-                use_same_configs = False
-                curriculum_learning = False
-
-                # In case of not using the same configs define here the new configs to use like 
-                new_train_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                new_search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
-
-                ################################################
-
-                state_set = None
-                state_set = create_mirrored_state_set(game)
-
-
-                print("\n")
-                context = start_ray_local(log_to_driver)
-                
-
-            case 2:
-                game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/solo_soldier_config_5.yml"] ]
-                
-                game = game_class(*game_args_list[0])
-
-                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
-
-                network_name = "local_net_test"
-
-                ################################################
-
-                print(game.string_representation())
-                state_set = create_solo_state_set(game)
-
-                in_channels = game.get_state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                #model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-                model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
-
-                #'''
-                for name, param in model.named_parameters():
-                    if ".weight" not in name:
-                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
-                    
-                #'''
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-
-                print("\n")
-                context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
-                alpha_zero.run()
-
-            case 3:
-                game_class = SCS_Game
-                game_args_list = [ ["Game/SCS/Game_configs/r_unbalanced_config_5.yml"] ]
-                
-                game = game_class(*game_args_list[0])
-
-                alpha_config_path="Configs/Config_Files/Training/a2_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/a2_search_config.ini"
-
-                network_name = "local_net_test"
-
-                ################################################
-
-                print(game.string_representation())
                 state_set = create_r_unbalanced_state_set(game)
 
-                in_channels = game.get_state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce", hex=True)
-
-                #'''
-                for name, param in model.named_parameters():
-                    if ".weight" not in name:
-                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
-                    
-                #'''
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
+                model = MLP_Net(out_features=9)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
-
-
-            case 4:
-                game_class = SCS_Game
-                game_args_list = [ ["SCS/Game_configs/mirrored_config_5.yml"] ]
                 
-                game = game_class(*game_args_list[0])
-
-                alpha_config_path="Configs/Config_Files/Training/a1_training_config.ini"
-                search_config_path="Configs/Config_Files/Search/a1_search_config.ini"
-
-                network_name = "local_net_test"
-
-                ################################################
-
-                print(game.string_representation())
-                state_set = create_mirrored_state_set(game)
-
-                in_channels = game.get_state_shape()[0]
-                policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
-                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=20, policy_head="conv", value_head="reduce", hex=True)
-
-                #'''
-                for name, param in model.named_parameters():
-                    if ".weight" not in name:
-                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param, gain=0.8)
-                    
-                #'''
-
-                if args.name is not None and args.name != "":
-                    network_name = args.name
-
-                print("\n")
-                context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, model, network_name, alpha_config_path, search_config_path, state_set=state_set)
-                alpha_zero.run()
-
+            case 1: # SCS_Example
                 
-
-            case 5:
-
                 game_class = SCS_Game
                 game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 game = game_class(*game_args_list[0])
@@ -276,7 +127,57 @@ def main():
                 alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
                 search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
-                ################################################
+                state_set = create_r_unbalanced_state_set(game)
+
+                in_channels = game.get_state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero.run()
+
+                
+            ###############  CUSTOM PRESETS  ###################
+                
+            case 2:
+                game_class = SCS_Game
+                game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game = game_class(*game_args_list[0])
+
+                alpha_config_path="Configs/Training/small_test_training_config.yaml"
+                search_config_path="Configs/Search/test_search_config.yaml"
+
+                state_set = create_r_unbalanced_state_set(game)
+
+                in_channels = game.get_state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
+                #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
+
+                #'''
+                for name, param in model.named_parameters():
+                    if ".weight" not in name:
+                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+                        torch.nn.init.xavier_uniform_(param)
+                    
+                #'''
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero.run()
+
+
+            case 3:
+                game_class = SCS_Game
+                game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game = game_class(*game_args_list[0])
+
+                alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
+                search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
+
 
                 state_set = create_r_unbalanced_state_set(game)
 
@@ -300,7 +201,7 @@ def main():
 
 
 
-            case 6:
+            case 4:
                 # Define your setup here
                 exit()
 
@@ -1125,6 +1026,12 @@ def main():
 
     
     return
+
+def initialize_parameters(model):
+    for name, param in model.named_parameters():
+        if ".weight" not in name:
+            #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
+            torch.nn.init.xavier_uniform_(param)
 
 ##########################################################################
 # ----------------------------               --------------------------- #

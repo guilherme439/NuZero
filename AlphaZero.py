@@ -176,8 +176,8 @@ class AlphaZero():
         # ------------------------------------------------------ #
 
         # create copies of the config files
-        search_config_copy_path = self.network_folder_path + "search_config_copy.ini"
-        train_config_copy_path = self.network_folder_path + "train_config_copy.ini"
+        search_config_copy_path = self.network_folder_path + "search_config_copy.yaml"
+        train_config_copy_path = self.network_folder_path + "train_config_copy.yaml"
         self.save_yaml_config(train_config_copy_path, self.train_config)
         self.save_yaml_config(search_config_copy_path, self.search_config)
         print("\n\n--------------------------------\n\n")
@@ -340,11 +340,9 @@ class AlphaZero():
         test_game_args = self.game_args_list[test_game_index]
         if asynchronous_testing:
             self.test_futures = []
-            self.test_manager = RemoteTestManager.remote(self.game_class, test_game_args, num_testers,
-                                                        self.network_storage, keep_updated)
+            self.test_manager = RemoteTestManager.remote(self.game_class, test_game_args, num_testers)
         else:
-            self.test_manager = TestManager(self.game_class, test_game_args, num_testers,
-                                            self.network_storage, keep_updated)
+            self.test_manager = TestManager(self.game_class, test_game_args, num_testers)
 
         if running_mode == "sequential":
             self.games_per_step = num_games_per_type_per_step * self.num_game_types
@@ -375,7 +373,7 @@ class AlphaZero():
                 test_mcts = (mcts_test_frequency != 0)
                 policy_games = num_policy_test_games if test_policy else 0
                 mcts_games = num_mcts_test_games if test_mcts else 0
-                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max)
+                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max, keep_updated)
                 print("\nLaunched early tests.")
 
         if early_fill_games_per_type > 0:
@@ -420,7 +418,7 @@ class AlphaZero():
                 self.check_pending_tests()
                 
             if policy_games or mcts_games:
-                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max)
+                self.run_tests(policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max, keep_updated)
 
             # ---- PLOTS ---- #
             # The main thread is responsible for doing the graphs since matplotlib crashes when it runs outside the main thread
@@ -592,7 +590,7 @@ class AlphaZero():
 
         return
 
-    def run_tests(self, policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max=10000):
+    def run_tests(self, policy_games, mcts_games, test_iterations, asynchronous_testing, cache_choice, cache_max=10000, keep_updated=False):
         latest_network = ray.get(self.network_storage.get.remote()) # ask for a copy of the latest network
 
         mcts_agent_cache = create_cache(cache_choice, cache_max)
@@ -611,11 +609,11 @@ class AlphaZero():
         # NOTE: The type of test that runs is identified by number from 0 to 3
         if asynchronous_testing:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, show_results=False)
-                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, show_results=False)
+                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, keep_updated, show_results=False)
+                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, keep_updated, show_results=False)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, show_results=False)
-                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, show_results=False)
+                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, keep_updated, show_results=False)
+                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, keep_updated, show_results=False)
             
             #             0            1        2        3
             futures = [p1_policy, p2_policy, p1_mcts, p2_mcts]
@@ -627,11 +625,11 @@ class AlphaZero():
                     
         else:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, show_results=True)
-                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, show_results=True)
+                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, keep_updated, show_results=True)
+                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, keep_updated, show_results=True)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, show_results=True)
-                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, show_results=True)
+                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, keep_updated, show_results=True)
+                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, keep_updated, show_results=True)
 
             #             0            1        2        3
             results = [p1_policy, p2_policy, p1_mcts, p2_mcts]

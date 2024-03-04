@@ -199,12 +199,13 @@ class Explorer():
         return np.random.choice(actions, p=probs)
     
     def add_exploration_noise(self, node):
+        dist_choice = self.config["Exploration"]["root_exploration_distribution"]
         frac = self.config["Exploration"]["root_exploration_fraction"]
-        alpha = self.config["Exploration"]["dist_alpha"]
-        beta = self.config["Exploration"]["dist_beta"]
+        alpha = self.config["Exploration"]["root_dist_alpha"]
+        beta = self.config["Exploration"]["root_dist_beta"]
 
         actions = node.children.keys()
-        noise = np.random.gamma(alpha, beta, len(actions))
+        noise = np.random.gamma(alpha, beta, len(actions)) # Currently only gamma is supported
         for a, n in zip(actions, noise):
             node.children[a].prior = node.children[a].prior * (1 - frac) + n * frac
 

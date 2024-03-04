@@ -31,12 +31,10 @@ from progress.spinner import PieSpinner
 class TestManager():
     '''Runs tests and returns results'''
 	
-    def __init__(self, game_class, game_args, num_actors, shared_storage, keep_updated):
+    def __init__(self, game_class, game_args, num_actors):
         self.game_class = game_class
         self.game_args = game_args
         self.num_actors = num_actors
-        self.shared_storage = shared_storage
-        self.keep_updated = keep_updated
 
         # ------------------------------------------------------ #
         # --------------------- ACTOR POOL --------------------- #
@@ -45,6 +43,10 @@ class TestManager():
         
         actor_list = [RemoteTester.remote() for a in range(self.num_actors)]
         self.actor_pool = ray.util.ActorPool(actor_list)
+
+    def change_game(self, game_class, game_args):
+        self.game_class = game_class
+        self.game_args = game_args
 
     def run_group_of_test_batches(self, num_batches, games_per_batch, p1_agents_list, p2_agents_list, show_results):
 
@@ -56,9 +58,8 @@ class TestManager():
             result_list.append(result)
 
         return result_list
-        
-
-    def run_test_batch(self, num_games, p1_agent, p2_agent, show_results=True):
+    
+    def run_test_batch(self, num_games, p1_agent, p2_agent, keep_updated, show_results=True):
         start = time.time()
 
         wins = [0,0]
@@ -85,7 +86,7 @@ class TestManager():
             if winner != 0:
                 wins[winner-1] +=1
 
-            if self.keep_updated:
+            if keep_updated:
                 # The first game to finish initializes the cache
                 if first:   
                     p1_latest_cache = p1_cache
@@ -102,7 +103,7 @@ class TestManager():
             # While there are games to play... we request more
             if games_requested < num_games:
                 game = self.game_class(*self.game_args)
-                if self.keep_updated:
+                if keep_updated:
                     call_args = [game, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
                 else:
                     call_args = [game, p1_agent, p2_agent]
@@ -150,7 +151,7 @@ class TestManager():
 
         return (p1_winrate, p2_winrate, draw_percentage)
     
-        
+
 
     
     

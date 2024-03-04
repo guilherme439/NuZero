@@ -1,0 +1,37 @@
+###
+Options:
+  num_testers: 4
+  num_games_per_run: 100
+  num_runs_per_test: 1
+  p1_agent: mcts
+  p2_agent: policy
+  render: disabled
+  print: disabled
+
+
+###
+Networks:
+  load_checkpoints: True
+
+  Checkpoints:
+    cp_network_name: test_net_load
+
+    Checkpoint range:
+      first: 1
+      last: 5
+      step: 1
+
+  Recurrent range:
+    first: 1
+    last: 5
+    step: 1
+
+
+
+###
+Cache:
+  cache_choice: keyless
+  max_size: 2000
+  keep_updated: False
+
+
