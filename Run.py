@@ -137,9 +137,9 @@ def main():
                 
                 game = game_class(*game_args_list[0])
 
-                trained_network_name = "randomized_final_2"
-                continue_network_name = "randomized_final_3"
-                iteration = 3300
+                trained_network_name = "randomized_final_3"
+                continue_network_name = "randomized_final_4"
+                iteration = 3640
                 use_same_configs = False
                 curriculum_learning = False
 
@@ -410,13 +410,13 @@ def main():
                 num_games = 250
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/mirrored_plus_config_5.yml"
+                game_config = "SCS/Game_configs/randomized_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "mirror_plus_cl"
-                model_iteration = 800
+                net_name = "randomized_final_3"
+                model_iteration = 3640
                 recurrent_iterations = 6
 
                 # Test Manager configuration
@@ -430,8 +430,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = goal_agent
-                p2_agent = mcts_agent
+                p1_agent = mcts_agent
+                p2_agent = goal_agent
 
                 ################################################
                 print("\n")
