@@ -10,7 +10,7 @@ from bitstring import BitArray
 
 from Utils.Caches.Cache import Cache
 
-from Utils.PrintBar import PrintBar
+from Utils.Progress_Bars.PrintBar import PrintBar
 
 '''
 The way it works:

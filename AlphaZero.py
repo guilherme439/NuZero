@@ -37,10 +37,9 @@ from Agents.Generic.PolicyAgent import PolicyAgent
 from Agents.Generic.MctsAgent import MctsAgent
 from Agents.Generic.RandomAgent import RandomAgent
 
-from Utils.stats_utilities import *
 from Utils.loss_functions import *
-from Utils.other_utils import *
-from Utils.PrintBar import PrintBar
+from Utils.general_utils import *
+from Utils.Progress_Bars.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
@@ -66,8 +65,8 @@ class AlphaZero():
 
         self.yaml_parser = YAML()
         self.yaml_parser.default_flow_style = False  
-        self.search_config = self.load_yaml_config(search_config_path)
-        self.train_config = self.load_yaml_config(train_config_path)
+        self.search_config = self.load_yaml_config(self.yaml_parser, search_config_path)
+        self.train_config = self.load_yaml_config(self.yaml_parser, train_config_path)
 
         self.state_set = state_set
 
@@ -178,8 +177,8 @@ class AlphaZero():
         # create copies of the config files
         search_config_copy_path = self.network_folder_path + "search_config_copy.yaml"
         train_config_copy_path = self.network_folder_path + "train_config_copy.yaml"
-        self.save_yaml_config(train_config_copy_path, self.train_config)
-        self.save_yaml_config(search_config_copy_path, self.search_config)
+        self.save_yaml_config(self.yaml_parser, train_config_copy_path, self.train_config)
+        self.save_yaml_config(self.yaml_parser, search_config_copy_path, self.search_config)
         print("\n\n--------------------------------\n\n")
 
         # write model summary and game args to file
@@ -304,6 +303,7 @@ class AlphaZero():
         if self.buffer_load_path is not None:
             print("\nLoading replay buffer...")
             ray.get(self.replay_buffer.load_from_file.remote(self.buffer_load_path, self.starting_step))
+            time.sleep(0.5)
             print("Loading done.")
             
         
@@ -609,11 +609,11 @@ class AlphaZero():
         # NOTE: The type of test that runs is identified by number from 0 to 3
         if asynchronous_testing:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, keep_updated, show_results=False)
-                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, keep_updated, show_results=False)
+                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, keep_updated, show_info=False)
+                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, keep_updated, show_info=False)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, keep_updated, show_results=False)
-                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, keep_updated, show_results=False)
+                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, keep_updated, show_info=False)
+                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, keep_updated, show_info=False)
             
             #             0            1        2        3
             futures = [p1_policy, p2_policy, p1_mcts, p2_mcts]
@@ -625,11 +625,11 @@ class AlphaZero():
                     
         else:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, keep_updated, show_results=True)
-                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, keep_updated, show_results=True)
+                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, keep_updated, show_info=True)
+                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, keep_updated, show_info=True)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, keep_updated, show_results=True)
-                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, keep_updated, show_results=True)
+                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, keep_updated, show_info=True)
+                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, keep_updated, show_info=True)
 
             #             0            1        2        3
             results = [p1_policy, p2_policy, p1_mcts, p2_mcts]
@@ -1295,24 +1295,23 @@ class AlphaZero():
         nn = Torch_NN(model)
         return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict
 
-    def create_optimizer(self, model, optimizer_name, learning_rate, weight_decay=1.0e-7, momentum=0.9, nesterov=False):
-        if optimizer_name == "Adam":
-            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        elif optimizer_name == "SGD":
-            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
-        else:
-            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-            print("Bad optimizer config.\nUsing default optimizer (Adam)...")
-        return optimizer
+    def save_checkpoint(self, save_path, network, optimizer, scheduler):
+        checkpoint = \
+        {
+        'model_state_dict': network.get_model().state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'scheduler_state_dict': scheduler.state_dict(),
+        }
+        torch.save(checkpoint, save_path)
 
-    def load_yaml_config(self, file_path):
+    def load_yaml_config(self, yaml_parser, file_path):
         with open(file_path, 'r') as stream:
-            config_dict = self.yaml_parser.load(stream)
+            config_dict = yaml_parser.load(stream)
         return config_dict
 
-    def save_yaml_config(self, file_path, config_dict):  
+    def save_yaml_config(self, yaml_parser, file_path, config_dict):  
         with open(file_path, 'w') as stream:
-            self.yaml_parser.dump(config_dict, stream)
+            yaml_parser.dump(config_dict, stream)
 
     def load_pickle(self, pickle_path):
         with open(pickle_path, 'rb') as file:
@@ -1346,12 +1345,5 @@ class AlphaZero():
                 self.update_wr_data(result, test_type, step)
                 self.test_futures.pop(i)
 
-    def save_checkpoint(self, save_path):
-        checkpoint = \
-        {
-        'model_state_dict': self.latest_network.get_model().state_dict(),
-        'optimizer_state_dict': self.optimizer.state_dict(),
-        'scheduler_state_dict': self.scheduler.state_dict(),
-        }
-        torch.save(checkpoint, save_path)
+    
 

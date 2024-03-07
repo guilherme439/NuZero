@@ -3,7 +3,7 @@ from Node import Node
 from Explorer import Explorer
 from Agents.Agent import Agent
 
-from Utils.other_utils import *
+from Utils.general_utils import *
 
 
 class MctsAgent(Agent):

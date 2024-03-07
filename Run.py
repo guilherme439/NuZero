@@ -18,9 +18,6 @@ import matplotlib.pyplot as plt
 from ray.runtime_env import RuntimeEnv
 from scipy.special import softmax
 
-from progress.bar import ChargingBar
-from Utils.PrintBar import PrintBar
-
 from Neural_Networks.Torch_NN import Torch_NN
 from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
 
@@ -36,9 +33,6 @@ from AlphaZero import AlphaZero
 from Tester import Tester
 from RemoteTester import RemoteTester
 
-from Utils.stats_utilities import *
-from Utils.other_utils import *
-
 from Gamer import Gamer
 from ReplayBuffer import ReplayBuffer
 from RemoteStorage import RemoteStorage
@@ -49,6 +43,11 @@ from Agents.Generic.RandomAgent import RandomAgent
 from Agents.SCS.GoalRushAgent import GoalRushAgent
 
 from TestManager import TestManager
+
+from progress.bar import ChargingBar
+from Utils.Progress_Bars.PrintBar import PrintBar
+
+from Utils.general_utils import *
 
 from Utils.Caches.KeylessCache import KeylessCache
 from Utils.Caches.DictCache import DictCache
