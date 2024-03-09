@@ -208,6 +208,10 @@ class Explorer():
         noise = np.random.gamma(alpha, beta, len(actions)) # Currently only gamma is supported
         for a, n in zip(actions, noise):
             node.children[a].prior = node.children[a].prior * (1 - frac) + n * frac
+    
+    def set_search_config(self, search_config):
+        self.config = search_config
+        return    
 
     def print_tree(self, root, action_space_shape):
         # Debug

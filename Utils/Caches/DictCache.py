@@ -65,6 +65,12 @@ class DictCache(Cache):
     def get_update_threshold(self):
         return self.update_threshold
     
+    def clear(self):
+        self.dict.clear()
+        self.hits = 0
+        self.misses = 0
+        return
+    
     def length(self):
         ''' Returns the number of items in the cache '''
         return len(self.dict)

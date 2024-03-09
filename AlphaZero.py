@@ -62,14 +62,16 @@ class AlphaZero():
         self.game_args_list = game_args_list  # list of args for the game's __init__()
         self.game_class = game_class
         self.example_game = self.game_class(*self.game_args_list[0])
+        self.game_name = self.example_game.get_name()
 
         self.yaml_parser = YAML()
         self.yaml_parser.default_flow_style = False  
-        self.search_config = self.load_yaml_config(self.yaml_parser, search_config_path)
-        self.train_config = self.load_yaml_config(self.yaml_parser, train_config_path)
+        self.search_config = load_yaml_config(self.yaml_parser, search_config_path)
+        self.train_config = load_yaml_config(self.yaml_parser, train_config_path)
 
         self.state_set = state_set
-
+        self.starting_step = 0
+        self.load_buffer = False
 
         ### PLOTS ###
         self.train_global_value_loss = []
@@ -111,17 +113,24 @@ class AlphaZero():
             iteration_number = self.train_config["Initialization"]["Checkpoint"]["iteration_number"]
             keep_optimizer = self.train_config["Initialization"]["Checkpoint"]["keep_optimizer"]
             keep_scheduler = self.train_config["Initialization"]["Checkpoint"]["keep_scheduler"]
-            load_buffer = self.train_config["Initialization"]["Checkpoint"]["load_buffer"]
+            self.load_buffer = self.train_config["Initialization"]["Checkpoint"]["load_buffer"]
             self.fresh_start = self.train_config["Initialization"]["Checkpoint"]["fresh_start"]
+            new_plots = self.train_config["Initialization"]["Checkpoint"]["new_plots"]
 
-            network_cp_data = self.load_from_checkpoint(cp_network_name, iteration_number)
-            nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict = network_cp_data
+            network_cp_data = load_network_checkpoint(self.game_name, cp_network_name, iteration_number)
+            nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict, buffer_load_path, plot_data_path, iteration_number = network_cp_data
+            self.buffer_load_path = buffer_load_path
+            if not self.fresh_start:
+                self.starting_step = iteration_number
+            if not new_plots:
+                self.load_plot_data(plot_data_path, iteration_number)
+            
             self.latest_network = nn
             if keep_optimizer:
                 self.optimizer = base_optimizer.__class__(self.latest_network.get_model().parameters())
                 self.optimizer.load_state_dict(optimizer_dict)
                 if keep_scheduler:
-                    self.scheduler = base_scheduler.__class__(self.optimizer, milestones=[1])
+                    self.scheduler = base_scheduler.__class__(self.optimizer, milestones=[1]) # milestones=[1] is a dummy value.
                     self.scheduler.load_state_dict(scheduler_dict)
                 else:
                     for g in self.optimizer.param_groups:
@@ -129,7 +138,7 @@ class AlphaZero():
 
                     self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
             else:
-                self.optimizer = self.create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
+                self.optimizer = create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
                 if keep_scheduler:
                     self.scheduler = base_scheduler.__class__(self.optimizer, milestones=[1])
                     self.scheduler.load_state_dict(scheduler_dict)
@@ -137,16 +146,13 @@ class AlphaZero():
                     self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
         else:
-            load_buffer = False
             self.fresh_start = True
             if model is None:
                 raise Exception("When not loading from a network checkpoint, a \"model\" argument must be provided.")
             self.latest_network = Torch_NN(model)
-            self.optimizer = self.create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
+            self.optimizer = create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 
-        if not load_buffer:
-            self.buffer_load_path = None
 
         # ------------------------------------------------------ #
         # ------------------- FOLDERS SETUP -------------------- #
@@ -177,8 +183,8 @@ class AlphaZero():
         # create copies of the config files
         search_config_copy_path = self.network_folder_path + "search_config_copy.yaml"
         train_config_copy_path = self.network_folder_path + "train_config_copy.yaml"
-        self.save_yaml_config(self.yaml_parser, train_config_copy_path, self.train_config)
-        self.save_yaml_config(self.yaml_parser, search_config_copy_path, self.search_config)
+        save_yaml_config(self.yaml_parser, train_config_copy_path, self.train_config)
+        save_yaml_config(self.yaml_parser, search_config_copy_path, self.search_config)
         print("\n\n--------------------------------\n\n")
 
         # write model summary and game args to file
@@ -190,17 +196,17 @@ class AlphaZero():
     
         # pickle the model class
         file_name = self.network_folder_path + "base_model.pkl"
-        self.save_pickle(file_name, self.latest_network.get_model())
+        save_pickle(file_name, self.latest_network.get_model())
         print(f'Successfully pickled model class at "{file_name}".\n')
 
         # pickle the optimizer class
         file_name = self.network_folder_path + "base_optimizer.pkl"
-        self.save_pickle(file_name, self.optimizer)
+        save_pickle(file_name, self.optimizer)
         print(f'Successfully pickled optimizer class at "{file_name}".\n')
 
         # pickle the scheduler class
         file_name = self.network_folder_path + "base_scheduler.pkl"
-        self.save_pickle(file_name, self.scheduler)
+        save_pickle(file_name, self.scheduler)
         print(f'Successfully pickled scheduler class at "{file_name}".\n')
 
 
@@ -209,9 +215,6 @@ class AlphaZero():
     def run(self):
         pid = os.getpid()
         process = psutil.Process(pid)
-
-        if self.fresh_start:
-            self.starting_step = 0
 
         self.current_step = self.starting_step
 
@@ -300,7 +303,7 @@ class AlphaZero():
             batch_size = self.train_config["Learning"]["Samples"]["batch_size"]
 
         self.replay_buffer = ReplayBuffer.remote(replay_window_size, batch_size)
-        if self.buffer_load_path is not None:
+        if self.load_buffer:
             print("\nLoading replay buffer...")
             ray.get(self.replay_buffer.load_from_file.remote(self.buffer_load_path, self.starting_step))
             time.sleep(0.5)
@@ -362,7 +365,7 @@ class AlphaZero():
         if self.fresh_start:
             # Initial save (untrained network)
             save_path = self.network_folder_path + self.network_name + "_" + str(self.starting_step) + "_cp"
-            self.save_checkpoint(save_path)
+            save_checkpoint(save_path, self.latest_network, self.optimizer, self.scheduler)
             
             if self.plot_weights:
                 self.update_weight_data()
@@ -451,7 +454,7 @@ class AlphaZero():
             if save_frequency and (((step) % save_frequency) == 0):
                 checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step) + "_cp"
                 buffer_path = self.network_folder_path + "replay_buffer.cp"              
-                self.save_checkpoint(checkpoint_path)
+                save_checkpoint(checkpoint_path, self.latest_network, self.optimizer, self.scheduler)
                 ray.get(self.replay_buffer.save_to_file.remote(buffer_path, step))
                 
             if storage_frequency and (((step) % storage_frequency) == 0):
@@ -609,11 +612,11 @@ class AlphaZero():
         # NOTE: The type of test that runs is identified by number from 0 to 3
         if asynchronous_testing:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, keep_updated, show_info=False)
-                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, keep_updated, show_info=False)
+                p1_policy = self.test_manager.run_test_batch.remote(policy_games, policy_agent, random_agent, keep_updated, False, show_info=False)
+                p2_policy = self.test_manager.run_test_batch.remote(policy_games, random_agent, policy_agent, False, keep_updated, show_info=False)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, keep_updated, show_info=False)
-                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, keep_updated, show_info=False)
+                p1_mcts = self.test_manager.run_test_batch.remote(mcts_games, mcts_agent, random_agent, keep_updated, False, show_info=False)
+                p2_mcts = self.test_manager.run_test_batch.remote(mcts_games, random_agent, mcts_agent, False, keep_updated, show_info=False)
             
             #             0            1        2        3
             futures = [p1_policy, p2_policy, p1_mcts, p2_mcts]
@@ -625,11 +628,11 @@ class AlphaZero():
                     
         else:
             if policy_games:
-                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, keep_updated, show_info=True)
-                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, keep_updated, show_info=True)
+                p1_policy = self.test_manager.run_test_batch(policy_games, policy_agent, random_agent, keep_updated, False, show_info=True)
+                p2_policy = self.test_manager.run_test_batch(policy_games, random_agent, policy_agent, False, keep_updated, show_info=True)
             if mcts_games:
-                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, keep_updated, show_info=True)
-                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, keep_updated, show_info=True)
+                p1_mcts = self.test_manager.run_test_batch(mcts_games, mcts_agent, random_agent, keep_updated, False, show_info=True)
+                p2_mcts = self.test_manager.run_test_batch(mcts_games, random_agent, mcts_agent, False, keep_updated, show_info=True)
 
             #             0            1        2        3
             results = [p1_policy, p2_policy, p1_mcts, p2_mcts]
@@ -681,6 +684,7 @@ class AlphaZero():
         return	
     
     def train_with_epochs(self, batch_extraction, batch_size, replay_size, policy_loss_function, value_loss_function, normalize_policy, train_iterations, prog_alpha):
+        ''' Trains the network using epochs that shuffle and sweep the entire replay buffer. '''
         learning_epochs = self.train_config["Learning"]["Epochs"]["learning_epochs"]
         
         if batch_size > replay_size:
@@ -761,6 +765,8 @@ class AlphaZero():
         return
     
     def train_with_samples(self, batch_extraction, batch_size, replay_size, policy_loss_function, value_loss_function, normalize_policy, train_iterations, prog_alpha):
+        ''' Trains the network by taking mini-batch samples from the replay buffer.'''
+
         num_samples = self.train_config["Learning"]["Samples"]["num_samples"]
         late_heavy = self.train_config["Learning"]["Samples"]["late_heavy"]
         replace = self.train_config["Learning"]["Samples"]["with_replacement"]
@@ -1225,10 +1231,10 @@ class AlphaZero():
                 # some of the plots have sub_plots/lists and some don't
                 if isinstance(plot_data[0], list):
                     for i in range(len(plot_data)):
-                        plot_data[i] = self.truncate_point_list(iteration_number, plot_data[i])
+                        plot_data[i] = self.truncate_point_list(iteration_number-1, plot_data[i])
         
                 else:
-                    plot_data = self.truncate_point_list(iteration_number, plot_data)
+                    plot_data = self.truncate_point_list(iteration_number-1, plot_data)
 
             setattr(self, var_name, plot_data)
 
@@ -1256,71 +1262,6 @@ class AlphaZero():
     # ---------------------------    UTILITY    ---------------------------- #
     # -----------------------------            ----------------------------- #
     ##########################################################################
-
-    def load_from_checkpoint(self, network_name, iteration_number):
-        game_folder = "Games/" + self.example_game.get_name() + "/"
-        cp_network_folder = game_folder + "models/" + network_name + "/"
-        if not os.path.exists(cp_network_folder):
-            raise Exception("Could not find a model with that name.\n \
-                    If you are using Ray jobs with a working_directory,\
-                    only the models uploaded to git will be available.")
-        
-        self.buffer_load_path = cp_network_folder + "replay_buffer.cp"
-
-        if iteration_number == "auto":
-            cp_paths = glob.glob(cp_network_folder + "*_cp")
-            # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-            iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), cp_paths)))[-1]    
-
-        checkpoint_path =  cp_network_folder + network_name + "_" + str(iteration_number) + "_cp"
-        checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
-
-        model_pickle_path =  cp_network_folder + "base_model.pkl"
-        model = self.load_pickle(model_pickle_path)
-        model.load_state_dict(checkpoint["model_state_dict"])
-
-        optimizer_pickle_path =  cp_network_folder + "base_optimizer.pkl"
-        base_optimizer = self.load_pickle(optimizer_pickle_path)
-        optimizer_dict = checkpoint["optimizer_state_dict"]
-
-        scheduler_pickle_path =  cp_network_folder + "base_scheduler.pkl"
-        base_scheduler = self.load_pickle(scheduler_pickle_path)
-        scheduler_dict = checkpoint["scheduler_state_dict"]
-
-        if not self.fresh_start:
-            self.starting_step = iteration_number
-            cp_plot_data_path = cp_network_folder + "plot_data.pkl"
-            self.load_plot_data(cp_plot_data_path, iteration_number-1)
-
-        nn = Torch_NN(model)
-        return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict
-
-    def save_checkpoint(self, save_path, network, optimizer, scheduler):
-        checkpoint = \
-        {
-        'model_state_dict': network.get_model().state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'scheduler_state_dict': scheduler.state_dict(),
-        }
-        torch.save(checkpoint, save_path)
-
-    def load_yaml_config(self, yaml_parser, file_path):
-        with open(file_path, 'r') as stream:
-            config_dict = yaml_parser.load(stream)
-        return config_dict
-
-    def save_yaml_config(self, yaml_parser, file_path, config_dict):  
-        with open(file_path, 'w') as stream:
-            yaml_parser.dump(config_dict, stream)
-
-    def load_pickle(self, pickle_path):
-        with open(pickle_path, 'rb') as file:
-            data = pickle.load(file)
-        return data
-    
-    def save_pickle(self, file_path, data):
-        with open(file_path, 'wb') as file:
-            pickle.dump(data, file)
 
     def wait_for_delay(self, delay_period):
         divisions = 10

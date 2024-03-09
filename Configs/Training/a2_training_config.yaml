@@ -10,6 +10,7 @@ Initialization:
     keep_scheduler: False
     load_buffer: True
     fresh_start: False
+    new_plots: False
 
 
 ###

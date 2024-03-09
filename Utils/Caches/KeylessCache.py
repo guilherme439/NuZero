@@ -102,6 +102,13 @@ class KeylessCache(Cache):
 
         return
     
+    def clear(self):
+        self.table = [None] * self.size
+        self.num_items = 0
+        self.hits = 0
+        self.misses = 0
+        return
+
     def get_update_threshold(self):
         return self.update_threshold
     

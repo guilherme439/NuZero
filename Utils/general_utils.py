@@ -36,15 +36,16 @@ def create_optimizer(model, optimizer_name, learning_rate, weight_decay=1.0e-7, 
 # ------------------  Loading/Saving  ------------------ #
 # ------------------------------------------------------ #
 
-def load_from_checkpoint(self, network_name, iteration_number):
-    game_folder = "Games/" + self.example_game.get_name() + "/"
+def load_network_checkpoint(game_name, network_name, iteration_number):
+    game_folder = "Games/" + game_name + "/"
     cp_network_folder = game_folder + "models/" + network_name + "/"
     if not os.path.exists(cp_network_folder):
         raise Exception("Could not find a model with that name.\n \
                 If you are using Ray jobs with a working_directory,\
                 only the models uploaded to git will be available.")
     
-    self.buffer_load_path = cp_network_folder + "replay_buffer.cp"
+    buffer_path = cp_network_folder + "replay_buffer.cp"
+    plot_path = cp_network_folder + "plot_data.pkl"
 
     if iteration_number == "auto":
         cp_paths = glob.glob(cp_network_folder + "*_cp")
@@ -55,24 +56,19 @@ def load_from_checkpoint(self, network_name, iteration_number):
     checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
 
     model_pickle_path =  cp_network_folder + "base_model.pkl"
-    model = self.load_pickle(model_pickle_path)
+    model = load_pickle(model_pickle_path)
     model.load_state_dict(checkpoint["model_state_dict"])
 
     optimizer_pickle_path =  cp_network_folder + "base_optimizer.pkl"
-    base_optimizer = self.load_pickle(optimizer_pickle_path)
+    base_optimizer = load_pickle(optimizer_pickle_path)
     optimizer_dict = checkpoint["optimizer_state_dict"]
 
     scheduler_pickle_path =  cp_network_folder + "base_scheduler.pkl"
-    base_scheduler = self.load_pickle(scheduler_pickle_path)
+    base_scheduler = load_pickle(scheduler_pickle_path)
     scheduler_dict = checkpoint["scheduler_state_dict"]
 
-    if not self.fresh_start:
-        self.starting_step = iteration_number
-        cp_plot_data_path = cp_network_folder + "plot_data.pkl"
-        self.load_plot_data(cp_plot_data_path, iteration_number-1)
-
     nn = Torch_NN(model)
-    return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict
+    return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict, buffer_path, plot_path, iteration_number
 
 def save_checkpoint(save_path, network, optimizer, scheduler):
     checkpoint = \

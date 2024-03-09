@@ -39,6 +39,26 @@ class MctsAgent(Agent):
         if cache is not None:
             self.cache = cache
 
+    def set_search_config(self, search_config=None, search_config_path="", **kwargs):
+        if search_config is not None:
+            new_search_config = search_config
+        elif search_config_path != "":
+            new_search_config = load_yaml_config(search_config_path)
+        else:
+            raise Exception("No search config provided. Call with either a search_config or a search_config_path")
+        
+        self.explorer.set_search_config(new_search_config)
+        self.keep_subtree = new_search_config["Simulation"]["keep_subtree"]
+        return
+
+    def set_network(self, network):
+        self.network = network
+        self.cache.clear()
+    
+    def set_recurrent_iterations(self, recurrent_iterations):
+        self.recurrent_iterations = recurrent_iterations
+        self.cache.clear()
+
     def get_cache(self):
         return self.cache
     

@@ -68,6 +68,14 @@ class PolicyAgent(Agent):
             self.cache = cache
         return
     
+    def set_network(self, network):
+        self.network = network
+        self.cache.clear()
+    
+    def set_recurrent_iterations(self, recurrent_iterations):
+        self.recurrent_iterations = recurrent_iterations
+        self.cache.clear()
+    
     def get_cache(self):
         return self.cache
     

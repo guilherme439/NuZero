@@ -22,6 +22,10 @@ class Cache():
         ''' Updates this cache with items from a cache of the same type '''
         return
     
+    def clear(self):
+        ''' Clears the cache '''
+        return
+    
     def length(self):
         ''' Returns the number of items in the cache '''
         return

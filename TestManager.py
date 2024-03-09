@@ -19,13 +19,17 @@ from ReplayBuffer import ReplayBuffer
 from RemoteStorage import RemoteStorage
 from RemoteTester import RemoteTester
 
-
 from Utils.loss_functions import *
 from Utils.general_utils import *
 from Utils.Progress_Bars.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
+
+from Agents.Generic.RandomAgent import RandomAgent
+from Agents.Generic.PolicyAgent import PolicyAgent
+from Agents.Generic.MctsAgent import MctsAgent
+from Agents.SCS.GoalRushAgent import GoalRushAgent
 
 
 class TestManager():
@@ -51,7 +55,7 @@ class TestManager():
         self.game_class = game_class
         self.game_args = game_args
     
-    def run_test_batch(self, num_games, p1_agent, p2_agent, keep_updated, show_info=True):
+    def run_test_batch(self, num_games, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info=True):
         start = time.time()
 
         wins = [0,0]
@@ -77,29 +81,29 @@ class TestManager():
                 bar.next()
             if winner != 0:
                 wins[winner-1] +=1
-
-            if keep_updated:
-                # The first game to finish initializes the cache
-                if first:   
-                    p1_latest_cache = p1_cache
-                    p2_latest_cache = p2_cache
-                    first = False
-                # The remaining games update the cache with the states they saw
-                else:       
-                    # latest_cache could be None if the cache is disabled
-                    if (p1_latest_cache is not None) and (p1_latest_cache.get_fill_ratio() < p1_latest_cache.get_update_threshold()):
-                        p1_latest_cache.update(p1_cache)
-                    if (p2_latest_cache is not None) and (p2_latest_cache.get_fill_ratio() < p2_latest_cache.get_update_threshold()):
-                        p2_latest_cache.update(p2_cache)
+        
+            first_flags = [True, True]
+            keep_updated_vars = [p1_keep_updated, p2_keep_updated]
+            latest_caches = [None, None]
+            current_caches = [p1_cache, p2_cache]
+            for p in [0,1]:
+                if keep_updated_vars[p]:
+                    # The first game to finish initializes the cache
+                    if first_flags[p]:   
+                        latest_caches[p] = current_caches[p]
+                        first_flags[p] = False
+                    # The remaining games update the cache with the states they saw
+                    else:       
+                        # latest_cache could be None if the cache is disabled
+                        if (latest_caches[p].get_fill_ratio() < latest_caches[p].get_update_threshold()):
+                            latest_caches[p].update(current_caches[p])
+                    
             
             # While there are games to play... we request more
             if games_requested < num_games:
                 game = self.game_class(*self.game_args)
-                if keep_updated:
-                    call_args = [game, p1_agent, p2_agent, p1_latest_cache, p2_latest_cache, False]
-                else:
-                    call_args = [game, p1_agent, p2_agent]
-                
+
+                call_args = [game, p1_agent, p2_agent, latest_caches[0], latest_caches[1], False]
                 self.actor_pool.submit(lambda actor, args: actor.Test_using_agents.remote(*args), call_args)
                 games_requested +=1
 
@@ -143,7 +147,7 @@ class TestManager():
 
         return (p1_winrate, p2_winrate, draw_percentage)
     
-    def test_from_config(self, test_config_path, show_info=True):
+    def test_from_config(self, test_config_path, model_p1=None, model_p2=None, show_info=True):
         test_config = load_yaml_config(test_config_path)
         new_testers = test_config["Testers"]["new_testers"]
         if new_testers:
@@ -153,82 +157,115 @@ class TestManager():
             render_choice = test_config["Testers"]["render_choice"]
             self.new_testers(num_testers, slow, use_print, render_choice)
 
-        
-        num_runs = test_config["Runs"]["num_runs"]
-        num_games_per_run = test_config["Runs"]["num_games_per_run"]
+        changing_agent = test_config["Test"]["changing_agent"]
+        changing_parameter = test_config["Test"]["changing_parameter"]
+        parameter_name = changing_parameter["name"]
+        range_start = changing_parameter["Range"]["first"]
+        range_end = changing_parameter["Range"]["last"] + 1
+        range_step = changing_parameter["Range"]["step"]
+        parameter_range = range(range_start, range_end, range_step)
+
+        num_runs = test_config["Test"]["num_runs"]
+        num_games_per_run = test_config["Test"]["num_games_per_run"]
 
         p1_agent_config = test_config["Agents"]["p1_agent"]
         p2_agent_config = test_config["Agents"]["p2_agent"]
 
-        # Previously we were creating a new agent evertime we changed neural network or the number of recurrent iterations
-        # we might need to find a better way of doing this
-        # as always, be carefull with the cache
+        if changing_agent == 1:
+            agent_to_change = p1_agent
+            parameter_config = p1_agent_config
+        elif changing_agent == 2:
+            agent_to_change = p2_agent
+            parameter_config = p2_agent_config
 
-        #p1_agent = self.create_agent_from_config(p1_agent_config)
-        #p2_agent = self.create_agent_from_config(p2_agent_config)
-
-        for cp in checkpoint_range:
-            for iter in iteration_range:
-                for run in range(num_runs):
-                    print("Run " + str(run))
-                    for k in range(num_rec_iters):
-                        rec_iter = recurrent_iterations_list[k]
-                        p1_agent = RandomAgent()
-                        p2_agent = PolicyAgent(nn, rec_iter)
-                        print("\n\n\nTesting with " + str(rec_iter) + " iterations\n")
-                        p1_wr, p2_wr, _ = test_manager.run_test_batch(num_games, p1_agent, p2_agent, True)
-                        #p1_wr_list[i][k] += p1_wr/num_runs_per_game
-                        p2_wr_list[i][k] += p2_wr/num_runs_per_game
-
-    def create_agent_from_config(self, agent_config):
-        agent_type = agent_config["agent_type"]
-        if agent_type == "random":
-            return RandomAgent()
-        elif agent_type == "policy":
-            nn = self.load_network(agent_config)
-            rec_iter = agent_config["recurrent_iterations"]
-            return PolicyAgent(nn, rec_iter)
+        if (changing_parameter == "checkpoints"):
+            if not parameter_config["load_checkpoints"]:
+                raise Exception("It is only possible to change network checkpoits if the agent is set to load them.")
+            else:
+                cp_network_name = parameter_config["Checkpoints"]["cp_network_name"]
+            
+        if model_p1:
+            p1_agent, p1_keep_updated = self.create_agent_from_config(p1_agent_config, model_p1)
         else:
-            raise Exception("Bad agent type in config file")
+            p1_agent, p1_keep_updated = self.create_agent_from_config(p1_agent_config)
 
-    def load_network_checkpoint(self, network_name, iteration_number):
-        game_folder = "Games/" + self.example_game.get_name() + "/"
-        cp_network_folder = game_folder + "models/" + network_name + "/"
-        if not os.path.exists(cp_network_folder):
-            raise Exception("Could not find a model with that name.\n \
-                    If you are using Ray jobs with a working_directory,\
-                    only the models uploaded to git will be available.")
+        if model_p2:
+            p2_agent, p2_keep_updated = self.create_agent_from_config(p2_agent_config, model_p2)
+        else:
+            p2_agent, p2_keep_updated = self.create_agent_from_config(p2_agent_config)
+
+
+        all_data = []
+        for value in parameter_range:
+            p1_avg = 0
+            p2_avg = 0
+            draw_avg = 0
+            if parameter_name == "checkpoints":
+                nn, _, _, _ = load_network_checkpoint(cp_network_name, value)
+                agent_to_change.set_network(nn)
+                print("-------------------\n\nCheckpoint: " + str(value))
+            elif parameter_name == "iterations":
+                agent_to_change.set_iterations(value)
+                print("-------------------\n\nIteration: " + str(value))
+                
+            for run in range(num_runs):
+                print("\nRun " + str(run))
+                (p1_wr, p2_wr, draws) = self.run_test_batch(num_games_per_run, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info)
+                p1_avg += p1_wr/num_runs
+                p2_avg += p2_wr/num_runs
+                draw_avg += draws/num_runs
+            
+            wr_data = (p1_avg, p2_avg, draw_avg)
+            data_point = (value, wr_data)
+            all_data.append(data_point)
+
+        return all_data
+ 
+    def create_agent_from_config(self, agent_config, model=None):
+        agent_type = agent_config["agent_type"]
+        keep_updated = False
+        if agent_type == "mcts" or agent_type == "policy":
+            cache_config = agent_config["Cache"]
+            cache_choice = cache_config["cache_choice"]
+            if cache_choice != "disabled":
+                max_size = cache_config["max_size"]
+                keep_updated = cache_config["keep_updated"]
+                cache = create_cache(cache_choice, max_size)
+            else:
+                cache = None
+
+            network_config = agent_config["Network"]
+            recurrent_iterations = network_config["recurrent_iterations"]
+            load_checkpoint = network_config["load_checkpoint"]
+            if load_checkpoint:
+                cp_config = network_config["Checkpoints"]
+                cp_network_name = cp_config["cp_network_name"]
+                cp_number = cp_config["cp_number"]
+                nn = load_network_checkpoint(cp_network_name, cp_number)
+            else:
+                nn = Torch_NN(model)
+
+            if agent_type == "mcts":
+                search_config_path = agent_config["search_config_path"]
+                search_config = load_yaml_config(search_config_path)
+                agent = MctsAgent(search_config, nn, recurrent_iterations, cache)
+
+            elif agent_type == "policy":
+                agent = PolicyAgent(nn, recurrent_iterations, cache)
+            
+
+        elif agent_type == "goal_rush":
+            agent = GoalRushAgent()
         
-        self.buffer_load_path = cp_network_folder + "replay_buffer.cp"
+        elif agent_type == "random":
+            agent = RandomAgent()
+        
+        else:
+            raise Exception("Agent type not recognized. Options: mcts, policy, goal_rush, random")
+        
+        return agent, keep_updated
 
-        if iteration_number == "auto":
-            cp_paths = glob.glob(cp_network_folder + "*_cp")
-            # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
-            iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), cp_paths)))[-1]    
 
-        checkpoint_path =  cp_network_folder + network_name + "_" + str(iteration_number) + "_cp"
-        checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
-
-        model_pickle_path =  cp_network_folder + "base_model.pkl"
-        model = self.load_pickle(model_pickle_path)
-        model.load_state_dict(checkpoint["model_state_dict"])
-
-        optimizer_pickle_path =  cp_network_folder + "base_optimizer.pkl"
-        base_optimizer = self.load_pickle(optimizer_pickle_path)
-        optimizer_dict = checkpoint["optimizer_state_dict"]
-
-        scheduler_pickle_path =  cp_network_folder + "base_scheduler.pkl"
-        base_scheduler = self.load_pickle(scheduler_pickle_path)
-        scheduler_dict = checkpoint["scheduler_state_dict"]
-
-        if not self.fresh_start:
-            self.starting_step = iteration_number
-            cp_plot_data_path = cp_network_folder + "plot_data.pkl"
-            self.load_plot_data(cp_plot_data_path, iteration_number-1)
-
-        nn = Torch_NN(model)
-        return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict
-    
     
 
     
