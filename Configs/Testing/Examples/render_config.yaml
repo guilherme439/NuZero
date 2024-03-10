@@ -1,23 +1,6 @@
 ###
 Test:
-  test_type: data # visual | data
-
-  Data:
-    Variable:
-      changing_agent: 1
-      changing_parameter:
-        name: iterations # checkpoints | iterations | none
-        Range:
-          first: 4
-          last: 12
-          step: 1
-    Runs:
-      num_runs: 1
-      num_games_per_run: 100
-
-    Testers:
-      new_testers: True
-      num_testers: 4
+  test_type: visual # visual | data
 
   Visual:
     slow: False
@@ -47,6 +30,10 @@ Agents:
 
   p2_agent:
     agent_type: random
+
+
+
+
 
 
 

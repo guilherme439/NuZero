@@ -306,7 +306,7 @@ class AlphaZero():
         if self.load_buffer:
             print("\nLoading replay buffer...")
             ray.get(self.replay_buffer.load_from_file.remote(self.buffer_load_path, self.starting_step))
-            time.sleep(0.5)
+            time.sleep(0.1)
             print("Loading done.")
             
         

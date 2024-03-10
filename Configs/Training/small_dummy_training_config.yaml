@@ -5,7 +5,7 @@ Initialization:
 
   Checkpoint:
     cp_network_name: test_net_load
-    iteration_number: 1180
+    iteration_number: "auto"
     keep_optimizer: True
     keep_scheduler: True
     load_buffer: True
@@ -46,7 +46,7 @@ Saving:
 Testing:
   asynchronous_testing: True
   testing_actors: 1
-  early_testing: False
+  early_testing: True
   policy_test_frequency: 37
   mcts_test_frequency: 91
   num_policy_test_games: 100
@@ -83,7 +83,7 @@ Learning:
   learning_method: samples
 
   Samples:
-    batch_size: 128
+    batch_size: 256
     num_samples: 32
     with_replacement: True
     late_heavy: True

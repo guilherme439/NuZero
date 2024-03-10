@@ -19,12 +19,6 @@ Test:
       new_testers: True
       num_testers: 4
 
-  Visual:
-    slow: False
-    print: True
-    render: "interactive" 
-
-
 ###
 Agents:
   p1_agent:

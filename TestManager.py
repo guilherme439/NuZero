@@ -1,35 +1,32 @@
 import os
 import ray
-import psutil
-import resource
 import time
-import torch
-import pickle
-import math
 import copy
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-from torch import nn
+import ruamel
+from ruamel.yaml import YAML
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from ReplayBuffer import ReplayBuffer
-from RemoteStorage import RemoteStorage
+from Tester import Tester
 from RemoteTester import RemoteTester
+from RemoteStorage import RemoteStorage
+from ReplayBuffer import ReplayBuffer
 
 from Utils.loss_functions import *
 from Utils.general_utils import *
 from Utils.Progress_Bars.PrintBar import PrintBar
 
-from progress.bar import ChargingBar
-from progress.spinner import PieSpinner
-
 from Agents.Generic.RandomAgent import RandomAgent
 from Agents.Generic.PolicyAgent import PolicyAgent
 from Agents.Generic.MctsAgent import MctsAgent
 from Agents.SCS.GoalRushAgent import GoalRushAgent
+
+from Games.SCS.SCS_Game import SCS_Game
+from Games.SCS.SCS_Renderer import SCS_Renderer
 
 
 class TestManager():
@@ -38,23 +35,47 @@ class TestManager():
     def __init__(self, game_class, game_args, num_actors=1, slow=False, print=False, render_choice="disabled"):
         self.game_class = game_class
         self.game_args = game_args
+        self.game_name = game_class(*game_args).get_name()
 
-        self.new_testers(num_actors, slow, print, render_choice)
+        self.yaml_parser = YAML()
+        self.yaml_parser.default_flow_style = False  
 
-    def new_testers(self, num_actors, slow=False, print=False, render_choice="disabled"):
+        self.create_tester_pool(num_actors)
+        self.prepare_visual(slow, print, render_choice)
+        
+
+    def prepare_visual(self, slow, print, render_choice):
+        self.render_choice = render_choice
+        passive_render = True if render_choice == "passive" else False
+        self.visual_tester = Tester(slow, print, passive_render)
+        if render_choice == "interactive":
+            self.renderer = SCS_Renderer()
+
+    def create_tester_pool(self, num_actors):
+        ''' creates tester pool meant to run multiple tests in parallel '''
         self.num_actors = num_actors
 
-        passive_render = False
-        if render_choice == "passive":
-            passive_render = True
-
-        actor_list = [RemoteTester.remote(slow=slow, print=print, passive_render=passive_render) for a in range(self.num_actors)]
+        actor_list = [RemoteTester.remote() for a in range(self.num_actors)]
         self.actor_pool = ray.util.ActorPool(actor_list)
 
     def change_game(self, game_class, game_args):
         self.game_class = game_class
         self.game_args = game_args
     
+    def run_visual_test(self, p1_agent, p2_agent, game=None):
+        if game is None:
+            game = self.game_class(*self.game_args)
+        
+        winner, _, _, _ = self.visual_tester.Test_using_agents(game, p1_agent, p2_agent, keep_state_history=False)
+
+        winner_text = "Draw!" if winner == 0 else "Player " + str(winner) + " won!"
+        print(winner_text)
+        
+        if self.render_choice == "interactive":
+            time.sleep(0.5)
+            self.renderer.analyse(game)
+        return
+
     def run_test_batch(self, num_games, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info=True):
         start = time.time()
 
@@ -147,43 +168,13 @@ class TestManager():
 
         return (p1_winrate, p2_winrate, draw_percentage)
     
-    def test_from_config(self, test_config_path, model_p1=None, model_p2=None, show_info=True):
-        test_config = load_yaml_config(test_config_path)
-        new_testers = test_config["Testers"]["new_testers"]
-        if new_testers:
-            num_testers = test_config["Testers"]["num_testers"]
-            slow = test_config["Testers"]["slow"]
-            use_print = test_config["Testers"]["print"]
-            render_choice = test_config["Testers"]["render_choice"]
-            self.new_testers(num_testers, slow, use_print, render_choice)
+    def test_from_config(self, test_config_path, game=None, model_p1=None, model_p2=None, show_info=True):
+        test_config = load_yaml_config(self.yaml_parser, test_config_path)
 
-        changing_agent = test_config["Test"]["changing_agent"]
-        changing_parameter = test_config["Test"]["changing_parameter"]
-        parameter_name = changing_parameter["name"]
-        range_start = changing_parameter["Range"]["first"]
-        range_end = changing_parameter["Range"]["last"] + 1
-        range_step = changing_parameter["Range"]["step"]
-        parameter_range = range(range_start, range_end, range_step)
-
-        num_runs = test_config["Test"]["num_runs"]
-        num_games_per_run = test_config["Test"]["num_games_per_run"]
-
+        #####################  Agent Setup  #####################
         p1_agent_config = test_config["Agents"]["p1_agent"]
         p2_agent_config = test_config["Agents"]["p2_agent"]
 
-        if changing_agent == 1:
-            agent_to_change = p1_agent
-            parameter_config = p1_agent_config
-        elif changing_agent == 2:
-            agent_to_change = p2_agent
-            parameter_config = p2_agent_config
-
-        if (changing_parameter == "checkpoints"):
-            if not parameter_config["load_checkpoints"]:
-                raise Exception("It is only possible to change network checkpoits if the agent is set to load them.")
-            else:
-                cp_network_name = parameter_config["Checkpoints"]["cp_network_name"]
-            
         if model_p1:
             p1_agent, p1_keep_updated = self.create_agent_from_config(p1_agent_config, model_p1)
         else:
@@ -195,31 +186,75 @@ class TestManager():
             p2_agent, p2_keep_updated = self.create_agent_from_config(p2_agent_config)
 
 
-        all_data = []
-        for value in parameter_range:
-            p1_avg = 0
-            p2_avg = 0
-            draw_avg = 0
-            if parameter_name == "checkpoints":
-                nn, _, _, _ = load_network_checkpoint(cp_network_name, value)
-                agent_to_change.set_network(nn)
-                print("-------------------\n\nCheckpoint: " + str(value))
-            elif parameter_name == "iterations":
-                agent_to_change.set_iterations(value)
-                print("-------------------\n\nIteration: " + str(value))
-                
-            for run in range(num_runs):
-                print("\nRun " + str(run))
-                (p1_wr, p2_wr, draws) = self.run_test_batch(num_games_per_run, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info)
-                p1_avg += p1_wr/num_runs
-                p2_avg += p2_wr/num_runs
-                draw_avg += draws/num_runs
-            
-            wr_data = (p1_avg, p2_avg, draw_avg)
-            data_point = (value, wr_data)
-            all_data.append(data_point)
+        #####################  Test Setup  #####################
+        test_type = test_config["Test"]["test_type"]
 
-        return all_data
+        if test_type == "visual":
+            slow = test_config["Test"]["Visual"]["slow"]
+            use_print = test_config["Test"]["Visual"]["print"]
+            render_choice = test_config["Test"]["Visual"]["render"]
+            self.prepare_visual(slow, use_print, render_choice)
+            self.run_visual_test(p1_agent, p2_agent, game)
+            return
+
+        elif test_type == "data":
+            data_config = test_config["Test"]["Data"]
+
+            new_testers = data_config["Testers"]["new_testers"]
+            if new_testers:
+                num_testers = data_config["Testers"]["num_testers"]
+                self.create_tester_pool(num_testers)
+
+            changing_agent = data_config["Variable"]["changing_agent"]
+            changing_parameter = data_config["Variable"]["changing_parameter"]
+            parameter_name = changing_parameter["name"]
+            range_start = changing_parameter["Range"]["first"]
+            range_end = changing_parameter["Range"]["last"] + 1
+            range_step = changing_parameter["Range"]["step"]
+            parameter_range = range(range_start, range_end, range_step)
+
+            num_runs = data_config["Runs"]["num_runs"]
+            num_games_per_run = data_config["Runs"]["num_games_per_run"]
+
+            if changing_agent == 1:
+                agent_to_change = p1_agent
+                parameter_config = p1_agent_config
+            elif changing_agent == 2:
+                agent_to_change = p2_agent
+                parameter_config = p2_agent_config
+
+            if (changing_parameter == "checkpoints"):
+                if not parameter_config["load_checkpoints"]:
+                    raise Exception("It is only possible to change network checkpoits if the agent is set to load them.")
+                else:
+                    cp_network_name = parameter_config["Checkpoints"]["cp_network_name"]
+
+            all_data = []
+            for value in parameter_range:
+                p1_avg = 0
+                p2_avg = 0
+                draw_avg = 0
+                if changing_agent != 0:
+                    if parameter_name == "checkpoints":
+                        nn, _, _, _ = load_network_checkpoint(cp_network_name, value)
+                        agent_to_change.set_network(nn)
+                        print("-------------------\n\nCheckpoint: " + str(value))
+                    elif parameter_name == "iterations":
+                        agent_to_change.set_recurrent_iterations(value)
+                        print("-------------------\n\nIteration: " + str(value))
+                
+                for run in range(num_runs):
+                    print("\nRun " + str(run))
+                    (p1_wr, p2_wr, draws) = self.run_test_batch(num_games_per_run, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info)
+                    p1_avg += p1_wr/num_runs
+                    p2_avg += p2_wr/num_runs
+                    draw_avg += draws/num_runs
+                
+                wr_data = (p1_avg, p2_avg, draw_avg)
+                data_point = (value, wr_data)
+                all_data.append(data_point)
+
+            return all_data
  
     def create_agent_from_config(self, agent_config, model=None):
         agent_type = agent_config["agent_type"]
@@ -238,10 +273,11 @@ class TestManager():
             recurrent_iterations = network_config["recurrent_iterations"]
             load_checkpoint = network_config["load_checkpoint"]
             if load_checkpoint:
-                cp_config = network_config["Checkpoints"]
+                cp_config = network_config["Checkpoint"]
                 cp_network_name = cp_config["cp_network_name"]
                 cp_number = cp_config["cp_number"]
-                nn = load_network_checkpoint(cp_network_name, cp_number)
+                net_data = load_network_checkpoint(self.game_name, cp_network_name, cp_number)
+                nn = net_data[0]
             else:
                 nn = Torch_NN(model)
 

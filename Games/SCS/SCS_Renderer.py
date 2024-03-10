@@ -390,8 +390,8 @@ class SCS_Renderer():
 
                 # VICTORY POINTS
                 vp = tile.victory
-                p1_path = "SCS/Images/blue_star.png"
-                p2_path = "SCS/Images/red_star.png"
+                p1_path = "Games/SCS/Images/blue_star.png"
+                p2_path = "Games/SCS/Images/red_star.png"
                 if vp != 0:
                     if vp == 1:
                         star_image = pygame.image.load(p1_path)
@@ -473,7 +473,7 @@ class SCS_Renderer():
             print("You must either give a color_str(\"blue\") or color_rgb((50,23,246)) argument.\nExiting")
             exit()
 
-        image_path = "SCS/Images/" + image_name + ".jpg"        
+        image_path = "Games/SCS/Images/" + image_name + ".jpg"        
 
         #### BACKGROUND ####
         unit_image = pygame.Surface((800, 800))
@@ -537,9 +537,9 @@ class SCS_Renderer():
     def create_marker_from_base_image(self, image_name, base_unit_choice, unit_stats):
         #pygame.init()
         
-        green_image_path = "SCS/Images/base_units/green_unit.jpg"
-        red_image_path = "SCS/Images/base_units/red_unit.jpg"
-        blue_image_path = "SCS/Images/base_units/blue_unit.jpg"
+        green_image_path = "Games/SCS/Images/base_units/green_unit.jpg"
+        red_image_path = "Games/SCS/Images/base_units/red_unit.jpg"
+        blue_image_path = "Games/SCS/Images/base_units/blue_unit.jpg"
 
         (attack, defense, movement) = unit_stats
 
@@ -579,7 +579,7 @@ class SCS_Renderer():
         raw_image.blit(stats_surface, stats_rect)
         
         final_image = raw_image.copy()
-        image_path = "SCS/Images/" + image_name + ".jpg"
+        image_path = "Games/SCS/Images/" + image_name + ".jpg"
         pygame.image.save(final_image, image_path)  
         #pygame.quit()
         return image_path
@@ -771,8 +771,8 @@ class SCS_Renderer():
 
                 # VICTORY POINTS
                 vp = tile.victory
-                p1_path = "SCS/Images/blue_star.png"
-                p2_path = "SCS/Images/red_star.png"
+                p1_path = "Games/SCS/Images/blue_star.png"
+                p2_path = "Games/SCS/Images/red_star.png"
                 if vp != 0:
                     if vp == 1:
                         star_image = pygame.image.load(p1_path)

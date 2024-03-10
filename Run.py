@@ -155,13 +155,7 @@ def main():
                 model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
-                #'''
-                for name, param in model.named_parameters():
-                    if ".weight" not in name:
-                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param)
-                    
-                #'''
+                initialize_parameters(model)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -185,13 +179,7 @@ def main():
                 model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
-                #'''
-                for name, param in model.named_parameters():
-                    if ".weight" not in name:
-                        #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-                        torch.nn.init.xavier_uniform_(param)
-                    
-                #'''
+                initialize_parameters(model)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -219,14 +207,28 @@ def main():
 
         match args.testing_preset:
             case 0: # Render Example
-                game_class = tic_tac_toe
-                game_args = [[]]
+                game_class = SCS_Game
+                game_args = ["Games/SCS/Game_configs/randomized_config_5.yml"]
 
-                test_config = "Configs/Testing/test_config.yaml"
+                test_config = "Configs/Testing/Examples/render_config.yaml"
+                test_manager = TestManager(game_class, game_args)
+                results = test_manager.test_from_config(test_config_path=test_config)
+
 
 
             case 1: # Extrapolation Test Example
-                pass
+                game_class = SCS_Game
+                game_args = ["Games/SCS/Game_configs/randomized_config_5.yml"]
+
+                test_config = "Configs/Testing/Examples/extrapolation_config.yaml"
+                test_manager = TestManager(game_class, game_args)
+                results = test_manager.test_from_config(test_config_path=test_config)
+                
+                #'''
+                x, y = zip(*results)
+                plt.plot(x, y)
+                plt.show()
+                #'''
 
 
             ###############  CUSTOM PRESETS  ###################
