@@ -430,8 +430,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = goal_agent
-                p2_agent = policy_agent
+                p1_agent = policy_agent
+                p2_agent = goal_agent
 
                 ################################################
                 print("\n")
