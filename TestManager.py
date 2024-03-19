@@ -63,6 +63,7 @@ class TestManager():
         self.game_args = game_args
     
     def run_visual_test(self, p1_agent, p2_agent, game=None):
+        ''' Runs a visual test. Requires \"prepare_visual\" to be called first.'''
         if game is None:
             game = self.game_class(*self.game_args)
         

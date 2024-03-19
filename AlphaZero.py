@@ -1243,6 +1243,7 @@ class AlphaZero():
     def truncate_point_list(self, iteration_number, point_list):
         x_list, y_list = zip(*point_list)
         last_index = len(x_list)-1
+        i = last_index
         # Find the index where we need to truncate
         for i in range(last_index, 0, -1):
             if x_list[i] <= iteration_number:

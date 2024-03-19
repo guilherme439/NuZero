@@ -40,9 +40,7 @@ def load_network_checkpoint(game_name, network_name, iteration_number):
     game_folder = "Games/" + game_name + "/"
     cp_network_folder = game_folder + "models/" + network_name + "/"
     if not os.path.exists(cp_network_folder):
-        raise Exception("Could not find a model with that name.\n \
-                If you are using Ray jobs with a working_directory,\
-                only the models uploaded to git will be available.")
+        raise Exception("Could not find a model with that name.\nIf you are using Ray jobs with a working_directory,\nonly the models uploaded to git will be available.")
     
     buffer_path = cp_network_folder + "replay_buffer.cp"
     plot_path = cp_network_folder + "plot_data.pkl"

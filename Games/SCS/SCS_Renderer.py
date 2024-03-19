@@ -462,7 +462,7 @@ class SCS_Renderer():
 
         return rgb
  
-    def create_marker_from_scratch(self, image_name, unit_stats, unit_type, color_str=None, color_rgb=None):
+    def create_counter_from_scratch(self, image_name, unit_stats, unit_type, color_str=None, color_rgb=None):
         #pygame.init()
 
         if color_rgb is not None:
@@ -534,7 +534,7 @@ class SCS_Renderer():
         #pygame.quit()
         return image_path
     
-    def create_marker_from_base_image(self, image_name, base_unit_choice, unit_stats):
+    def create_counter_from_base_image(self, image_name, base_unit_choice, unit_stats):
         #pygame.init()
         
         green_image_path = "Games/SCS/Images/base_units/green_unit.jpg"

@@ -1651,7 +1651,7 @@ class SCS_Game(Game):
                 else:
                     raise Exception("Found Unknown player when creating unit.")
                     
-                source_path = self.renderer.create_marker_from_scratch(image_name, stats, "infantary", color_str=color_str)
+                source_path = self.renderer.create_counter_from_scratch(image_name, stats, "infantary", color_str=color_str)
                 image_path = self.renderer.add_border(border_color, source_path)
 
         else:

@@ -13,21 +13,28 @@ from Agents.Generic.PolicyAgent import PolicyAgent
 from Agents.Generic.RandomAgent import RandomAgent
 from Agents.SCS.GoalRushAgent import GoalRushAgent
 
-from Tester import Tester
-from RemoteTester import RemoteTester
+from TestManager import TestManager
 
 from Games.SCS.SCS_Game import SCS_Game
 from Games.SCS.SCS_Renderer import SCS_Renderer
 from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
+from Utils.general_utils import *
+
+import ruamel
+from ruamel.yaml import YAML
+
 
 def start_interative():
     print("\nStarted interactive mode!\n")
+
+    print("\nNOTE: This mode is intended to give the user an overview of some of the system\'s functionalities.\
+           \nHowever, for more specific uses, the definition of training/testing presets is recommended.\n")
         
     mode_answer = input("\nWhat do you wish to do?(insert the number)\
-                            \n 1 -> Train a network\
-                            \n 2 -> Test a trained network\
-                            \n 3 -> Image creation (WIP)\
+                            \n 1 -> Train a neural network\
+                            \n 2 -> Pit two agent against each other\
+                            \n 3 -> Create SCS unit counters\
                             \n\nNumber: ")
     
     match int(mode_answer):
@@ -39,13 +46,18 @@ def start_interative():
             images_mode()
 
         case _:
-            print("Option unavailable")
+            raise Exception("Option unavailable")
 
 
 def testing_mode():
+    yaml_parser = YAML()
+    yaml_parser.default_flow_style = False  
+    
     game_class, game_args = choose_game()
     game = game_class(*game_args)
     game_name = game.get_name()
+    
+    p1_agent, p2_agent = choose_agents(game_name)
 
     if game_name == "Tic_Tac_Toe":
         test_mode_answer = "2"
@@ -53,7 +65,9 @@ def testing_mode():
         test_mode_answer = input("\nSelect what kind of testing you wish to do.(1 or 2)\
                                 \n1 -> Visualize a game\
                                 \n2 -> Take statistics from playing many games\n\n")
-        
+
+
+
     if test_mode_answer == "1":
         rendering_mode_answer = input("\nDo you wish to render a game while it is being played or analyse a game after it is played?.(1 or 2)\
                                     \n1 -> Render game\
@@ -63,72 +77,25 @@ def testing_mode():
         elif rendering_mode_answer == "2":
             rendering_mode = "interative"
         else:
-            print("\nBad answer.")
-            exit()
-
+            raise Exception("\nBad rendering answer.")
         
-        method = choose_method()
-        net_name, model_iteration, recurrent_iterations = choose_trained_network()
+        print_answer = input("\nDo you wish to print a game representation to console?(y/n)")
+        print = True if print_answer == "y" else False
+        slow_answer = input("\nDo you wish to slow down the game being played?(y/n)")
+        slow = True if slow_answer == "y" else False
 
-        player_answer = input("\nWhat player will the AI take?(1 or 2)\
-                            \n1 -> Player 1\
-                            \n2 -> Player 2\n\n")
-        
-        AI_player = player_answer
-
-        ################################################
-
-        game = game_class(*game_args)
-        #nn, search_config = load_trained_network(game, net_name, model_iteration)
-        
-        if rendering_mode == "passive":
-            tester = Tester(render=True)
-        elif rendering_mode == "interactive":
-            tester = Tester(print=True)
-
-        '''
-        if method == "mcts":
-            winner, _ = tester.Test_AI_with_mcts(AI_player, search_config, game, nn, use_state_cache=False, recurrent_iterations=recurrent_iterations)
-        elif method == "policy":
-            winner, _ = tester.Test_AI_with_policy(AI_player, game, nn, recurrent_iterations=recurrent_iterations)
-        elif method == "random":
-            winner, _ = tester.random_vs_random(game)
-        
-        if winner == 0:
-            winner_text = "Draw!"
-        else:
-            winner_text = "Player " + str(winner) + " won!"
-        
-        print("\n\nLength: " + str(game.get_length()) + "\n")
-        print(winner_text)
-        
-        if rendering_mode == "interactive":
-            time.sleep(0.5)
-
-            renderer = SCS_Renderer()
-            renderer.analyse(game)
-        '''
+        test_manager = TestManager(game_class, game_args, num_actors=1, slow=slow, print=print, render_choice=rendering_mode)
+        test_manager.run_visual_test(p1_agent, p2_agent)
+    
 
     elif test_mode_answer == "2":
-        
-        method = choose_method()
-        net_name, model_iteration, recurrent_iterations = choose_trained_network()
-
-        player_answer = input("\nWhat player will the AI take?(1 or 2)\
-                            \n1 -> Player 1\
-                            \n2 -> Player 2\n\n")
-        AI_player = player_answer
 
         num_games = int(input("\nHow many games you wish to play?"))
-        number_of_testers = int(input("\nHow many processes/actors you wish to use?"))
+        num_testers = int(input("\nHow many processes/actors you wish to use?"))
 
-        ################################################
-        #ray.init()
 
-        game = game_class(*game_args)
-        #nn, search_config = load_trained_network(game, net_name, model_iteration)
-        
-        print("\n\nNeeds to be updated. Currently not working...\n")
+        test_manager = TestManager(game_class, game_args, num_actors=num_testers)
+        test_manager.run_test_batch(num_games, p1_agent, p2_agent, False, False, True)
 
 def training_mode():
     game_class, game_args = choose_game()
@@ -166,8 +133,6 @@ def training_mode():
             new_alpha_config_path = input("\nAlpha config path: ")
             new_search_config_path = input("\nSearch config path: ")
 
-        #continue_training(game_class, game_args, trained_network_name, continue_network_name, \
-        #                       use_same_configs, new_alpha_config_path, new_search_config_path)
         
     else:
         invalid = True
@@ -195,6 +160,36 @@ def training_mode():
         #alpha_zero = AlphaZero(game_class, game_args, model, network_name, alpha_config_path, search_config_path)
         #alpha_zero.run()
 
+def choose_agents(game_name):
+    generic_agents = ("Mcts", "Policy", "Random")
+    SCS_agents = ("GoalRush")
+    Tic_Tac_Toe_agents = ()
+    if game_name == "SCS":
+        available_agents = generic_agents + SCS_agents
+    elif game_name == "Tic_Tac_Toe":
+        available_agents = generic_agents + Tic_Tac_Toe_agents
+    
+    agent_display = "\nThere are " + str(len(available_agents)) + " types of agents available for this game: "
+    for a in available_agents:
+        agent_display += "\n-> " + a
+    print(agent_display)
+
+    print("\nWe will run tests by pitting two of this agents against each other.")
+    p1_agent_name = input("\nWrite the name of the player one's agent: ")
+    p1_agent = agent_choices(p1_agent_name)
+    p2_agent_name = input("\nWrite the name of the player two's agent: ")
+    p2_agent = agent_choices(p2_agent_name)
+
+    return p1_agent, p2_agent
+
+def agent_choices(agent_name):
+    print("\nAgent " + agent_name + " chosen.")
+    if agent_name == "Mcts":
+        print("This agent requires a network.\n")
+        input("\nDo you wish to use a trained network or new one:\
+              \n1 -> Trained Network\
+              \n2 -> New Network")
+
 def choose_game():
     available_games = ("SCS", "tic_tac_toe")
 
@@ -210,17 +205,16 @@ def choose_game():
         case "SCS":
             game_class = SCS_Game
             print("\nUsing randomized configuration for the SCS game.")
-            game_args = ["SCS/Game_configs/randomized_config.yml"]
+            game_args = ["Games/SCS/Game_configs/randomized_config.yml"]
         case "tic_tac_toe":
             game_class = tic_tac_toe
             game_args = []
         case _:
-            print("Game unsupported in interative mode.")
-            exit()
+            raise Exception("\nGame unsupported in interative mode.")
 
     return game_class, game_args
 
-def choose_model(game):
+def choose_new_model(game):
     available_models = ("MLP", "ConvNet", "ResNet", "Recurrent")
 
     model_question = "\nWhat model to you wish to train?\
@@ -276,39 +270,17 @@ def choose_model(game):
             
                 
         case _:
-            print("Model type unsupported in interative mode.")
-            exit()
+            raise Exception("Model type unsupported in interative mode.")
 
-    return model
+    return Torch_NN(model)
 
-def choose_method():
-    method_answer = input("\nTest using mcts, raw policy or random agent?\
-                               \n1 -> MCTS\
-                               \n2 -> Policy\
-                               \n3 -> Random\
-                               \n\nNumber: ")
-    if method_answer == "1":
-        method = "mcts"
-    elif method_answer == "2":
-        method = "policy"
-    elif method_answer == "3":
-        method = "random"
-    else:
-        print("\nBad answer.")
-        exit()
-
-    return method
-
-
-def choose_trained_network():
+def choose_trained_network(game_name):
     network_name = input("\n\nName of the trained network: ")
     model_iteration_answer = input("\nModel iteration number: ")
-    recurrent_answer = input("\n(This will be ignored if the network is not recurrent)\n" +
-                                  "Number of recurrent iterations: ")
     model_iteration = int(model_iteration_answer)
-    recurrent_iterations = int(recurrent_answer)
-    return network_name, model_iteration, recurrent_iterations
-
+    nn = load_network_checkpoint(game_name, network_name, model_iteration)[0]
+    return nn
 
 def images_mode():
+    print("\n\nCurrently unavailable.\n")
     return

@@ -1,11 +1,11 @@
 ###
 Initialization:
-  network_name: test_net_load
-  load_checkpoint: True
+  network_name: high_lr
+  load_checkpoint: False
 
   Checkpoint:
-    cp_network_name: test_net_load
-    iteration_number: "auto"
+    cp_network_name: test_net_load_c3
+    iteration_number: auto
     keep_optimizer: True
     keep_scheduler: True
     load_buffer: True
@@ -15,15 +15,15 @@ Initialization:
 ###
 Running:
   running_mode: sequential
-  num_actors: 4
-  early_fill_per_type: 0
+  num_actors: 3
+  early_fill_per_type: 200
   early_softmax_moves: 0
   early_softmax_exploration: 0.5
   early_random_exploration: 0.5
-  training_steps: 2000
+  training_steps: 2500
 
   Sequential:
-    num_games_per_type_per_step: 16
+    num_games_per_type_per_step: 18
 
   Asynchronous:
     update_delay : 120
@@ -46,9 +46,9 @@ Saving:
 Testing:
   asynchronous_testing: True
   testing_actors: 1
-  early_testing: True
+  early_testing: False
   policy_test_frequency: 37
-  mcts_test_frequency: 91
+  mcts_test_frequency: 71
   num_policy_test_games: 100
   num_mcts_test_games: 100
   test_game_index: 0
@@ -75,7 +75,7 @@ Recurrent Options:
 ###
 Learning:
   shared_storage_size: 2
-  replay_window_size: 7000
+  replay_window_size: 13000
   batch_extraction: remote
   value_loss: SE
   policy_loss: CEL
@@ -83,9 +83,9 @@ Learning:
   learning_method: samples
 
   Samples:
-    batch_size: 256
-    num_samples: 32
-    with_replacement: True
+    batch_size: 1024
+    num_samples: 4
+    with_replacement: False
     late_heavy: True
 
   Epochs:
@@ -96,16 +96,16 @@ Learning:
 
 ###
 Optimizer:
-  optimizer_choice: Adam
+  optimizer_choice: SGD
 
   SGD:
     weight_decay: 1.0e-07
     momentum: 0.9
-    nesterov: True
+    nesterov: False
 
 
 ###
 Scheduler:
-  starting_lr: 2.0e-4
-  scheduler_boundaries: [3000, 6000, 20000]
+  starting_lr: 2.0e-02
+  scheduler_boundaries: [100000, 200000, 300000]
   scheduler_gamma: 0.5
