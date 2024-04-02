@@ -22,14 +22,12 @@ Units:
     attack: 1
     defense: 1
     movement: 2
-    image_path: SCS/Images/soldier.png
 
   Tank:
     id: 2
     attack: 2
     defense: 2
     movement: 4
-    image_path: SCS/Images/tank.png
 
 
 ###

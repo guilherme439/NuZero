@@ -363,8 +363,8 @@ def main():
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "explor_unbalanced_c3"
-                model_iteration = 2040
+                net_name = "explor_unbalanced_c"
+                model_iteration = 1260
                 recurrent_iterations = 6
 
 
@@ -376,8 +376,8 @@ def main():
                 policy_agent = PolicyAgent(nn, recurrent_iterations)
                 random_agent = RandomAgent()
                 goal_agent = GoalRushAgent()
-                p1_agent = random_agent
-                p2_agent = policy_agent
+                p1_agent = goal_agent
+                p2_agent = mcts_agent
                 
                 ################################################
 
@@ -410,13 +410,13 @@ def main():
                 num_games = 250
 
                 game_class = SCS_Game
-                game_config = "SCS/Game_configs/randomized_config_5.yml"
+                game_config = "SCS/Game_configs/mirrored_plus_config_5.yml"
                 game_args = [game_config]
                 game = game_class(*game_args)
 
                 # network options
-                net_name = "randomized_final_3"
-                model_iteration = 3640
+                net_name = "mirror_plus_cl"
+                model_iteration = 800
                 recurrent_iterations = 6
 
                 # Test Manager configuration
