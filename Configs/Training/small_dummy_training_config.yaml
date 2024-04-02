@@ -4,7 +4,7 @@ Initialization:
   load_checkpoint: False
 
   Checkpoint:
-    cp_network_name: test_net_load_c3
+    cp_network_name: high_lr
     iteration_number: auto
     keep_optimizer: True
     keep_scheduler: True
@@ -16,14 +16,14 @@ Initialization:
 Running:
   running_mode: sequential
   num_actors: 3
-  early_fill_per_type: 200
+  early_fill_per_type: 0
   early_softmax_moves: 0
   early_softmax_exploration: 0.5
   early_random_exploration: 0.5
   training_steps: 2500
 
   Sequential:
-    num_games_per_type_per_step: 18
+    num_games_per_type_per_step: 12
 
   Asynchronous:
     update_delay : 120
@@ -38,7 +38,7 @@ Cache:
 
 ###
 Saving:
-  save_frequency: 10
+  save_frequency: 20
   storage_frequency: 1
   save_buffer: True
 
@@ -59,16 +59,16 @@ Plotting:
   plot_frequency: 5
   plot_loss: True
   plot_weights: False
-  value_split: 0
-  policy_split: 0
-  combined_split: 0
+  value_split: 100
+  policy_split: 100
+  combined_split: 100
 
 
 ###
 Recurrent Options:
-  train_iterations: [8]
-  pred_iterations: [8]
-  test_iterations: 8
+  train_iterations: [10]
+  pred_iterations: [10]
+  test_iterations: 10
   alpha: 0.0
   
 
@@ -83,8 +83,8 @@ Learning:
   learning_method: samples
 
   Samples:
-    batch_size: 1024
-    num_samples: 4
+    batch_size: 32
+    num_samples: 64
     with_replacement: False
     late_heavy: True
 
@@ -106,6 +106,6 @@ Optimizer:
 
 ###
 Scheduler:
-  starting_lr: 2.0e-02
-  scheduler_boundaries: [100000, 200000, 300000]
+  starting_lr: 2.0e-05
+  scheduler_boundaries: [20000, 50000, 100000]
   scheduler_gamma: 0.5

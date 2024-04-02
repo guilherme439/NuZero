@@ -124,7 +124,7 @@ class Explorer():
         if parent.to_play == 2:
             value_score = (-value_score)
         # for player 2 negative values are good
-        value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
+        #value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
         value_score = value_score * value_factor
 
         return confidence_score + value_score
