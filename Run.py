@@ -943,12 +943,20 @@ def main():
             
             case 11: # build even more graphs from data
                 
-                figname = "30_vs_res"
+                figname = "solo_soldier_p1"
                 titulo = "Architecture Comparison"
-                plt.figure(figsize=(12, 6.8))
+                #plt.figure(figsize=(12, 6.8))
 
-                data_path = "Graphs/_graph_data/solo_reduce_prog_4_1100_0-100-iterations_extrapolation.pkl"
-                prog_win_rates = pickle_load(data_path)
+                model_name = "mirror_plus_cl"
+
+                data_path = "Games/SCS/models/" + model_name + "/plot_data.pkl"
+                plot_data = pickle_load_all(data_path)
+
+                wr_data = plot_data[9:13]
+                print(wr_data)
+                print(len(wr_data))
+
+                exit()
 
                 data_path = "Graphs/_graph_data/solo_res_5x5_to_10x10_win_rates.pkl"
                 res_wr = pickle_load(data_path)
@@ -960,10 +968,10 @@ def main():
                     wr = res_wr[size_i]
                     plt.axhline(y=wr, linestyle='--', label = str(size_i+5) + "x" + str(size_i+5) + "_ResNet", color = color)
 
-                plt.xlabel("Recurrent Iterations")
+                plt.xlabel("Training Step")
                 plt.ylabel("Win Ratio")
         
-                plt.title(titulo, pad=20, fontsize = 14)
+                #plt.title(titulo, pad=20, fontsize = 14)
 
                 lgd = plt.legend(bbox_to_anchor=(1,1))
                 plt.gcf().canvas.draw()
@@ -1071,8 +1079,7 @@ def main():
 
                 print("\nImages created!\n")
 
-                
-                
+                       
 
 
 
@@ -1702,9 +1709,26 @@ def pickle_save(save_path, data):
         pickle.dump(data,file)
 
 def pickle_load(load_path):
+    # This function will only load a single object
     with open(load_path, 'rb') as file:
         data = pickle.load(file)
+
     return data
+
+def pickle_load_all(load_path):
+    # This function will load all objects in a pickle file and return them in a list
+
+    loaded_objects = []
+    with open(load_path, 'rb') as file:
+        while True:
+            try:
+                obj = pickle.load(file)
+            except EOFError:
+                break
+            else:
+                loaded_objects.append(obj)
+
+    return loaded_objects
 
 
 
