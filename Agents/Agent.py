@@ -1,8 +1,4 @@
-from SCS.SCS_Game import SCS_Game
 
-import numpy as np
-
-    
 
 class Agent():
     ''' Abstract Agent Class'''

@@ -15,22 +15,14 @@ Most important papers for this project:
 ## Features
 
 * [X] Options for both sequential and fully asynchronous self-play, training and testing using [Ray](https://github.com/ray-project/ray).
-* [X] Saves checkpoints during training and allows continuing previous training in case anything goes wrong.
-* [X] Creates graphs for loss, win rates and others.
+* [X] Large selection of hyperparameters that goes beyond the AlphaZero paper.
 * [X] Allows defining custom games, network architectures and agents.
-* [X] Tic Tac Toe and SCS games already implemented.
-* [X] Definition of any custom SCS games within the already implemented rules.
-* [X] Creation of custom SCS markers for units.
 * [X] Already implemented network architectures for both hexagonal and orthogonal data.
-
-
-### Future features
-
-* [ ] Interface for training/testing-preset creation and saving
-* [ ] Visual Interface for users to play SCS games
-* [ ] Hyperparameter optimization
-* [ ] Distributed training updates
-* [ ] GPU optimization
+* [X] Saves checkpoints during training so that training can be continued from any point.
+* [X] Allows replay buffer saving/loading.
+* [X] Creates graphs for loss, win rates and others.
+* [X] Definition of any custom SCS games within the already implemented rules.
+* [X] Simple visualization interface for SCS games.
 
 
 
@@ -40,7 +32,25 @@ Most important papers for this project:
 ```bash
 git clone https://github.com/guilherme439/NuZero
 cd NuZero
+```
 
+You might want to create a virtual environment using:
+```
+python -m venv venv
+```
+
+or
+```
+virtualenv venv
+```
+
+Then activate it
+```
+source venv/bin/activate
+```
+
+Install the requirements:
+```
 pip install -r requirements.txt
 ```
 
@@ -66,6 +76,8 @@ python Run.py --testing-preset 0
 
 ### Interactive
 
+(currently not working in the latest version)
+
 A command line interface is also available even though it does not support all the functionalities. The objective of this interface is giving new users a easy way to start using the system. To use it, simply run:
 ```bash
 python Run.py --interactive
@@ -73,9 +85,13 @@ python Run.py --interactive
 This will show you a series of prompts that will allow you to start training/testing by selecting from one of the available games, networks and configurations.
 
 ## Configs
-In order to train the networks, both Training and Search configurations are required. These are located in Configs/Config_files/Training/ or Search/ respectively.
+In order to train the networks, both Training and Search configurations are required.
+On the other hand, for testing-presets a Testing configuration is needed.
+These configuration files are located in the Configs/ folder in their respective directories.
+
 
 ## Structure
+
 
 The system can be ran in a variety of ways that can use different parts of the code, however these are the general responsibilities for each class:
 
@@ -86,23 +102,24 @@ Coordinators:
 Workers: (usually several of these will run in parallel)
 
 * Gamer - Plays individual self-play games.
-* Test - Runs individual tests.
+* Tester - Runs individual test games.
 
 Others:
 * Explorer - Contains the methods necessary to run MCTS both in self-play and testing.
 
 This diagram gives a generic view of the code logic:
 
+(the diagram is not up to date, but still gives a general idea of the functioning of the system)
 ![ClassDiagram](Images/Classes_diagram.svg) 
 
-When running sequentially, the AlphaZero instance will launch Gamers to play a certain number of games. When they finish playing those games, they terminate and AlphaZero executes a training step. At the end of this training step the Gamers are once again launched and the cycle continues. On the other hand, if running fully asynchronously, the Gamers are launched only once and they will keep playing games indefinitely and filling the replay buffer. In the meanwhile the AlphaZero instance will be training the network and storing it. At the end of training, after a certain amount of training steps, AlphaZero will instruct the Gamers to stop playing and terminate.
-
+When running sequentially, the AlphaZero instance will launch Gamers to play a certain number of games. When they finish playing those games, they terminate and AlphaZero executes a training step. At the end of this training step the Gamers are once again launched and the cycle continues. On the other hand, if running fully asynchronously, the Gamers are launched only once and they will keep playing games indefinitely and filling the replay buffer. In the meanwhile the AlphaZero instance will be training the network and storing it.
 
 If the system is ran with asynchronous testing, the Test Manager will start in a separate process and the AlphaZero instance will check for which tests have concluded at the end of each training step. Otherwise, tests will run sequentially, meaning that control will switch to the Test Manager while running tests, and self-play and training only continue after the tests finish.
 
 It is only possible to run sequential testing, if the system is not running in fully asynchronous mode.
 
-
+## Notes
+* This AlphaZero implementation was developed for two player games, despite also supporting single player games. In the AlphaZero version from the original paper, the state was always represented from the persective of the current player, which meant that the value function represented the advantage/disadvantage for the prespective of current player, this is, 1 was a victory for the current player, while -1 was a defeat. Since this implementation was developed with SCS games in mind, which display high objective variability and assymetry, we decided to use a static representation of the state, meaning that both players' units are represented the same way, indenpendetly of what player is currently playing. This ultimatly means that value function has a slightly different meaning, with 1 always representing a victory for player one, and -1 always representing a victory for player two. This change also affects the way in which the backpropagation is done at the end of each self-play game.
 
 ## Authors
 

@@ -1,40 +1,34 @@
-import math
 import time
-
+import math
 import ray
 import torch
 import numpy as np
 
-
 from progress.bar import ChargingBar
 from progress.spinner import PieSpinner
 
-from Utils.PrintBar import PrintBar
+from Utils.Progress_Bars.PrintBar import PrintBar
 
-
-from Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
+from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Agents.Generic.MctsAgent import MctsAgent
 from Agents.Generic.PolicyAgent import PolicyAgent
 
 
 
-
-
-
 class Tester():
 
-    def __init__(self, slow=False, print=False, render=False):
+    def __init__(self, slow=False, print=False, passive_render=False):
         #torch.multiprocessing.set_sharing_strategy('file_system')
 
         self.slow = slow
         self.print = print
 
-        self.render = render
-        if render == True:
+        self.passive_render = passive_render
+        if self.passive_render:
             self.slow=True
             # Render is only supported for SCS games
-            from SCS.SCS_RemoteRenderer import SCS_RemoteRenderer
+            from Games.SCS.SCS_RemoteRenderer import SCS_RemoteRenderer
             from RemoteStorage import RemoteStorage
 
             self.remote_storage = RemoteStorage.remote(window_size=1)
@@ -56,7 +50,7 @@ class Tester():
         if self.print:
             print("\n")
 
-        if self.render:
+        if self.passive_render:
             ray.get(self.remote_storage.store.remote(game))
             self.renderer.render.remote()
             time.sleep(3)
@@ -107,7 +101,7 @@ class Tester():
 
             done = game.step_function(action_coords)
 
-            if self.render:
+            if self.passive_render:
                 ray.get(self.remote_storage.store.remote(game))
 
             if (done):

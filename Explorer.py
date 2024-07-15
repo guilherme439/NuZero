@@ -124,7 +124,7 @@ class Explorer():
         if parent.to_play == 2:
             value_score = (-value_score)
         # for player 2 negative values are good
-        value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
+        #value_score = ((value_score + 1) / 2) # Convert to the [0,1] range
         value_score = value_score * value_factor
 
         return confidence_score + value_score
@@ -199,14 +199,19 @@ class Explorer():
         return np.random.choice(actions, p=probs)
     
     def add_exploration_noise(self, node):
+        dist_choice = self.config["Exploration"]["root_exploration_distribution"]
         frac = self.config["Exploration"]["root_exploration_fraction"]
-        alpha = self.config["Exploration"]["dist_alpha"]
-        beta = self.config["Exploration"]["dist_beta"]
+        alpha = self.config["Exploration"]["root_dist_alpha"]
+        beta = self.config["Exploration"]["root_dist_beta"]
 
         actions = node.children.keys()
-        noise = np.random.gamma(alpha, beta, len(actions))
+        noise = np.random.gamma(alpha, beta, len(actions)) # Currently only gamma is supported
         for a, n in zip(actions, noise):
             node.children[a].prior = node.children[a].prior * (1 - frac) + n * frac
+    
+    def set_search_config(self, search_config):
+        self.config = search_config
+        return    
 
     def print_tree(self, root, action_space_shape):
         # Debug

@@ -1,4 +1,4 @@
-from SCS.SCS_Game import SCS_Game
+from Games.SCS.SCS_Game import SCS_Game
 
 import heapq
 import numpy as np

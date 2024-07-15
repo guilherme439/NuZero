@@ -1,0 +1,40 @@
+###
+Test:
+  test_type: visual # visual | data
+
+  Visual:
+    slow: False
+    print: True
+    render: "interactive" 
+
+
+###
+Agents:
+  p1_agent:
+    agent_type: mcts
+
+    search_config_path: Configs/Search/test_search_config.yaml
+    
+    Cache:
+      cache_choice: keyless
+      max_size: 2000
+      keep_updated: False
+
+    Network:
+      recurrent_iterations: 6
+      load_checkpoint: True
+
+      Checkpoint:
+        cp_network_name: test_net_load
+        cp_number: 1000
+
+  p2_agent:
+    agent_type: random
+
+
+
+
+
+
+
+

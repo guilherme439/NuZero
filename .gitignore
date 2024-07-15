@@ -6,13 +6,13 @@ Configs/__pycache__/
 Neural_Networks/Hexagonal/__pycache__/
 Neural_Networks/Rectangular/__pycache__/
 Neural_Networks/__pycache__/
-SCS/__pycache__/
-Tic_Tac_Toe/__pycache__/
+Games/SCS/__pycache__/
+Games/Tic_Tac_Toe/__pycache__/
 
-SCS/models/*
-Tic_Tac_Toe/models/*
-!Tic_Tac_Toe/models/__init__.py
-!SCS/models/__init__.py
+Games/SCS/models/*
+Games/Tic_Tac_Toe/models/*
+!Games/Tic_Tac_Toe/models/__init__.py
+!Games/SCS/models/__init__.py
 
 SLURM/Scripts/*
 !SLURM/Scripts/__init__.py
@@ -27,6 +27,8 @@ Graphs/networks/*
 !Graphs/iterations/__init__.py
 !Graphs/networks/__init__.py
 
+
+venv/
 
 *.insyncdl
 *.log
