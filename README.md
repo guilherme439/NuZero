@@ -22,7 +22,7 @@ Most important papers for this project:
 * [X] Allows replay buffer saving/loading.
 * [X] Creates graphs for loss, win rates and others.
 * [X] Definition of any custom SCS games within the already implemented rules.
-* [X] Creation of custom SCS markers for units.
+* [X] Simple visualization interface for SCS games.
 
 
 
@@ -32,7 +32,25 @@ Most important papers for this project:
 ```bash
 git clone https://github.com/guilherme439/NuZero
 cd NuZero
+```
 
+You might want to create a virtual environment using:
+```
+python -m venv venv
+```
+
+or
+```
+virtualenv venv
+```
+
+Then activate it
+```
+source venv/bin/activate
+```
+
+Install the requirements:
+```
 pip install -r requirements.txt
 ```
 
@@ -68,8 +86,9 @@ This will show you a series of prompts that will allow you to start training/tes
 
 ## Configs
 In order to train the networks, both Training and Search configurations are required.
-On the other hand, for testing-presets a Testing configuration is needed. 
+On the other hand, for testing-presets a Testing configuration is needed.
 These configuration files are located in the Configs/ folder in their respective directories.
+
 
 ## Structure
 
@@ -83,7 +102,7 @@ Coordinators:
 Workers: (usually several of these will run in parallel)
 
 * Gamer - Plays individual self-play games.
-* Test - Runs individual tests.
+* Tester - Runs individual test games.
 
 Others:
 * Explorer - Contains the methods necessary to run MCTS both in self-play and testing.

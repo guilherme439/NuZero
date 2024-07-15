@@ -28,6 +28,8 @@ Graphs/networks/*
 !Graphs/networks/__init__.py
 
 
+venv/
+
 *.insyncdl
 *.log
 

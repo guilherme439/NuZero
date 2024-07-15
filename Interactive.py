@@ -21,7 +21,6 @@ from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Utils.general_utils import *
 
-import ruamel
 from ruamel.yaml import YAML
 
 
@@ -58,11 +57,11 @@ class Interactive:
 
     def testing_mode(self):  
         
-        game_class, game_args = choose_game()
+        game_class, game_args = self.choose_game()
         game = game_class(*game_args)
         game_name = game.get_name()
         
-        p1_agent, p2_agent = choose_agents(game_name)
+        p1_agent, p2_agent = self.choose_agents(game_name)
 
         if game_name == "Tic_Tac_Toe":
             test_mode_answer = "2"
@@ -103,7 +102,7 @@ class Interactive:
             test_manager.run_test_batch(num_games, p1_agent, p2_agent, False, False, True)
 
     def training_mode(self):
-        game_class, game_args = choose_game()
+        game_class, game_args = self.choose_game()
         game = game_class(*game_args)
         game_folder_name = game.get_name()
 
@@ -138,19 +137,23 @@ class Interactive:
 
         print("\nWe will run tests by pitting two of this agents against each other.")
         p1_agent_name = input("\nWrite the name of the player one's agent: ")
-        p1_agent = agent_choices(p1_agent_name)
+        p1_agent = self.agent_choices(p1_agent_name)
         p2_agent_name = input("\nWrite the name of the player two's agent: ")
-        p2_agent = agent_choices(p2_agent_name)
+        p2_agent = self.agent_choices(p2_agent_name)
 
         return p1_agent, p2_agent
 
     def agent_choices(self, agent_name):
+
+        agent = None
         print("\nAgent " + agent_name + " chosen.")
         if agent_name == "Mcts":
             print("This agent requires a network.\n")
-            input("\nDo you wish to use a trained network or new one:\
+            choice = input("\nDo you wish to use a trained network or new one:\
                 \n1 -> Trained Network\
-                \n2 -> New Network")
+                \n2 -> New Network\n")
+            # Add logic to handle the choice and return an agent
+        return agent
 
     def choose_game(self):
         available_games = ("SCS", "tic_tac_toe")

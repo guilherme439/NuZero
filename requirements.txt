@@ -13,3 +13,4 @@ cityhash
 metrohash
 bitstring
 more_itertools
+ruamel.yaml

@@ -105,16 +105,17 @@ def main():
                 game_args_list = [[]]
                 game = game_class()
 
-                alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
+                train_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
                 search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
-                state_set = create_r_unbalanced_state_set(game)
+                # Set the state as None if you dont want to use one
+                state_set = None
 
                 model = MLP_Net(out_features=9)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, train_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
                 
             case 1: # SCS_Example
@@ -123,7 +124,7 @@ def main():
                 game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
+                train_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
                 search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
 
                 state_set = create_r_unbalanced_state_set(game)
@@ -134,7 +135,7 @@ def main():
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, train_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
 
                 
@@ -142,48 +143,48 @@ def main():
                 
             case 2:
                 game_class = SCS_Game
-                game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [["Games/SCS/Game_configs/mirrored_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Training/small_dummy_training_config.yaml"
-                search_config_path="Configs/Search/dummy_search_config.yaml"
+                train_config_path="Configs/Training/mirror_map_training_config.yaml"
+                search_config_path="Configs/Search/mirror_map_search_config.yaml"
 
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = create_mirrored_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 initialize_parameters(model)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, train_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
 
 
             case 3:
                 game_class = SCS_Game
-                game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [["Games/SCS/Game_configs/randomized_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                alpha_config_path="Configs/Training/small_test_training_config.yaml"
-                search_config_path="Configs/Search/test_search_config.yaml"
+                train_config_path="Configs/Training/random_map_training_config.yaml"
+                search_config_path="Configs/Search/random_map_search_config.yaml"
 
-
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = None
+                #state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
+                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="relu", hex=True)
                 #model = ResNet(in_channels, policy_channels, num_filters=256, num_blocks=12, policy_head="conv", value_head="reduce", hex=True)
 
                 initialize_parameters(model)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
-                alpha_zero = AlphaZero(game_class, game_args_list, alpha_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero = AlphaZero(game_class, game_args_list, train_config_path, search_config_path, model=model, state_set=state_set)
                 alpha_zero.run()
 
 
