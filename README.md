@@ -3,7 +3,7 @@
 
 AlphaZero + DeepThinking + WarGames
 
-This system was developed as an attempt to tackle the enormous complexity of Wargames, more specifically Standard Combat Series (SCS) games, by combining the AlphaZero learning capabilities with the Deepthinking extrapolation capacity. The general idea was to train recurrent networks on small/simple maps using AlphaZero and then use the techniques described in the Deepthinking papers to extrapolate the learned strategies to the very large maps of SCS games. The system ended up developing into a wider project to accommodate a larger set of games, network architectures and configurations. More information about the system and its conceptualization can be found in my [Master Thesis](www.google.com)
+This system was developed as an attempt to tackle the enormous complexity of Wargames, more specifically Standard Combat Series (SCS) games, by combining the AlphaZero learning capabilities with the Deepthinking extrapolation capacity. The general idea was to train recurrent networks on small/simple maps using AlphaZero and then use the techniques described in the Deepthinking papers to extrapolate the learned strategies to the very large maps of SCS games. The system ended up developing into a wider project to accommodate a larger set of games, network architectures and configurations. More information about the system and its conceptualization can be found in my [Master Thesis](https://fenix.tecnico.ulisboa.pt/cursos/meic-a/dissertacao/1128253548923881)
 
 Most important papers for this project:
 * [Hexagdly](https://www.semanticscholar.org/paper/HexagDLy-Processing-hexagonally-sampled-data-with-Steppa-Holch/817d9ae8f6843d56ce984fa2eccb95ce97de4720?sort=is-influential)
@@ -34,6 +34,7 @@ git clone https://github.com/guilherme439/NuZero
 cd NuZero
 ```
 
+
 You might want to create a virtual environment using:
 ```
 python -m venv venv
@@ -44,10 +45,12 @@ or
 virtualenv venv
 ```
 
+
 Then activate it
 ```
 source venv/bin/activate
 ```
+
 
 Install the requirements:
 ```
