@@ -35,7 +35,7 @@ class Interactive:
         print("\nStarted interactive mode!\n")
 
         print("\nNOTE: This mode is intended to give the user an overview of some of the system\'s functionalities.\
-            \nHowever, for more specific uses, the definition of training/testing presets is recommended.\n")
+            \nHowever, for more specific use cases, the definition of custom training/testing presets is recommended.\n")
             
         mode_answer = input("\nWhat do you wish to do?(insert the number)\
                                 \n 1 -> Train a neural network\
@@ -54,9 +54,100 @@ class Interactive:
             case _:
                 raise Exception("Option unavailable")
 
+    #####################################################################################################################
+    # ----------------------------------------------------------------------------------------------------------------- #
+    # ------------------------------------------------- TRAINING ------------------------------------------------------ #
+    # ----------------------------------------------------------------------------------------------------------------- #
+    #####################################################################################################################
+
+
+    def training_mode(self):
+        game_class, game_args = self.choose_game()
+        game = game_class(*game_args)
+        game_name = game.get_name()
+
+        continue_answer = input("\nDo you wish to continue training a previous network or train a new one?(1 or 2)\
+                                    \n1 -> Continue training\
+                                    \n2 -> Start new training\
+                                    \n\nNumber: ")
+        
+        if continue_answer == "1":
+            train_config, search_config = self.continue_training(game_name)
+        elif continue_answer == "2":
+            train_config, search_config = self.new_training(game_name)
+        else:
+            print("Unknown answer.")
+            exit()
+
+        save_yaml_config(self.yaml_parser, "Configs/Config_Files/Training/Interactive/generated_training_config.yaml", train_config)
+        save_yaml_config(self.yaml_parser, "Configs/Config_Files/Search/Interactive/generated_search_config.yaml", search_config)
+
+        return
+    
+
+    def continue_training(self, game_name):
+        network_name = input("\n\nName of the trained network: ")
+        new_network_name = network_name
+
+        new_name_answer = input("\nDo you wish to continue training with a different network name? (y/n): ")
+        if new_name_answer == "y" or new_name_answer == "Y":
+            new_network_name = input("\nNew network name: ")
+            
+        if new_network_name == network_name:
+            print("Warning: The previous training configuration will be overwritten to continue training from a checkpoint.")
+
+        network_folder_path = "Games/" + game_name + "/models/" + network_name + "/"
+        training_config_path = network_folder_path + "model/train_config_copy.yaml"
+        search_config_path = network_folder_path + "model/search_config_copy.yaml"
+
+        train_config = load_yaml_config(self.yaml_parser, training_config_path)
+        search_config = load_yaml_config(self.yaml_parser, search_config_path)
+        
+
+        train_config["Initialization"]["network_name"] = new_network_name
+        train_config["Initialization"]["load_checkpoint"] = True
+        train_config["Initialization"]["Checkpoint"]["cp_network_name"] = network_name
+
+        replay_path = network_folder_path + "replay_buffer.cp"
+        if os.path.exists(replay_path):
+            # If a replay buffer checkpoint exists, we will try to load it
+            train_config["Initialization"]["Checkpoint"]["load_buffer"] = True
+
+
+        return train_config, search_config
+
+        
+    def new_training(self, game_name):
+        default_train_path = "Configs/Config_Files/Training/Interactive/base_training_config.yaml"
+        defaul_search_path = "Configs/Config_Files/Search/Interactive/base_search_config.yaml"
+
+        # Load a default configs and edit them acording to user choices
+        train_config = load_yaml_config(self.yaml_parser, default_train_path)
+        search_config = load_yaml_config(self.yaml_parser, defaul_search_path)
+
+        network_name = input("\n\nChoose a name for the network: ")
+        train_config["Initialization"]["network_name"] = network_name
+
+        self.train_running_choices(train_config)
+
+
+
+
+
+        return train_config, search_config
+
+    def train_running_choices(self, train_config):
+        print("\n\n\nCurrently interative does not support full async execution mode.")
+        num_actors = int(input("\n\nHow many actors/processes to use during self-play: "))
+        train_config["Running"]
+
+    #####################################################################################################################
+    # ----------------------------------------------------------------------------------------------------------------- #
+    # ---------------------------------------------------- TESTING ---------------------------------------------------- #
+    # ----------------------------------------------------------------------------------------------------------------- #
+    #####################################################################################################################
 
     def testing_mode(self):  
-        
         game_class, game_args = self.choose_game()
         game = game_class(*game_args)
         game_name = game.get_name()
@@ -101,25 +192,23 @@ class Interactive:
             test_manager = TestManager(game_class, game_args, num_actors=num_testers)
             test_manager.run_test_batch(num_games, p1_agent, p2_agent, False, False, True)
 
-    def training_mode(self):
-        game_class, game_args = self.choose_game()
-        game = game_class(*game_args)
-        game_folder_name = game.get_name()
 
-        continue_answer = input("\nDo you wish to continue training a previous network or train a new one?(1 or 2)\
-                                    \n1 -> Continue training\
-                                    \n2 -> Start new training\
-                                    \n\nNumber: ")
-        
-        if continue_answer == "1":
-            continuing = True
-        elif continue_answer == "2":
-            continuing = False
-        else:
-            print("Unknown answer.")
-            exit()
-                    
-        train_config = load_yaml_config()
+    #####################################################################################################################
+    # ----------------------------------------------------------------------------------------------------------------- #
+    # ---------------------------------------------------- IMAGES ----------------------------------------------------- #
+    # ----------------------------------------------------------------------------------------------------------------- #
+    #####################################################################################################################
+
+    def images_mode(self):
+        print("\n\nCurrently not implemented in Interactive.\n")
+        return
+    
+
+    #####################################################################################################################
+    # ----------------------------------------------------------------------------------------------------------------- #
+    # ---------------------------------------------------- UTILITY ---------------------------------------------------- #
+    # ----------------------------------------------------------------------------------------------------------------- #
+    #####################################################################################################################
 
     def choose_agents(self, game_name):
         generic_agents = ("Mcts", "Policy", "Random")
@@ -144,7 +233,6 @@ class Interactive:
         return p1_agent, p2_agent
 
     def agent_choices(self, agent_name):
-
         agent = None
         print("\nAgent " + agent_name + " chosen.")
         if agent_name == "Mcts":
@@ -239,13 +327,8 @@ class Interactive:
 
         return Torch_NN(model)
 
-    def choose_trained_network(self, game_name):
-        network_name = input("\n\nName of the trained network: ")
+    def choose_trained_network(self, game_name, network_name):
         model_iteration_answer = input("\nModel iteration number: ")
         model_iteration = int(model_iteration_answer)
         nn = load_network_checkpoint(game_name, network_name, model_iteration)[0]
         return nn
-
-    def images_mode(self):
-        print("\n\nCurrently unavailable.\n")
-        return

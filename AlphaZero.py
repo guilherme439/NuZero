@@ -455,7 +455,8 @@ class AlphaZero():
                 checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step) + "_cp"
                 buffer_path = self.network_folder_path + "replay_buffer.cp"              
                 save_checkpoint(checkpoint_path, self.latest_network, self.optimizer, self.scheduler)
-                ray.get(self.replay_buffer.save_to_file.remote(buffer_path, step))
+                if save_replay_buffer:
+                    ray.get(self.replay_buffer.save_to_file.remote(buffer_path, step))
                 
             if storage_frequency and (((step) % storage_frequency) == 0):
                 self.latest_network.model_to_cpu()

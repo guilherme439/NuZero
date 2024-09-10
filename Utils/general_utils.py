@@ -47,7 +47,7 @@ def load_network_checkpoint(game_name, network_name, iteration_number):
 
     if iteration_number == "auto":
         cp_paths = glob.glob(cp_network_folder + "*_cp")
-        # finds all numbers in string -> gets the last one -> converts to int -> orders the numbers -> gets last number
+        # In each filename: finds all numbers in filename -> gets the last one -> converts to int. Then orders all the ints extracted -> gets the last one
         iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), cp_paths)))[-1]    
 
     checkpoint_path =  cp_network_folder + network_name + "_" + str(iteration_number) + "_cp"

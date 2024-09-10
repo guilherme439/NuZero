@@ -333,7 +333,7 @@ def main():
 
 
     elif args.interactive:
-        Interactive.start_interative()
+        Interactive.start()
 
 
     
