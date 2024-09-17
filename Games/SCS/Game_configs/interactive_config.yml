@@ -1,0 +1,86 @@
+---
+Name: Interactive example
+
+###
+Board_dimensions:
+  rows: 6
+  columns: 6
+
+
+###
+Turns: 6
+
+
+###
+Stacking_limit: 3
+
+
+###
+Units:
+  Soldier:
+    id: 1
+    attack: 1
+    defense: 1
+    movement: 2
+
+  Tank:
+    id: 2
+    attack: 2
+    defense: 2
+    movement: 4
+
+
+###
+Reinforcements:
+  schedule:
+    p1: [ [1], [1,1,2], [], [], [], [], [] ]
+
+    p2: [ [1,1], [1,1,2], [], [], [], [], [] ]
+
+  arrival:
+    method: Default  # Default | Detailed
+    # In Default method each player can place units on his/her side of the board
+
+###
+Terrain:
+  Swamp:
+    id: 1
+    attack_modifier: 0.5
+    defense_modifier: 1
+    cost: 2
+    image_path: Games/SCS/Images/swamp.jpg
+
+  Mountain:
+    id: 2
+    attack_modifier: 1
+    defense_modifier: 2
+    cost: 2
+    image_path: Games/SCS/Images/mountain.jpg
+
+  Plains:
+    id: 3
+    attack_modifier: 1
+    defense_modifier: 1
+    cost: 1
+    image_path: Games/SCS/Images/plains.jpg
+
+  Forest:
+    id: 4
+    attack_modifier: 2
+    defense_modifier: 1
+    cost: 1
+    image_path: Games/SCS/Images/plains_with_bush.jpg
+
+
+###
+Map:
+  creation_method: Randomized # Detailed | Randomized
+  distribution: [0.1, 0.15, 0.65, 0.1]
+
+
+###
+Victory_points:
+  creation_method: Randomized # Detailed | Randomized
+  number_vp:
+    p1: 2
+    p2: 2

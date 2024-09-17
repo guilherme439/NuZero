@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from Utils.general_utils import *
+from Utils.Functions.general_utils import *
 
 class PlotMaker:
 

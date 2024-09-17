@@ -85,8 +85,12 @@ class ReplayBuffer():
         self.allow_partial_loading = checkpoint['partial_loading']
         
         if self.allow_partial_loading:
-            #step = self.find_closest_available_step(map, step) 
-            buffer_len, num_games = map[step]
+            #step = self.find_closest_available_step(map, step)
+            try: 
+                buffer_len, num_games = map[step]
+            except:
+                raise Exception("Could not load the replay buffer checkpoint for that iteration number.")
+            
             self.buffer = buffer[:buffer_len+1]
             self.n_games = num_games
         else:

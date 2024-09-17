@@ -17,9 +17,9 @@ Running:
   running_mode: sequential
   num_actors: 3
   early_fill_per_type: 0
-  early_softmax_moves: 0
-  early_softmax_exploration: 0.5
-  early_random_exploration: 0.5
+  early_softmax_moves: 2
+  early_softmax_exploration: 0.0
+  early_random_exploration: 0.0
   training_steps: 2500
 
   Sequential:
@@ -59,9 +59,9 @@ Plotting:
   plot_frequency: 5
   plot_loss: True
   plot_weights: False
-  value_split: 100
-  policy_split: 100
-  combined_split: 100
+  value_split: 0
+  policy_split: 0
+  combined_split: 0
 
 
 ###
@@ -99,13 +99,13 @@ Optimizer:
   optimizer_choice: SGD
 
   SGD:
-    weight_decay: 1.0e-07
-    momentum: 0.9
+    weight_decay: 0
+    momentum: 0
     nesterov: False
 
 
 ###
 Scheduler:
   starting_lr: 2.0e-05
-  scheduler_boundaries: [20000, 50000, 100000]
-  scheduler_gamma: 0.5
+  scheduler_boundaries: [999999999999]
+  scheduler_gamma: 0.99999

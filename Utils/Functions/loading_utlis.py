@@ -1,4 +1,4 @@
-import os   
+import os
 import re 
 import glob
 import pickle
@@ -6,35 +6,8 @@ import torch
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from Utils.Caches.DictCache import DictCache
-from Utils.Caches.KeylessCache import KeylessCache
-
-def create_cache(cache_choice, max_size):
-    if cache_choice == "dict":
-        cache = DictCache(max_size)
-    elif cache_choice == "keyless":
-        cache = KeylessCache(max_size)
-    elif cache_choice == "disabled":
-        cache = None
-    else:
-        print("\nbad cache_choice")
-        exit()
-    return cache
-
-def create_optimizer(model, optimizer_name, learning_rate, weight_decay=1.0e-7, momentum=0.9, nesterov=False):
-    if optimizer_name == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    elif optimizer_name == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
-    else:
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        print("Bad optimizer config.\nUsing default optimizer (Adam)...")
-    return optimizer
 
 
-# ------------------------------------------------------ #
-# ------------------  Loading/Saving  ------------------ #
-# ------------------------------------------------------ #
 
 def load_network_checkpoint(game_name, network_name, iteration_number):
     game_folder = "Games/" + game_name + "/"
@@ -94,43 +67,3 @@ def load_pickle(pickle_path):
 def save_pickle(file_path, data):
     with open(file_path, 'wb') as file:
         pickle.dump(data, file)
-
-
-# ------------------------------------------------------ #
-# -----------------------  Stats  ---------------------- #
-# ------------------------------------------------------ #
-        
-'''
-stats = \
-{
-"number_of_moves" : 0,
-"average_children" : 0,
-"final_tree_size" : 0,
-"average_tree_size" : 0,
-"final_bias_value" : 0,
-"average_bias_value" : 0,
-}
-
-'''
-
-def print_stats(stats):
-    print()
-    for key, value in stats.items():
-        print(key + ": " + format(value, '<.5g'))
-
-def print_stats_list(stats_list):
-    tmp_stats = {
-    "number_of_moves" : 0,
-    "average_children" : 0,
-    "final_tree_size" : 0,
-    "average_tree_size" : 0,
-    "final_bias_value" : 0,
-    "average_bias_value" : 0,
-    }
-
-    size = len(stats_list)
-    for stats in stats_list:
-        for key, value in stats.items():
-            tmp_stats[key] += value/size
-
-    print_stats(tmp_stats)

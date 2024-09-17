@@ -30,27 +30,17 @@ from Games.SCS.SCS_Renderer import SCS_Renderer
 from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from AlphaZero import AlphaZero
-from Tester import Tester
-from RemoteTester import RemoteTester
-
-from Gamer import Gamer
-from ReplayBuffer import ReplayBuffer
-from RemoteStorage import RemoteStorage
-
-from Agents.Generic.MctsAgent import MctsAgent
-from Agents.Generic.PolicyAgent import PolicyAgent
-from Agents.Generic.RandomAgent import RandomAgent
-from Agents.SCS.GoalRushAgent import GoalRushAgent
 
 from TestManager import TestManager
 
 from progress.bar import ChargingBar
 from Utils.Progress_Bars.PrintBar import PrintBar
 
-from Utils.general_utils import *
+from Utils.Functions.general_utils import *
+from Utils.Functions.loading_utlis import *
+from Utils.Functions.ray_utils import *
+from Utils.Functions.stats_utils import *
 
-from Utils.Caches.KeylessCache import KeylessCache
-from Utils.Caches.DictCache import DictCache
 
 import Interactive
 
@@ -169,8 +159,8 @@ def main():
                 game_args_list = [["Games/SCS/Game_configs/randomized_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                train_config_path="Configs/Training/random_map_training_config.yaml"
-                search_config_path="Configs/Search/random_map_search_config.yaml"
+                train_config_path="Configs/Training/random_local_training_config.yaml"
+                search_config_path="Configs/Search/random_local_search_config.yaml"
 
                 state_set = None
                 #state_set = create_r_unbalanced_state_set(game)
@@ -339,11 +329,7 @@ def main():
     
     return
 
-def initialize_parameters(model):
-    for name, param in model.named_parameters():
-        if ".weight" not in name:
-            #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-            torch.nn.init.xavier_uniform_(param)
+
 
 ##########################################################################
 # ----------------------------               --------------------------- #
@@ -504,48 +490,6 @@ def create_solo_state_set(game):
 
     game.reset_env()
     return state_set
-
-##########################################################################
-# ----------------------------               --------------------------- #
-# ---------------------------       RAY       -------------------------- #
-# ----------------------------               --------------------------- #
-##########################################################################
-
-def start_ray_local(log_to_driver=False):
-    print("\n\n--------------------------------\n\n")
-
-    context = ray.init(log_to_driver=log_to_driver)
-    return context
-
-def start_ray_local_cluster(log_to_driver=False):
-    print("\n\n--------------------------------\n\n")
-
-    runtime_env=RuntimeEnv \
-					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-					pip="./requirements.txt"
-					)
-		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
-    return context
-
-def start_ray_rnl(log_to_driver=False):
-    print("\n\n--------------------------------\n\n")
-
-    '''
-    env_vars={"CUDA_VISIBLE_DEVICES": "-1",
-            "LD_LIBRARY_PATH": "$NIX_LD_LIBRARY_PATH"
-            }
-    '''
-
-    runtime_env=RuntimeEnv \
-					(
-					working_dir="/mnt/cirrus/users/5/2/ist189452/TESE/NuZero",
-					pip="./requirements.txt",
-					)
-		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
-    return context
 
 
 # ------------------------

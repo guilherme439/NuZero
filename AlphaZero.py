@@ -37,8 +37,11 @@ from Agents.Generic.PolicyAgent import PolicyAgent
 from Agents.Generic.MctsAgent import MctsAgent
 from Agents.Generic.RandomAgent import RandomAgent
 
-from Utils.loss_functions import *
-from Utils.general_utils import *
+from Utils.Functions.loss_functions import *
+from Utils.Functions.general_utils import *
+from Utils.Functions.loading_utlis import *
+from Utils.Functions.stats_utils import *
+
 from Utils.Progress_Bars.PrintBar import PrintBar
 
 from progress.bar import ChargingBar
@@ -172,6 +175,9 @@ class AlphaZero():
         self.plots_path = self.network_folder_path + "plots/"
         if not os.path.exists(self.plots_path):
             os.mkdir(self.plots_path)
+
+        if self.plot_weights:
+            self.weights_path = self.plots_path + "Weight Data/"
         
         self.plot_data_save_path = self.network_folder_path + "plot_data.pkl"
 
@@ -1063,19 +1069,19 @@ class AlphaZero():
         x, y = zip(*self.weight_size_max)
         plt.plot(x, y)
         plt.title("Max Weight")
-        plt.savefig(self.plots_path + 'weight_max.png')
+        plt.savefig(self.weights_path + 'weight_max.png')
         plt.clf()
 
         x, y = zip(*self.weight_size_min)
         plt.plot(x, y)
         plt.title("Min Weight")
-        plt.savefig(self.plots_path + 'weight_min.png')
+        plt.savefig(self.weights_path + 'weight_min.png')
         plt.clf()
 
         x, y = zip(*self.weight_size_average)
         plt.plot(x, y)
         plt.title("Average Weight")
-        plt.savefig(self.plots_path + 'weight_average.png')
+        plt.savefig(self.weights_path + 'weight_average.png')
         plt.clf()
 
         print("Weight plotting done.\n")

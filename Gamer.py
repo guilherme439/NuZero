@@ -7,7 +7,7 @@ import numpy as np
 from Node import Node
 from Explorer import Explorer
 
-from Utils.general_utils import *
+from Utils.Functions.general_utils import *
 
 from functools import reduce
 

@@ -16,8 +16,8 @@ from RemoteTester import RemoteTester
 from RemoteStorage import RemoteStorage
 from ReplayBuffer import ReplayBuffer
 
-from Utils.loss_functions import *
-from Utils.general_utils import *
+from Utils.Functions.loss_functions import *
+from Utils.Functions.general_utils import *
 from Utils.Progress_Bars.PrintBar import PrintBar
 
 from Agents.Generic.RandomAgent import RandomAgent
