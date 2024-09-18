@@ -18,14 +18,14 @@ class Torch_NN():
         self.check_devices()
 
         if not hasattr(self.model, "recurrent"):
-            print("You need to add a \"recurrent\" bollean atribute to the model,\n \
-                   Specifing if the model is or not recurrent.")
-            exit()
+            raise Exception("You need to add a \"recurrent\" bollean atribute to the model,\n \
+                   Specifying if the model is recurrent or not.")
         elif not isinstance(self.model.recurrent, bool):
-            print("\"model.recurrent\" must be a bollean atribute specifing if the model is or not recurrent.")
-            exit()
+            raise Exception("\"model.recurrent\" must be a bollean atribute specifing if the model is recurrent or not.")   
         
-
+    def is_recurrent(self):
+        return self.get_model().recurrent
+    
     def get_model(self):
         return self.model
     

@@ -7,6 +7,7 @@ from Neural_Networks.ConvNet import ConvNet
 from Neural_Networks.ResNet import ResNet
 from Neural_Networks.RecurrentNet import RecurrentNet
 
+from Agents import Agent
 from Agents.Generic.MctsAgent import MctsAgent
 from Agents.Generic.PolicyAgent import PolicyAgent
 from Agents.Generic.RandomAgent import RandomAgent
@@ -77,9 +78,7 @@ class Interactive:
         else:
             print("Unknown answer.")
             exit()
-
         return
-    
 
     def continue_training(self, game_class, game_args):
         game = game_class(*game_args)
@@ -125,8 +124,7 @@ class Interactive:
         alpha_zero = AlphaZero(game_class, game_args_list, generated_training_config_path, generated_search_config_path)
         alpha_zero.run()
         return 
-
-        
+    
     def new_training(self, game_class, game_args):
         game = game_class(*game_args)
 
@@ -175,12 +173,14 @@ class Interactive:
     # ----------------------------------------------------------------------------------------------------------------- #
     #####################################################################################################################
 
-    def testing_mode(self):  
+    def testing_mode(self):
+        # FIXME: Currently testing in interactive is done by creating the necessary classes directly instead of using testing_configs
+
         game_class, game_args = self.choose_game()
         game = game_class(*game_args)
         game_name = game.get_name()
         
-        p1_agent, p2_agent = self.choose_agents(game_name)
+        p1_agent, p2_agent = self.agent_choices(game_name)
 
         if game_name == "Tic_Tac_Toe":
             test_mode_answer = "2"
@@ -188,7 +188,6 @@ class Interactive:
             test_mode_answer = input("\nSelect what kind of testing you wish to do.(1 or 2)\
                                     \n1 -> Visualize a game\
                                     \n2 -> Take statistics from playing many games\n\n")
-
 
 
         if test_mode_answer == "1":
@@ -202,10 +201,8 @@ class Interactive:
             else:
                 raise Exception("\nBad rendering answer.")
             
-            print_answer = input("\nDo you wish to print a game representation to console?(y/n)")
-            print = True if print_answer == "y" else False
-            slow_answer = input("\nDo you wish to slow down the game being played?(y/n)")
-            slow = True if slow_answer == "y" else False
+            print = self.check_answer(input("\nDo you wish to print a game representation to console?(y/n)"))
+            slow = self.check_answer(input("\nDo you wish to slow down the game being played?(y/n)"))
 
             test_manager = TestManager(game_class, game_args, num_actors=1, slow=slow, print=print, render_choice=rendering_mode)
             test_manager.run_visual_test(p1_agent, p2_agent)
@@ -389,9 +386,9 @@ class Interactive:
     
     def select_cache(self) -> str:
         available_caches = ("dict", "keyless")
-        print("\nChoose a cache type?")
+        print("\nChoose a cache type.\nAvailable caches:")
         for i, cache_name in enumerate(available_caches):
-            print(f"{i+1} -> {cache_name.capitalize()}")
+            print(f"\n{i+1} -> {cache_name.capitalize()}")
 
         cache_index = int(input("\n\nNumber: ")) - 1
         cache_choice = available_caches[cache_index]
@@ -439,25 +436,62 @@ class Interactive:
             available_agents = generic_agents + Tic_Tac_Toe_agents
         
         agent_display = "\nThere are " + str(len(available_agents)) + " types of agents available for this game: "
-        for a in available_agents:
-            agent_display += "\n-> " + a
+        for i,a in enumerate(available_agents):
+            agent_display += f"\n {i} -> {a} "
         print(agent_display)
 
         print("\nWe will run tests by pitting two of this agents against each other.")
-        p1_agent_name = input("\nWrite the name of the player one's agent: ")
-        p1_agent = self.agent_options(p1_agent_name)
-        p2_agent_name = input("\nWrite the name of the player two's agent: ")
-        p2_agent = self.agent_options(p2_agent_name)
+        print("\"Policy\" and \"Mcts\" agents require a trained network.")
+        p1_number = input("\nEnter the number of player one's agent: ")
+        p1_agent_name = available_agents[p1_number -1]
+        p1_agent = self.create_agent(p1_agent_name, game_name)
+
+        p2_number = input("\nEnter the number of player two's agent: ")
+        p2_agent_name = available_agents[p2_number -1]
+        p2_agent = self.create_agent(p2_agent_name, game_name)
 
         return p1_agent, p2_agent
 
-    def agent_options(self, agent_name):
+    def create_agent(self, agent_name, game_name) -> Agent:
         agent = None
-        print("\nAgent " + agent_name + " chosen.")
-        if agent_name == "Mcts":
+        print(f"\n{agent_name} agent was chosen.")
+        if agent_name in ("Mcts","Policy"):
             print("This agent requires a network.\n")
-            choice = input("\nNetwork name:")
-            # Add logic to handle the choice and return an agent
+            network_name = input("\nNetwork name: ")
+            checkpoint_number = input("\nWhat is the number of network checkpoint to use?\
+                                       (type \'auto\' to use the latest available)\n\
+                                      Checkpoint Number:  ")
+            if checkpoint_number != "auto":
+                checkpoint_number = int(checkpoint_number)
+            nn, _, _, _, _, _, _, checkpoint_number = load_network_checkpoint(game_name, network_name, checkpoint_number)
+            print(f"\nLoaded \"{network_name}\" network, on checkpoint number {checkpoint_number}\n\n")
+            if nn.is_recurrent():
+                print("\nThe Loaded network is recurrent.")
+                recurrent_iterations = int(input("\nNumber of recurrent iterations to use for the test: "))
+
+            if agent_name == "Mcts":
+                print("This agent requires a search configuration.\n")
+                search_config_path = input("\nPlease enter the path to the search configuration: ")
+                search_config = load_yaml_config(self.yaml_parser, search_config_path)
+                use_cache = self.check_answer(input("\nDo you want to use an inference cache for this test(y/n)?"))
+                if use_cache:
+                    # If the user want to use a cache, we create a simple default cache with around 1000 entries.
+                    cache = create_cache("keyless", 1200)
+                agent = MctsAgent(search_config, nn, recurrent_iterations, cache)
+                
+            elif agent_name == "Policy":
+                agent = PolicyAgent(nn, recurrent_iterations, cache=None) # cache is not really needed for policy tests
+            
+
+        elif agent_name == "GoalRush":
+            agent = GoalRushAgent()
+        
+        elif agent_name == "Random":
+            agent = RandomAgent()
+
+        else:
+            raise Exception("\nAgent type not recognized.\n")
+    
         return agent
 
     def choose_game(self):
@@ -533,4 +567,4 @@ class Interactive:
         elif answer in ("n","N","no","NO"):
             return False
         else:
-            raise Exception("Invalid answer: '" + answer + "'.")
+            raise Exception("\nInvalid answer: '" + answer + "'.\n")

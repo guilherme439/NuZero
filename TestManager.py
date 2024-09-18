@@ -18,6 +18,9 @@ from ReplayBuffer import ReplayBuffer
 
 from Utils.Functions.loss_functions import *
 from Utils.Functions.general_utils import *
+from Utils.Functions.loading_utlis import *
+from Utils.Functions.ray_utils import *
+from Utils.Functions.stats_utils import *
 from Utils.Progress_Bars.PrintBar import PrintBar
 
 from Agents.Generic.RandomAgent import RandomAgent
@@ -46,9 +49,9 @@ class TestManager():
 
     def prepare_visual(self, slow, print, render_choice):
         self.render_choice = render_choice
-        passive_render = True if render_choice == "passive" else False
-        self.visual_tester = Tester(slow, print, passive_render)
-        if render_choice == "interactive":
+        live_render = True if render_choice == "live" else False
+        self.visual_tester = Tester(slow, print, live_render)
+        if render_choice == "analysis":
             self.renderer = SCS_Renderer()
 
     def create_tester_pool(self, num_actors):
@@ -72,7 +75,7 @@ class TestManager():
         winner_text = "Draw!" if winner == 0 else "Player " + str(winner) + " won!"
         print(winner_text)
         
-        if self.render_choice == "interactive":
+        if self.render_choice == "analysis":
             time.sleep(0.5)
             self.renderer.analyse(game)
         return

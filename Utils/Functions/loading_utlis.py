@@ -9,21 +9,21 @@ from Neural_Networks.Torch_NN import Torch_NN
 
 
 
-def load_network_checkpoint(game_name, network_name, iteration_number):
+def load_network_checkpoint(game_name, network_name, checkpoint_number):
     game_folder = "Games/" + game_name + "/"
     cp_network_folder = game_folder + "models/" + network_name + "/"
     if not os.path.exists(cp_network_folder):
-        raise Exception("Could not find a model with that name.\nIf you are using Ray jobs with a working_directory,\nonly the models uploaded to git will be available.")
+        raise Exception("\nCould not find a network with that name.\n")
     
     buffer_path = cp_network_folder + "replay_buffer.cp"
     plot_path = cp_network_folder + "plot_data.pkl"
 
-    if iteration_number == "auto":
+    if checkpoint_number == "auto":
         cp_paths = glob.glob(cp_network_folder + "*_cp")
         # In each filename: finds all numbers in filename -> gets the last one -> converts to int. Then orders all the ints extracted -> gets the last one
-        iteration_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), cp_paths)))[-1]    
+        checkpoint_number = sorted(list(map(lambda str: int(re.findall('\d+',  str)[-1]), cp_paths)))[-1]    
 
-    checkpoint_path =  cp_network_folder + network_name + "_" + str(iteration_number) + "_cp"
+    checkpoint_path =  cp_network_folder + network_name + "_" + str(checkpoint_number) + "_cp"
     checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
 
     model_pickle_path =  cp_network_folder + "base_model.pkl"
@@ -39,7 +39,7 @@ def load_network_checkpoint(game_name, network_name, iteration_number):
     scheduler_dict = checkpoint["scheduler_state_dict"]
 
     nn = Torch_NN(model)
-    return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict, buffer_path, plot_path, iteration_number
+    return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict, buffer_path, plot_path, checkpoint_number
 
 def save_checkpoint(save_path, network, optimizer, scheduler):
     checkpoint = \

@@ -175,9 +175,6 @@ class AlphaZero():
         self.plots_path = self.network_folder_path + "plots/"
         if not os.path.exists(self.plots_path):
             os.mkdir(self.plots_path)
-
-        if self.plot_weights:
-            self.weights_path = self.plots_path + "Weight Data/"
         
         self.plot_data_save_path = self.network_folder_path + "plot_data.pkl"
 
@@ -275,6 +272,11 @@ class AlphaZero():
         self.plot_weights = self.train_config["Plotting"]["plot_weights"]
 #endregion
         
+        if self.plot_weights:
+            self.weights_path = self.plots_path + "Weight Data/"
+            if not os.path.exists(self.weights_path):
+                os.mkdir(self.weights_path)
+
         if running_mode == "asynchronous":
             asynchronous_testing = True
             # When running asynchronously, tests need to also be async.
