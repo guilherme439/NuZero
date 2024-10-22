@@ -26,7 +26,7 @@ Running:
     num_games_per_type_per_step: 12
 
   Asynchronous:
-    update_delay : 120
+    update_delay: 120
 
 
 ###
@@ -59,9 +59,7 @@ Plotting:
   plot_frequency: 5
   plot_loss: True
   plot_weights: False
-  value_split: 0
-  policy_split: 0
-  combined_split: 0
+  recent_steps_loss: 200
 
 
 ###
@@ -70,7 +68,7 @@ Recurrent Options:
   pred_iterations: [10]
   test_iterations: 10
   alpha: 0.0
-  
+
 
 ###
 Learning:

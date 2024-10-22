@@ -40,6 +40,7 @@ from Utils.Functions.general_utils import *
 from Utils.Functions.loading_utlis import *
 from Utils.Functions.ray_utils import *
 from Utils.Functions.stats_utils import *
+from Utils.Functions.yaml_utils import *
 
 from Interactive import Interactive
 
@@ -111,17 +112,18 @@ def main():
             case 1: # SCS_Example
                 
                 game_class = SCS_Game
-                game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [["Games/SCS/Game_configs/randomized_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                train_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
-                search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
+                train_config_path="Configs/Training/small_dummy_training_config.yaml"
+                search_config_path="Configs/Search/dummy_search_config.yaml"
 
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = None
+                #state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
+                model = ResNet(in_channels, policy_channels, 32, 6, policy_head="conv", value_head="reduce", hex=True)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -288,8 +290,6 @@ def main():
                     all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
 
                 print(all_weights)
-
-                
                 
 
             case 1:
@@ -317,6 +317,13 @@ def main():
                 loaded_data = torch.load(file_name)
                 print(loaded_data)
                 os.remove(file_name)
+
+            case 2:
+                remove_from_all_configs("Plotting", "value_split", dir_path="Configs/Training")
+                remove_from_all_configs("Plotting", "policy_split", dir_path="Configs/Training")
+                remove_from_all_configs("Plotting", "combined_split", dir_path="Configs/Training")
+                insert_in_all_configs("Plotting", "recent_steps_loss", value=200, dir_path="Configs/Training")
+                pass
 
 
     elif args.interactive:

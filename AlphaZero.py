@@ -262,9 +262,7 @@ class AlphaZero():
         test_game_index = self.train_config["Testing"]["test_game_index"]
         
         plot_frequency = self.train_config["Plotting"]["plot_frequency"]
-        policy_split = self.train_config["Plotting"]["policy_split"]
-        value_split = self.train_config["Plotting"]["value_split"]
-        combined_split = self.train_config["Plotting"]["combined_split"]
+        recent_steps_loss = self.train_config["Plotting"]["recent_steps_loss"]
         self.plot_loss = self.train_config["Plotting"]["plot_loss"]
         self.plot_weights = self.train_config["Plotting"]["plot_weights"]
 #endregion
@@ -442,19 +440,15 @@ class AlphaZero():
 
                 if self.plot_loss:
                     self.plot_global_loss()
-                    if plot_epochs and learning_epochs>1:
-                        self.plot_epoch_loss()
+
+                    recent_points = min(recent_steps_loss, step)
+                    if plot_epochs:
+                        recent_points = learning_epochs * recent_points
+                        if learning_epochs>1:
+                            self.plot_epoch_loss()
+                    self.plot_recent_loss(recent_points)
                     
                 self.plot_wr()
-
-            if policy_split and ((step) == policy_split):
-                self.split_policy_loss_graph()
-
-            if value_split and ((step) == value_split):
-                self.split_value_loss_graph()
-
-            if combined_split and ((step) == combined_split):
-                self.split_combined_loss_graph()
                     
             if save_frequency and (((step) % save_frequency) == 0):
                 checkpoint_path = self.network_folder_path + self.network_name + "_" + str(step) + "_cp"
@@ -794,7 +788,8 @@ class AlphaZero():
                 total += fraction
                 probs.append(total)
 
-            probs /= np.sum(probs)
+            total_sum = sum(probs)
+            probs = [p / total_sum for p in probs]
 
         average_value_loss = 0
         average_policy_loss = 0
@@ -1017,6 +1012,39 @@ class AlphaZero():
 
         print("Global loss plotting done.\n")
 
+    def plot_recent_loss(self, recent_points):
+        print("\nPlotting recent loss...")
+        
+        value_points = self.train_global_value_loss[-recent_points:]
+        policy_points = self.train_global_policy_loss[-recent_points:]
+        combined_points = self.train_global_combined_loss[-recent_points:]
+
+        num_points = len(value_points)
+        if num_points > 1:
+            x, y = zip(*value_points)
+            plt.scatter(x, y, s=0.3, c="#13316e", marker="o")
+            plt.title("Recent Value loss")
+            plt.savefig(self.plots_path + '_recent_value_loss.png')
+            plt.clf()
+
+        num_points = len(policy_points)
+        if num_points > 1:
+            x, y = zip(*policy_points)
+            plt.scatter(x, y, s=0.3, c="#13316e", marker="o")
+            plt.title("Recent Policy loss")
+            plt.savefig(self.plots_path + '_recent_policy_loss.png')
+            plt.clf()
+
+        num_points = len(combined_points)
+        if num_points > 1:
+            x, y = zip(*combined_points)
+            plt.scatter(x, y, s=0.3, c="#13316e", marker="o")
+            plt.title("Recent Combined loss")
+            plt.savefig(self.plots_path + '_recent_combined_loss.png')
+            plt.clf()
+
+        print("Recent loss plotting done.\n")
+
     def plot_wr(self):
         print("\nPloting wr graphs...")
     
@@ -1149,48 +1177,6 @@ class AlphaZero():
             state = self.state_set[i]
             _, value = self.latest_network.inference(state, False, test_iterations)
             self.state_set_stats[i].append((self.current_step, value.item()))
-    
-    def split_policy_loss_graph(self):
-        print("\nSpliting policy loss graph...")
-        num_points = len(self.train_global_policy_loss)
-        if num_points > 1:
-            x, y = zip(*self.train_global_policy_loss)
-            plt.scatter(x, y, s=0.3, c="#13316e", marker="o")
-            plt.title("Early global policy loss")
-            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_policy_loss.png')
-            plt.clf()
-
-        self.train_global_policy_loss.clear()
-        print("Spliting done.\n")
-        return
-    
-    def split_value_loss_graph(self):
-        print("\nSpliting value loss graph...")
-        num_points = len(self.train_global_value_loss)
-        if num_points > 1:
-            x, y = zip(*self.train_global_value_loss)
-            plt.scatter(x, y, s=0.3, c="#13316e", marker="o")
-            plt.title("Early global value loss")
-            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_value_loss.png')
-            plt.clf()
-
-        self.train_global_value_loss.clear()
-        print("Spliting done.")
-        return
-    
-    def split_combined_loss_graph(self):
-        print("\nSpliting combined loss graph...")
-        num_points = len(self.train_global_combined_loss)
-        if num_points > 1:
-            x, y = zip(*self.train_global_combined_loss)
-            plt.scatter(x, y, s=0.3, c="#13316e", marker="o")
-            plt.title("Early global combined loss")
-            plt.savefig(self.plots_path + "_" + self.network_name + '_before_split_global_combined_loss.png')
-            plt.clf()
-
-        self.train_global_combined_loss.clear()
-        print("Spliting done.")
-        return
 
     def save_plot_data(self, data_path):
         # Save ploting information to use when continuing training
