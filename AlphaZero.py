@@ -13,9 +13,6 @@ import glob
 import re
 import bisect 
 
-import ruamel
-from ruamel.yaml import YAML
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -41,6 +38,7 @@ from Utils.Functions.loss_functions import *
 from Utils.Functions.general_utils import *
 from Utils.Functions.loading_utlis import *
 from Utils.Functions.stats_utils import *
+from Utils.Functions.yaml_utils import *
 
 from Utils.Progress_Bars.PrintBar import PrintBar
 
@@ -67,8 +65,7 @@ class AlphaZero():
         self.example_game = self.game_class(*self.game_args_list[0])
         self.game_name = self.example_game.get_name()
 
-        self.yaml_parser = YAML()
-        self.yaml_parser.default_flow_style = False  
+        self.yaml_parser = initialize_yaml_parser()
         self.search_config = load_yaml_config(self.yaml_parser, search_config_path)
         self.train_config = load_yaml_config(self.yaml_parser, train_config_path)
 
@@ -302,7 +299,7 @@ class AlphaZero():
         if learning_method == "epochs":
             batch_size = self.train_config["Learning"]["Epochs"]["batch_size"]
             learning_epochs = self.train_config["Learning"]["Epochs"]["learning_epochs"]
-            plot_epochs = self.train_config["Learning"]["Epochs"]["plot_epoch"]	
+            plot_epochs = self.train_config["Learning"]["Epochs"]["plot_epochs"]	
             if plot_epochs:
                 self.epochs_path = self.plots_path + "Epochs/"
                 if not os.path.exists(self.epochs_path):

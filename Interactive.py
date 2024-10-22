@@ -21,15 +21,13 @@ from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
 from Utils.Functions.general_utils import *
 from Utils.Functions.loading_utlis import *
+from Utils.Functions.yaml_utils import *
 from Utils.Functions.ray_utils import *
-
-from ruamel.yaml import YAML
 
 
 class Interactive:
     def __init__(self):
-        self.yaml_parser = YAML()
-        self.yaml_parser.default_flow_style = False
+        self.yaml_parser = initialize_yaml_parser()
         return
 
 
@@ -40,17 +38,17 @@ class Interactive:
             \nHowever, for more specific use cases, the definition of custom training/testing presets is recommended.\n")
             
         mode_answer = input("\nWhat do you wish to do?(insert the number)\
-                                \n 1 -> Train a neural network\
-                                \n 2 -> Pit two agent against each other\
-                                \n 3 -> Create SCS unit counters\
+                                \n 0 -> Train a neural network\
+                                \n 1 -> Pit two agent against each other\
+                                \n 2 -> Create SCS unit counters\
                                 \n\nNumber: ")
         
         match int(mode_answer):
-            case 1:
+            case 0:
                 self.training_mode()
-            case 2:
+            case 1:
                 self.testing_mode()
-            case 3:
+            case 2:
                 self.images_mode()
 
             case _:
@@ -66,15 +64,15 @@ class Interactive:
     def training_mode(self):
         game_class, game_args = self.choose_game()
 
-        continue_answer = input("\nDo you wish to continue training a previous network or train a new one?(1 or 2)\
+        continue_answer = input("\nDo you wish to train a new network or continue the training on a previous one?(1 or 2)\
+                                    \n0 -> Start new training\
                                     \n1 -> Continue training\
-                                    \n2 -> Start new training\
                                     \n\nNumber: ")
         
-        if continue_answer == "1":
-            self.continue_training(game_class, game_args)
-        elif continue_answer == "2":
+        if continue_answer == "0":
             self.new_training(game_class, game_args)
+        elif continue_answer == "1":
+            self.continue_training(game_class, game_args)
         else:
             print("Unknown answer.")
             exit()
@@ -128,8 +126,8 @@ class Interactive:
     def new_training(self, game_class, game_args):
         game = game_class(*game_args)
 
-        default_train_path = "Configs/Config_Files/Training/Interactive/base_training_config.yaml"
-        defaul_search_path = "Configs/Config_Files/Search/Interactive/base_search_config.yaml"
+        default_train_path = "Configs/Training/Interactive/base_training_config.yaml"
+        defaul_search_path = "Configs/Search/Interactive/base_search_config.yaml"
 
         # Load a default configs and edit them acording to user choices
         train_config = load_yaml_config(self.yaml_parser, default_train_path)
@@ -154,8 +152,8 @@ class Interactive:
         self.train_optimizer_scheduler_choices(train_config)
 
 
-        generated_training_config_path = "Configs/Config_Files/Training/Interactive/generated_training_config.yaml"
-        generated_search_config_path = "Configs/Config_Files/Search/Interactive/generated_search_config.yaml"
+        generated_training_config_path = "Configs/Training/Interactive/generated_training_config.yaml"
+        generated_search_config_path = "Configs/Search/Interactive/generated_search_config.yaml"
         save_yaml_config(self.yaml_parser, generated_training_config_path, train_config)
         save_yaml_config(self.yaml_parser, generated_search_config_path , search_config)
 
@@ -239,23 +237,25 @@ class Interactive:
         print("\n\n\n### RECURRENT OPTIONS ###\n\n")
         train_iter = int(input("Number of recurrent iterations to use in inference, during training: "))
         pred_iter = int(input("Number of recurrent iterations to use in inference, during self-play: "))
-        test_iter = int(input("NUmber of recurrent iterations to use in inference, during testing: "))
+        test_iter = int(input("Number of recurrent iterations to use in inference, during testing: "))
         print("\n\n\n#########################\n\n")
 
-        train_config["Recurrent Options"]["train_iterations"] = [train_iter]
-        train_config["Recurrent Options"]["pred_iterations"] = [pred_iter]
+        train_iter_list = convert_list([train_iter])
+        pred_iter_list = convert_list([pred_iter])
+        train_config["Recurrent Options"]["train_iterations"] = train_iter_list
+        train_config["Recurrent Options"]["pred_iterations"] = pred_iter_list
         train_config["Recurrent Options"]["test_iterations"] = test_iter
 
         return
     
     def train_running_choices(self,train_config) -> None:
         print("\n\n\n### RUNTIME OPTIONS ###\n\n")
-        print("\nCurrently interative only supports 'sequential' execution mode.\n")
+        print("Currently interative only supports 'sequential' execution mode.\n")
 
-        num_actors = int(input("\n\nHow many actors/processes to use during self-play: "))
-        games_per_step = int(input("\n\nHow many games do you wish to play per training step?: "))
-        training_steps = int(input("\n\nHow many training steps you wish to run?: "))
-        early_fill = int(input("\n\nHow many games you wish to play\nto fill the replay buffer before training starts?\nEarly fill games: "))
+        num_actors = int(input("How many actors/processes to use during self-play: "))
+        games_per_step = int(input("How many games do you wish to play per training step?: "))
+        training_steps = int(input("How many training steps you wish to run?: "))
+        early_fill = int(input("How many games you wish to play to fill the replay buffer before training starts?\nEarly fill games: "))
         print("\n#######################\n")
 
         train_config["Running"]["num_actors"] = num_actors
@@ -266,10 +266,10 @@ class Interactive:
     def train_cache_choices(self, train_config) -> None:
         print("\n\n\n### CACHE OPTIONS ###\n\n")
         cache_choice = "disabled"
-        cache_answer = input("\n\nDo you want to use an inference cache, for AlphaZero's MCTS?(y/n):")
+        cache_answer = input("Do you want to use an inference cache, for AlphaZero's MCTS?(y/n):")
         if self.check_answer(cache_answer):
             cache_choice = self.select_cache()
-            max_size = int(input("\n\nMaximum size of the cache (number of entries): "))
+            max_size = int(input("Maximum size of the cache (number of entries): "))
         print("\n#####################\n")
 
         train_config["Cache"]["cache_choice"] = cache_choice
@@ -277,8 +277,8 @@ class Interactive:
 
     def train_saving_choices(self, train_config) -> None:
         print("\n\n\n### SAVE_CHECKPOINT OPTIONS ###\n\n")
-        save_frequency = int(input("\n\nNumber of training steps between each network checkpoint: "))
-        save_buffer = self.check_answer(input("\nDo you wish to save replay buffer checkpoints?(y/n) "))
+        save_frequency = int(input("Number of training steps between each network checkpoint: "))
+        save_buffer = self.check_answer(input("Do you wish to save replay buffer checkpoints?(y/n) "))
         print("\n###############################\n")
         
         train_config["Saving"]["save_frequency"] = save_frequency
@@ -286,48 +286,53 @@ class Interactive:
 
     def train_testing_choices(self, train_config) -> None:
         print("\n\n\n### TESTING OPTIONS ###\n\n")
-        async_testing = self.check_answer(input("\nDo you wish to run the network tests asynchronously(y/n)?"))
-        testing_actors = int(input("\nNumber of actors/processes to use during testing: "))
-        early_testing = self.check_answer(input("\nDo you wish to test the network before training starts(y/n)?"))
-        policy_frequency = int(input("\nNumber of training steps between tests using the policy: "))
-        mcts_frequency = int(input("\nNumber of training steps between tests using mcts: "))
+        async_testing = self.check_answer(input("Do you wish to run the network tests asynchronously(y/n)?"))
+        testing_actors = int(input("Number of actors/processes to use during testing: "))
+        early_testing = self.check_answer(input("Do you wish to test the network before training starts(y/n)?"))
+        policy_games = int(input("Number of games to play when testing using the policy: "))
+        policy_frequency = int(input("Number of training steps between tests using the policy: "))
+        mcts_games = int(input("Number of games to play when testing using mcts: "))
+        mcts_frequency = int(input("Number of training steps between tests using mcts: "))
         print("\n#######################\n")
 
         train_config["Testing"]["asynchronous_testing"] = async_testing
         train_config["Testing"]["testing_actors"] = testing_actors
         train_config["Testing"]["early_testing"] = early_testing
+        train_config["Testing"]["num_policy_test_games"] = policy_games
         train_config["Testing"]["policy_test_frequency"] = policy_frequency
+        train_config["Testing"]["num_mcts_test_games"] = mcts_games
         train_config["Testing"]["mcts_test_frequency"] = mcts_frequency
         return
 
     def train_plotting_choices(self, train_config) -> None:
         print("\n\n\n### PLOTTING OPTIONS ###\n\n")
-        plot_loss = self.check_answer(input("\nDo you wish to plot loss during training(y/n)?"))
-        plot_weights = self.check_answer(input("\nDo you wish to plot information about the network's weights(y/n)?"))
-        plot_frequency = int(input("\nNumber of training steps between graph plotting: "))
+        plot_loss = self.check_answer(input("Do you wish to plot loss during training(y/n)?"))
+        plot_weights = self.check_answer(input("Do you wish to plot information about the network's weights(y/n)?"))
+        plot_frequency = int(input("Number of training steps between graph plotting: "))
         print("\n########################\n")
 
         train_config["Plotting"]["plot_frequency"] = plot_frequency
         train_config["Plotting"]["plot_weights"] = plot_weights
-        train_config["Testing"]["plot_loss"] = plot_loss
+        train_config["Plotting"]["plot_loss"] = plot_loss
         return
     
     def train_learning_choices(self, train_config) -> None:
         print("\n\n\n### LEARNING OPTIONS ###\n\n")
-        replay_window = int(input("\nMaximum number of games in the replay buffer: "))
+        replay_window = int(input("Maximum number of games in the replay buffer: "))
         train_config["Learning"]["replay_window_size"] = replay_window
 
-        method_answer = int(input("\nYou want to training the network by epochs or using samples?\n\
-                                 1 -> Epochs\n\
-                                 2 -> Samples\n\
-                                \nNumber: "))
+        method_answer = int(input("\nHow do you want to use the self-play data to train the network?\n" +
+                                    "Do you want to run epochs or use samples?\n" +
+                                    " 1 -> Epochs\n" +
+                                    " 2 -> Samples\n" + 
+                                    "\nNumber: "))
         
         if method_answer == 1:
             train_config["Learning"]["learning_method"] = "epochs"
 
-            learning_epochs = int(input("\n\nNumber of epochs per training_step: "))
-            batch_size = int(input("\nBatch size: "))
-            plot_epochs = self.check_answer(input("\nDo you want to a graph for the epochs within each training step(y/n)?"))
+            learning_epochs = int(input("\nNumber of epochs per training step: "))
+            batch_size = int(input("Batch size: "))
+            plot_epochs = self.check_answer(input("Do you want to a graph for the epochs within each training step(y/n)?"))
 
             train_config["Learning"]["Epochs"]["learning_epochs"] = learning_epochs
             train_config["Learning"]["Epochs"]["batch_size"] = batch_size
@@ -337,9 +342,9 @@ class Interactive:
             train_config["Learning"]["learning_method"] = "samples"
 
             batch_size = int(input("\nSample size: "))
-            num_samples = int(input("\nNumber of samples: "))
-            with_replacement = self.check_answer(input("\nExtract samples with replacement(y/n)?"))
-            late_heavy = self.check_answer(input("\nUse destribution that favours the latest games(y/n)?"))
+            num_samples = int(input("Number of samples: "))
+            with_replacement = self.check_answer(input("Extract samples with replacement(y/n)?"))
+            late_heavy = self.check_answer(input("Use destribution that favours the latest games(y/n)?"))
 
             train_config["Learning"]["Samples"]["batch_size"] = batch_size
             train_config["Learning"]["Samples"]["num_samples"] = num_samples
@@ -355,10 +360,10 @@ class Interactive:
     
     def train_optimizer_scheduler_choices(self, train_config) -> None:
         print("\n\n\n### OPTIMIZER AND SCHEDULER OPTIONS ###\n\n")
-        optimizer_answer = int(input("\nWhat optimizer do you want to use?\n\
-                                 1 -> SGD\n\
-                                 2 -> Adam\n\
-                                \nNumber: "))
+        optimizer_answer = int(input("What optimizer do you want to use?\n" +
+                                " 1 -> SGD\n" +
+                                " 2 -> Adam\n" + 
+                                "\nNumber: "))
 
         
         learing_rate = float(input("\nLearning rate: "))
@@ -366,10 +371,10 @@ class Interactive:
 
         if optimizer_answer == 1:
             train_config["Optimizer"]["optimizer_choice"] = "SGD"
-            momentum_answer = self.check_answer(input("\nDo you wish to use momentum or weight decay(y/n)?"))
+            momentum_answer = self.check_answer(input("Do you wish to use momentum or weight decay(y/n)?"))
             if momentum_answer:
-                momentum = float(input("\nMomentum: "))
-                weight_decay = float(input("\nWeight decay: "))
+                momentum = float(input("Momentum: "))
+                weight_decay = float(input("Weight decay: "))
 
             train_config["Optimizer"]["SGD"]["momentum"] = momentum
             train_config["Optimizer"]["SGD"]["weight_decay"] = weight_decay
@@ -386,11 +391,12 @@ class Interactive:
     
     def select_cache(self) -> str:
         available_caches = ("dict", "keyless")
-        print("\nChoose a cache type.\nAvailable caches:")
+        cache_question = "\nChoose a cache type.\nAvailable caches:"
         for i, cache_name in enumerate(available_caches):
-            print(f"\n{i+1} -> {cache_name.capitalize()}")
+            cache_question += f"\n{i} -> {cache_name.capitalize()}"
 
-        cache_index = int(input("\n\nNumber: ")) - 1
+        cache_question += "\n\nNumber: "
+        cache_index = int(input(cache_question))
         cache_choice = available_caches[cache_index]
         return cache_choice
 
@@ -402,7 +408,8 @@ class Interactive:
             model_question += f"\n{i} -> {g}"
 
         model_question += "\n\nNumber: "
-        model_to_use = input(model_question)
+        model_index = int(input(model_question))
+        model_to_use = available_models[model_index]
         return model_to_use
 
     def select_game(self) -> str:
@@ -413,13 +420,14 @@ class Interactive:
             game_question += f"\n {i} -> {g}"
 
         game_question += "\n\nNumber: "
-        game_to_play = input(game_question)
+        game_index = int(input(game_question))
+        game_to_play = available_games[game_index]
         return game_to_play
 
     def search_choices(self, search_config) -> None:
         print("\n\n\n### SEARCH OPTIONS ###\n\n")
-        mcts_simulations = int(input("\nNumber of mcts simulations per game move: "))
-        softmax_moves = int(input("\nNumber of moves selected using softmax instead of max(type 0 if you always want to choose the greedy move): "))
+        mcts_simulations = int(input("Number of mcts simulations per game move: "))
+        softmax_moves = int(input("Number of moves selected using softmax instead of max (type 0 if you always want to choose the greedy move): "))
 
         search_config["Simulation"]["mcts_simulations"] = mcts_simulations
         search_config["Exploration"]["number_of_softmax_moves"] = softmax_moves
@@ -499,8 +507,9 @@ class Interactive:
 
         match game_to_play:
             case "SCS":
+                default_SCS_config = "Games/SCS/Game_configs/interactive_config.yml"
                 game_class = SCS_Game
-                game_args = ["Games/SCS/Game_configs/interative_config.yml"]
+                game_args = [default_SCS_config]
             case "tic_tac_toe":
                 game_class = tic_tac_toe
                 game_args = []
@@ -515,8 +524,8 @@ class Interactive:
 
         hex_answer = input("\n\nWill the model use hexagonal convolutions?(y/n)")
         hexagonal = self.check_answer(hex_answer)
-
-        print("\nA model will be created based on the selected game.")
+        if hexagonal:
+            print("\nNote that kernel size for hexagonal convolutions is calculated differently.\n")
 
         match model_to_use:
             case "MLP":
@@ -550,14 +559,18 @@ class Interactive:
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
 
-                filters = input("\nNumber of filters to use internally:")      
+                num_blocks = input("\nNumber of residual blocks: ")
+                num_filters = input("Number of filters: ")  
+                kernel_size = input("Kernel size (int): ")      
 
-                model = RecurrentNet(in_channels, policy_channels, int(filters), hex=hexagonal)
+                model = RecurrentNet(in_channels, policy_channels, int(num_filters), int(num_blocks), recall=True, hex=hexagonal)
                 initialize_parameters(model)
                 
                     
             case _:
                 raise Exception("Model type unsupported in interative mode.")
+            
+        print("\nA model was created based on the selected game.")
 
         return model, recurrent
 

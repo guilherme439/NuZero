@@ -50,15 +50,6 @@ def save_checkpoint(save_path, network, optimizer, scheduler):
     }
     torch.save(checkpoint, save_path)
 
-def load_yaml_config(yaml_parser, file_path):
-    with open(file_path, 'r') as stream:
-        config_dict = yaml_parser.load(stream)
-    return config_dict
-
-def save_yaml_config(yaml_parser, file_path, config_dict):  
-    with open(file_path, 'w') as stream:
-        yaml_parser.dump(config_dict, stream)
-
 def load_pickle(pickle_path):
     with open(pickle_path, 'rb') as file:
         data = pickle.load(file)

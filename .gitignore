@@ -27,6 +27,9 @@ Graphs/networks/*
 !Graphs/iterations/__init__.py
 !Graphs/networks/__init__.py
 
+Configs/Search/Interactive/generated_search_config.yaml
+Configs/Testing/Interactive/generated_testing_config.yaml
+Configs/Training/Interactive/generated_training_config.yaml
 
 venv/
 

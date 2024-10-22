@@ -41,8 +41,7 @@ from Utils.Functions.loading_utlis import *
 from Utils.Functions.ray_utils import *
 from Utils.Functions.stats_utils import *
 
-
-import Interactive
+from Interactive import Interactive
 
 def main():
     pid = os.getpid()
@@ -79,6 +78,7 @@ def main():
     log_to_driver = False
     if args.log_driver:
         log_to_driver = True
+
 
     if args.training_preset is not None:
         
@@ -230,9 +230,7 @@ def main():
             case _:
                 raise Exception("Unknown testing preset.")
 
-        
-        
-            
+               
     elif args.debug is not None:
         match args.debug:
             
@@ -321,9 +319,8 @@ def main():
                 os.remove(file_name)
 
 
-
     elif args.interactive:
-        Interactive.start()
+        Interactive().start()
 
 
     
