@@ -1,6 +1,6 @@
 import ray
 
-from Tester import Tester
+from Testing.Tester import Tester
 
 @ray.remote(scheduling_strategy="SPREAD")
 class RemoteTester(Tester):

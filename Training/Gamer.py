@@ -4,8 +4,8 @@ import time
 
 import numpy as np
 
-from Node import Node
-from Explorer import Explorer
+from Search.Node import Node
+from Search.Explorer import Explorer
 
 from Utils.Functions.general_utils import *
 

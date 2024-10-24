@@ -11,8 +11,8 @@ from Utils.Progress_Bars.PrintBar import PrintBar
 
 from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from Agents.Generic.MctsAgent import MctsAgent
-from Agents.Generic.PolicyAgent import PolicyAgent
+from Testing.Agents.Generic.MctsAgent import MctsAgent
+from Testing.Agents.Generic.PolicyAgent import PolicyAgent
 
 
 
@@ -29,7 +29,7 @@ class Tester():
             self.slow=True
             # Render is only supported for SCS games
             from Games.SCS.SCS_RemoteRenderer import SCS_RemoteRenderer
-            from RemoteStorage import RemoteStorage
+            from Utils.RemoteStorage import RemoteStorage
 
             self.remote_storage = RemoteStorage.remote(window_size=1)
             self.renderer = SCS_RemoteRenderer.remote(self.remote_storage)

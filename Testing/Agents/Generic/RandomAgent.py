@@ -1,6 +1,6 @@
 
 import numpy as np
-from Agents.Agent import Agent
+from Testing.Agents.Agent import Agent
 
 class RandomAgent(Agent):
     ''' Chooses actions at random (within legal actions)'''

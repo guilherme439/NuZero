@@ -23,16 +23,16 @@ import more_itertools
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from Gamer import Gamer
-from ReplayBuffer import ReplayBuffer
-from RemoteStorage import RemoteStorage
-from RemoteTester import RemoteTester
-from TestManager import TestManager
-from RemoteTestManager import RemoteTestManager
+from Training.Gamer import Gamer
+from Training.ReplayBuffer import ReplayBuffer
+from Utils.RemoteStorage import RemoteStorage
+from Testing.RemoteTester import RemoteTester
+from Testing.TestManager import TestManager
+from Testing.RemoteTestManager import RemoteTestManager
 
-from Agents.Generic.PolicyAgent import PolicyAgent
-from Agents.Generic.MctsAgent import MctsAgent
-from Agents.Generic.RandomAgent import RandomAgent
+from Testing.Agents.Generic.PolicyAgent import PolicyAgent
+from Testing.Agents.Generic.MctsAgent import MctsAgent
+from Testing.Agents.Generic.RandomAgent import RandomAgent
 
 from Utils.Functions.loss_functions import *
 from Utils.Functions.general_utils import *

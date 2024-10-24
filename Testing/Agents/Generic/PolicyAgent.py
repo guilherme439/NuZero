@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import softmax
 
-from Agents.Agent import Agent
+from Testing.Agents.Agent import Agent
 
 from Utils.Caches.DictCache import DictCache
 from Utils.Caches.KeylessCache import KeylessCache

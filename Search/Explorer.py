@@ -6,7 +6,7 @@ import torch
 
 from scipy.special import softmax
 
-from Node import Node
+from Search.Node import Node
 
 '''
 

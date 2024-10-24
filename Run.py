@@ -29,9 +29,9 @@ from Games.SCS.SCS_Game import SCS_Game
 from Games.SCS.SCS_Renderer import SCS_Renderer
 from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from AlphaZero import AlphaZero
+from Training.AlphaZero import AlphaZero
 
-from TestManager import TestManager
+from Testing.TestManager import TestManager
 
 from progress.bar import ChargingBar
 from Utils.Progress_Bars.PrintBar import PrintBar

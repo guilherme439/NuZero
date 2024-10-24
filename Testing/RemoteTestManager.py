@@ -1,6 +1,6 @@
 import ray
 
-from TestManager import TestManager
+from Testing.TestManager import TestManager
 
 @ray.remote
 class RemoteTestManager(TestManager):

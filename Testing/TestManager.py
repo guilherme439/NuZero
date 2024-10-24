@@ -11,22 +11,25 @@ from ruamel.yaml import YAML
 
 from Neural_Networks.Torch_NN import Torch_NN
 
-from Tester import Tester
-from RemoteTester import RemoteTester
-from RemoteStorage import RemoteStorage
-from ReplayBuffer import ReplayBuffer
+from Utils.RemoteStorage import RemoteStorage
+
+from Training.ReplayBuffer import ReplayBuffer
 
 from Utils.Functions.loss_functions import *
 from Utils.Functions.general_utils import *
 from Utils.Functions.loading_utlis import *
 from Utils.Functions.ray_utils import *
 from Utils.Functions.stats_utils import *
+from Utils.Functions.yaml_utils import *
 from Utils.Progress_Bars.PrintBar import PrintBar
 
-from Agents.Generic.RandomAgent import RandomAgent
-from Agents.Generic.PolicyAgent import PolicyAgent
-from Agents.Generic.MctsAgent import MctsAgent
-from Agents.SCS.GoalRushAgent import GoalRushAgent
+from Testing.Tester import Tester
+from Testing.RemoteTester import RemoteTester
+
+from Testing.Agents.Generic.RandomAgent import RandomAgent
+from Testing.Agents.Generic.PolicyAgent import PolicyAgent
+from Testing.Agents.Generic.MctsAgent import MctsAgent
+from Testing.Agents.SCS.GoalRushAgent import GoalRushAgent
 
 from Games.SCS.SCS_Game import SCS_Game
 from Games.SCS.SCS_Renderer import SCS_Renderer

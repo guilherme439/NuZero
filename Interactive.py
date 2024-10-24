@@ -1,19 +1,19 @@
 import os
 
-from AlphaZero import AlphaZero
+from Training.AlphaZero import AlphaZero
 
 from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
 from Neural_Networks.ConvNet import ConvNet
 from Neural_Networks.ResNet import ResNet
 from Neural_Networks.RecurrentNet import RecurrentNet
 
-from Agents import Agent
-from Agents.Generic.MctsAgent import MctsAgent
-from Agents.Generic.PolicyAgent import PolicyAgent
-from Agents.Generic.RandomAgent import RandomAgent
-from Agents.SCS.GoalRushAgent import GoalRushAgent
+from Testing.Agents import Agent
+from Testing.Agents.Generic.MctsAgent import MctsAgent
+from Testing.Agents.Generic.PolicyAgent import PolicyAgent
+from Testing.Agents.Generic.RandomAgent import RandomAgent
+from Testing.Agents.SCS.GoalRushAgent import GoalRushAgent
 
-from TestManager import TestManager
+from Testing.TestManager import TestManager
 
 from Games.SCS.SCS_Game import SCS_Game
 from Games.SCS.SCS_Renderer import SCS_Renderer
