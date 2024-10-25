@@ -2,10 +2,10 @@ import os
 
 from Training.AlphaZero import AlphaZero
 
-from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
-from Neural_Networks.ConvNet import ConvNet
-from Neural_Networks.ResNet import ResNet
-from Neural_Networks.RecurrentNet import RecurrentNet
+from Neural_Networks.Architectures.MLP_Network import MLP_Network as MLP_Net
+from Neural_Networks.Architectures.ConvNet import ConvNet
+from Neural_Networks.Architectures.ResNet import ResNet
+from Neural_Networks.Architectures.RecurrentNet import RecurrentNet
 
 from Testing.Agents import Agent
 from Testing.Agents.Generic.MctsAgent import MctsAgent
@@ -436,7 +436,7 @@ class Interactive:
 
     def agent_choices(self, game_name):
         generic_agents = ("Mcts", "Policy", "Random")
-        SCS_agents = ("GoalRush")
+        SCS_agents = ("GoalRush",)
         Tic_Tac_Toe_agents = ()
         if game_name == "SCS":
             available_agents = generic_agents + SCS_agents
@@ -450,12 +450,12 @@ class Interactive:
 
         print("\nWe will run tests by pitting two of this agents against each other.")
         print("\"Policy\" and \"Mcts\" agents require a trained network.")
-        p1_number = input("\nEnter the number of player one's agent: ")
-        p1_agent_name = available_agents[p1_number -1]
+        p1_number = int(input("\nEnter the number of player one's agent: "))
+        p1_agent_name = available_agents[p1_number]
         p1_agent = self.create_agent(p1_agent_name, game_name)
 
-        p2_number = input("\nEnter the number of player two's agent: ")
-        p2_agent_name = available_agents[p2_number -1]
+        p2_number = int(input("\nEnter the number of player two's agent: "))
+        p2_agent_name = available_agents[p2_number]
         p2_agent = self.create_agent(p2_agent_name, game_name)
 
         return p1_agent, p2_agent

@@ -4,7 +4,7 @@ import glob
 import pickle
 import torch
 
-from Neural_Networks.Torch_NN import Torch_NN
+from Neural_Networks.Network_Manager import Network_Manager
 
 
 
@@ -38,7 +38,7 @@ def load_network_checkpoint(game_name, network_name, checkpoint_number):
     base_scheduler = load_pickle(scheduler_pickle_path)
     scheduler_dict = checkpoint["scheduler_state_dict"]
 
-    nn = Torch_NN(model)
+    nn = Network_Manager(model)
     return nn, base_optimizer, optimizer_dict, base_scheduler, scheduler_dict, buffer_path, plot_path, checkpoint_number
 
 def save_checkpoint(save_path, network, optimizer, scheduler):

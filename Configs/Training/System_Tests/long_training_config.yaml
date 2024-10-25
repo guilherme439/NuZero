@@ -1,10 +1,10 @@
 ###
 Initialization:
-  network_name: small_test
+  network_name: long_training_test
   load_checkpoint: False
 
   Checkpoint:
-    cp_network_name: small_test
+    cp_network_name: long_training_test
     iteration_number: auto
     keep_optimizer: True
     keep_scheduler: True
@@ -20,7 +20,7 @@ Running:
   early_softmax_moves: 0
   early_softmax_exploration: 0.5
   early_random_exploration: 0.5
-  training_steps: 500
+  training_steps: 1000
 
   Sequential:
     num_games_per_type_per_step: 12
@@ -38,28 +38,28 @@ Cache:
 
 ###
 Saving:
-  save_frequency: 5
+  save_frequency: 20
   storage_frequency: 1
   save_buffer: True
 
 ###
 Testing:
   asynchronous_testing: True
-  testing_actors: 1
+  testing_actors: 2
   early_testing: False
-  policy_test_frequency: 7
-  mcts_test_frequency: 23
-  num_policy_test_games: 20
-  num_mcts_test_games: 10
+  policy_test_frequency: 35
+  mcts_test_frequency: 45
+  num_policy_test_games: 50
+  num_mcts_test_games: 50
   test_game_index: 0
 
 
 ###
 Plotting:
-  plot_frequency: 1
+  plot_frequency: 10
   plot_loss: True
   plot_weights: False
-  recent_steps_loss: 60
+  recent_steps_loss: 100
 
 
 

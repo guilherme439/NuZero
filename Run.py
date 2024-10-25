@@ -18,12 +18,12 @@ import matplotlib.pyplot as plt
 from ray.runtime_env import RuntimeEnv
 from scipy.special import softmax
 
-from Neural_Networks.Torch_NN import Torch_NN
-from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
+from Neural_Networks.Network_Manager import Network_Manager
 
-from Neural_Networks.ConvNet import ConvNet
-from Neural_Networks.ResNet import ResNet
-from Neural_Networks.RecurrentNet import RecurrentNet
+from Neural_Networks.Architectures.MLP_Network import MLP_Network as MLP_Net
+from Neural_Networks.Architectures.ConvNet import ConvNet
+from Neural_Networks.Architectures.ResNet import ResNet
+from Neural_Networks.Architectures.RecurrentNet import RecurrentNet
 
 from Games.SCS.SCS_Game import SCS_Game
 from Games.SCS.SCS_Renderer import SCS_Renderer
@@ -258,7 +258,7 @@ def main():
                         torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
-                nn = Torch_NN(model)
+                nn = Network_Manager(model)
 
                 
                 play_actions = 9

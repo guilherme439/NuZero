@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 
-class Torch_NN():
+class Network_Manager():
 
     def __init__(self, model):
         

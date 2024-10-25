@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import ruamel
 from ruamel.yaml import YAML
 
-from Neural_Networks.Torch_NN import Torch_NN
+from Neural_Networks.Network_Manager import Network_Manager
 
 from Utils.RemoteStorage import RemoteStorage
 
@@ -286,7 +286,7 @@ class TestManager():
                 net_data = load_network_checkpoint(self.game_name, cp_network_name, cp_number)
                 nn = net_data[0]
             else:
-                nn = Torch_NN(model)
+                nn = Network_Manager(model)
 
             if agent_type == "mcts":
                 search_config_path = agent_config["search_config_path"]

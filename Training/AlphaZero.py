@@ -21,7 +21,7 @@ from copy import deepcopy
 from random import randrange
 import more_itertools
 
-from Neural_Networks.Torch_NN import Torch_NN
+from Neural_Networks.Network_Manager import Network_Manager
 
 from Training.Gamer import Gamer
 from Training.ReplayBuffer import ReplayBuffer
@@ -149,7 +149,7 @@ class AlphaZero():
             self.fresh_start = True
             if model is None:
                 raise Exception("When not loading from a network checkpoint, a \"model\" argument must be provided.")
-            self.latest_network = Torch_NN(model)
+            self.latest_network = Network_Manager(model)
             self.optimizer = create_optimizer(self.latest_network.get_model(), optimizer_name, starting_lr, weight_decay, momentum, nesterov)
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=scheduler_boundaries, gamma=scheduler_gamma)
 

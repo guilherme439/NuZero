@@ -12,7 +12,7 @@ def test_new_training():
     result = subprocess.run(
         ['python', 'Run.py', '--interactive'],
         input=input_data.encode(), 
-        capture_output=True
+        capture_output=False
     )
     
     assert result.returncode == 0, f"Script crashed with return code {result.returncode}"
