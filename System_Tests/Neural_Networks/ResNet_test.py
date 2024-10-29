@@ -13,14 +13,12 @@ def test_ResNet_hex():
     in_channels = example_game.get_state_shape()[0]
     policy_channels = example_game.get_action_space_shape()[0]
     model = ResNet(in_channels, policy_channels, num_filters=16, num_blocks=12, hex=True)
+    print(model)
 
     network = Network_Manager(model)
+    state = example_game.generate_state_image()
+    policy, value = network.inference(state, False)
 
-    policy, value = network.inference(example_game.generate_state_image(), False)
-
-    print(f"\nPolicy:\n{policy}")
-    print("\n\n\n")
-    print(f"\nValue:\n{value}")
     print("Test completed successfully")
 
 def test_ResNet():
@@ -29,13 +27,11 @@ def test_ResNet():
     in_channels = example_game.get_state_shape()[0]
     policy_channels = example_game.get_action_space_shape()[0]
     model = ResNet(in_channels, policy_channels, num_filters=16, num_blocks=12, hex=False)
+    print(model)
 
     network = Network_Manager(model)
+    state = example_game.generate_state_image()
+    policy, value = network.inference(state, False)
 
-    policy, value = network.inference(example_game.generate_state_image(), False)
-
-    print(f"\nPolicy:\n{policy}")
-    print("\n\n\n")
-    print(f"\nValue:\n{value}")
     print("Test completed successfully")
 

@@ -13,13 +13,11 @@ def test_MLP():
     x,y,z = example_game.get_action_space_shape()
     out_features = x*y*z
     model = MLP_Net(out_features)
+    print(model)
 
     network = Network_Manager(model)
 
     policy, value = network.inference(example_game.generate_state_image(), False)
 
-    print(f"\nPolicy:\n{policy}")
-    print("\n\n\n")
-    print(f"\nValue:\n{value}")
     print("Test completed successfully")
 

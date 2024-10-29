@@ -12,7 +12,7 @@ from .blocks import *
 
 class ResNet(nn.Module):
 
-    def __init__(self, in_channels, policy_channels, kernel_size=1, num_filters=256, num_blocks=4, batch_norm=False, policy_head="conv", value_head="reduce", value_activation="relu", hex=True):
+    def __init__(self, in_channels, policy_channels, num_filters=256, num_blocks=4, batch_norm=False, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True):
 
         super().__init__()
         self.recurrent = False
@@ -20,9 +20,9 @@ class ResNet(nn.Module):
         # Input Module
         input_layers = []
         if hex:
-            input_layers.append(hexagdly.Conv2d(kernel_size=kernel_size, in_channels=in_channels, out_channels=num_filters, bias=False))
+            input_layers.append(hexagdly.Conv2d(kernel_size=1, in_channels=in_channels, out_channels=num_filters, stride=1, bias=False))
         else:
-            input_layers.append(nn.Conv2d(kernel_size=kernel_size, in_channels=in_channels, out_channels=num_filters, bias=False))
+            input_layers.append(nn.Conv2d(kernel_size=3, in_channels=in_channels, out_channels=num_filters, stride=1, padding='same', bias=False))
         if batch_norm:
             input_layers.append(nn.BatchNorm2d(num_features=num_filters))
         input_layers.append(nn.ReLU())
@@ -42,7 +42,7 @@ class ResNet(nn.Module):
         ## POLICY HEAD
         match policy_head:
             case "conv":
-                self.policy_head = Conv_PolicyHead(num_filters, policy_channels, batch_norm=batch_norm, hex=hex)
+                self.policy_head = Reduce_PolicyHead(num_filters, policy_channels, batch_norm=batch_norm, hex=hex)
             case _:
                 print("Option not available for ResNet")
                 exit()
@@ -50,7 +50,7 @@ class ResNet(nn.Module):
         ## VALUE HEAD
         match value_head:
             case "reduce":
-                self.value_head = Reduce_ValueHead(num_filters, activation="relu", batch_norm=batch_norm, hex=hex)
+                self.value_head = Reduce_ValueHead(num_filters, activation=value_activation, batch_norm=batch_norm, hex=hex)
             case "dense":
                 self.value_head = Dense_ValueHead(num_filters, batch_norm=batch_norm, hex=hex)
             case _:

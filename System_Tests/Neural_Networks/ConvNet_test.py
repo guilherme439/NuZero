@@ -13,15 +13,12 @@ def test_ConvNet_hex():
     
     in_channels = example_game.get_state_shape()[0]
     policy_channels = example_game.get_action_space_shape()[0]
-    model = ConvNet(in_channels, policy_channels, num_filters=32, num_blocks=8, hex=True)
+    model = ConvNet(in_channels, policy_channels, num_filters=32, num_layers=8, hex=True)
+    print(model)
 
     network = Network_Manager(model)
-
     policy, value = network.inference(example_game.generate_state_image(), False)
 
-    print(f"\nPolicy:\n{policy}")
-    print("\n\n\n")
-    print(f"\nValue:\n{value}")
     print("Test completed successfully")
 
 def test_ConvNet():
@@ -29,14 +26,11 @@ def test_ConvNet():
     
     in_channels = example_game.get_state_shape()[0]
     policy_channels = example_game.get_action_space_shape()[0]
-    model = ConvNet(in_channels, policy_channels, num_filters=32, num_blocks=8, hex=True)
+    model = ConvNet(in_channels, policy_channels, num_filters=32, num_layers=8, hex=True)
+    print(model)
 
     network = Network_Manager(model)
-
     policy, value = network.inference(example_game.generate_state_image(), False)
 
-    print(f"\nPolicy:\n{policy}")
-    print("\n\n\n")
-    print(f"\nValue:\n{value}")
     print("Test completed successfully")
 
