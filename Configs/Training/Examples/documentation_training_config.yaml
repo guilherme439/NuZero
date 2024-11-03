@@ -1,0 +1,242 @@
+###
+Initialization:
+  network_name: test_net    # The name that the network will be saved as.
+  load_checkpoint: True     # Whether or not to start training from a checkpoint
+
+  Checkpoint:
+    cp_network_name: checkpoint_net   # The name of the network, that we will load the checkpoint from.
+
+    iteration_number: 2000  # OPTIONS: "auto" | [integer]
+    # Iteration number of the chekpoint.
+    # The "auto" option will try to find and use the latest network checkpoint.
+    
+    keep_optimizer: True    # OPTIONS: True | False
+    keep_scheduler: False   # OPTIONS: True | False
+    # Whether or not to keep the optimizer/scheduler
+    # from the checkpoint loaded
+
+    load_buffer: True       # OPTIONS: True | False
+    # Load the replay buffer or not.
+    # This will load the replay buffer based on the iteration_number you chose.
+    # This is, if you chose checkpoint iteration number 5,
+    # it will only load the games that were available up to iteration 5,
+    # even if you have saved the replay buffer until, lets say, iteration 1000.
+
+
+    fresh_start: False      # OPTIONS: True | False
+    # Whether or not to restart training from iteration 0, using the loaded network.
+
+    new_plots: False        # OPTIONS: True | False
+    # Whether to clear and restart the plots, or not.
+
+
+###
+Running:
+  running_mode: sequential   # OPTIONS:  asynchronous | sequential
+  # If you want to run self-play and training simultaneously or sequentially.
+
+  # NOTE 1: Self-play will always use several actors, that run in parallel,
+  # to play its games, idependently of the running mode. 
+  # Similarly, parallelizable training operations will also use several cores,
+  # independently of the running mode choice.
+  # Running mode only selects whether or not the multiple core training operations
+  # should run while the multiple self-play games are being played.
+
+  # NOTE 2: The original AlphaZero, ran asynchronously,
+  # however that requires a lot more total cores / computing power to be efficient,
+  # since you will always be doing two thing at the same time.
+
+  # NOTE 3: No matter the running mode choice, you can always run tests asynchronously.
+
+
+  num_actors: 12                    # Number of processes/actors that will be running self-play games.
+  early_fill_per_type: 1200         # Number of games to played, to fill the replay buffer, before training starts.
+
+
+  # Search exploration settings for the ealy_fill games
+  # To understand this better check the search config documentation.
+  early_softmax_moves: 0            # Number of initial moves that are selected using softmax instead of max
+  early_softmax_exploration: 0.8    # Chance to trigger a softmax move instead of max, at any time during each game
+  early_random_exploration: 0.5     # Chance to trigger a random move instead of max, at any time during each game
+
+
+  training_steps: 5000              # Total number of training steps the network will be trained for.
+
+  Sequential:
+    num_games_per_type_per_step: 12 # Number of self-play game to run before each training step.
+
+  Asynchronous:
+    update_delay: 120               # Delay (in seconds) between each training step.
+                                    # This is used so that training can wait a bit
+                                    # for the self-play actors to fill the replay buffer,
+                                    # so that there is more/newer training data.
+
+
+###
+Cache:
+  cache_choice: keyless      # OPTIONS:  dict | keyless | none
+  # Choose an inference cache implementation or none to not use any.
+
+  # dict is a cache implemented using a python dictionary. 
+  # Simple implementation but is very memory inefficient.
+
+  # keyless uses hashing to just store inference results and not the states.
+  # It is more memory efficient, but it might get hash conflicts in very larger state spaces.
+  # Its the best choice in most cases.
+
+  max_size: 12000         # Maximum number of entries that the cache should have.
+                          # This is just an upper limit,
+                          # the actual maximum size of the cache
+                          # will be calculated base in this number
+
+  keep_updated: True      # Whether self-play actors should update their caches
+                          # with the entries of other actors which have finished a game
+                          # in order to achieve higher hit-rates.
+                          # This is still a very experimental feature
+                          # and might get changed in the future
+
+
+###
+Saving:
+  storage_frequency: 1    # Number of training steps between internal network storage.
+                          # This can be used to control the minimum number of training steps
+                          # before a network is considered a "new" network.
+                          # Will be deprecated in the future.
+
+  save_frequency: 20      # Number of training steps between saving each network checkpoint.
+
+  save_buffer: True       # Wheter or not to save the replay buffer to a file.
+                          # This is required in order to later load the replay buffer from a checkpoint.
+
+
+###
+Testing:
+  asynchronous_testing: True 
+  # This must be True in asynchronous running mode.
+
+  # In sequential mode this controls if the "self-play -> training" cicle,
+  # will wait or not for tests, when they need to be done.
+
+  testing_actors: 2             # Number of actors that will run test games.
+
+  early_testing: False          # Whether to do a testing run before training starts,
+                                # to get stats for the untrained network.
+
+  policy_test_frequency: 25     # Number of training steps between each policy test run.
+  mcts_test_frequency: 65       # Number of training steps between each mcts test run.
+  num_policy_test_games: 100    # Number of games to play in each policy test run (per player).
+  num_mcts_test_games: 100      # Number of games to play in each mcts test run (per player).
+
+  test_game_index: 0
+  # This is only used when training with multiple games types, which is an "experimental" feature.
+  # Keep this at 0, if you are only using one game type.
+
+
+###
+Plotting:
+  plot_loss: True         # Wheter to plot loss graphs or not.
+  # This will plot graphs for policy, value and combined loss.
+
+  plot_weights: False     # Whether or not, to plot graphs with weight information.
+  # This will plot graphs for max, min and average weight values.
+  # Setting this to True might slow down plotting speeds.
+
+  plot_frequency: 10      # Number of training steps between graph plotting
+
+  recent_steps_loss: 200  
+  # If this number is bigger than 0,
+  # loss graphs will be plotted for
+  # the most recent N training steps.
+  # For example, if this number is 200,
+  # There will be plotted graphs showing
+  # the loss just for the most recent 200 training steps.
+
+
+###
+Recurrent Options:
+  train_iterations: [6]     # Number of recurrent iterations to be used in inference during training
+  pred_iterations: [6]      # Number of recurrent iterations to be used in inference during self-play
+  test_iterations: 6        # Number of recurrent iterations to be used in inference during testing
+
+  # NOTE: The first two value must be inside a list, because of the multiple-game-type-experiamental feature.
+  #       Just ignore the list for most use cases.
+
+  alpha: 0.01
+  # Alpha value for the progressive loss, as described in the deep thinking papers.
+  # Check the repo's readme for more info.
+
+
+###
+Learning:
+  shared_storage_size: 3          # Number of past network that should be kept in memory.
+                                  # When running asynchronouly this value must be >= 2.
+                                  # This will be removed in the future.
+
+  replay_window_size: 10000       # Maximum number of games in the replay buffer.
+
+  batch_extraction: local         # OPTIONS:  local | remote
+  # The replay buffer is managed by a separate process.
+  # This controls if the replay buffer should:
+  # extract a batch and then send it to the training process
+  # or
+  # send the entire replay buffer the training process, that then extract the batches itself.
+  # In short: local is faster but uses a lot more memory, while remote is the oposite.
+
+  value_loss: SE                # OPTIONS:  SE | AE
+
+  # Which value loss function to use:
+  # SE = Squared error
+  # AE = Absolute error
+
+  policy_loss: CEL               # OPTIONS:  CEL | KLD
+
+  # Which policy loss function to use:
+  # CEL = Cross-entropy loss
+  # KLD = KL Divergence
+
+
+  normalize_cel: False
+  # Whether or not to normalize Cross-entropy loss
+  # by dividing it by log(target_size). 
+  # For this particular use case,
+  # target size is always equal to the total number of actions.
+
+  learning_method: samples    # OPTIONS:  samples | epochs
+  # Defines how the self-play data will be used to train the network.
+
+  # samples: Extracts batches of game positions to use in training. (Used in Alphazero)
+  # epochs: Runs epochs over all the data in the replay buffer, by deviding it into batches.
+
+  Samples:
+    batch_size: 256         # Number of positions in each batch
+    num_samples: 32         # Number of batches
+    with_replacement: True  # If position extraction should be done with replacement or not
+
+    late_heavy: True        
+    # If a "late_heavy" distribution should be used to extract the batches
+    # This distribution has a higher probability of the most recent games being selected.
+
+
+  Epochs:
+    batch_size: 2048      # Number of positions in each batch
+    learning_epochs: 1    # Number of epochs to run over the replay buffer in each training step.
+    plot_epochs: False    # If you whish to plot graphs for the loss, for the epochs within each traing step.
+
+
+###
+Optimizer:
+  optimizer_choice: Adam  # OPTIONS:  Adam | SGD
+
+  SGD: # Check the pytorch optimizer documentation for more info
+    weight_decay: 1.0e-07
+    momentum: 0.9
+    nesterov: True
+
+
+###
+Scheduler:
+  starting_lr: 5.0e-5                           # Initial learning rate
+
+  # The sheduler is step-based scheduler.
+  scheduler_boundaries: [15000, 30000, 50000]   # Number of NETWORK UPDATES at which the learning rate will change.
+  scheduler_gamma: 0.5                          # Value that multiples by the learning rate at each step.
