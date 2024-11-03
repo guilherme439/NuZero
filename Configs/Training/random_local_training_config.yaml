@@ -1,12 +1,10 @@
-# Config to continue training in case of crash
-
 ###
 Initialization:
-  network_name: random_map_run_2
-  load_checkpoint: False
+  network_name: random_local_small
+  load_checkpoint: True
 
   Checkpoint:
-    cp_network_name: random_map_run_2
+    cp_network_name: random_local_small
     iteration_number: auto
     keep_optimizer: True
     keep_scheduler: True
@@ -18,15 +16,15 @@ Initialization:
 ###
 Running:
   running_mode: sequential
-  num_actors: 4
-  early_fill_per_type: 1000
+  num_actors: 5
+  early_fill_per_type: 0
   early_softmax_moves: 0
   early_softmax_exploration: 0.8
   early_random_exploration: 0.5
   training_steps: 5000
 
   Sequential:
-    num_games_per_type_per_step: 12
+    num_games_per_type_per_step: 10
 
   Asynchronous:
     update_delay: 120
@@ -35,8 +33,8 @@ Running:
 ###
 Cache:
   cache_choice: keyless
-  max_size: 12000
-  keep_updated: False
+  max_size: 1000
+  keep_updated: True
 
 
 ###
@@ -76,8 +74,8 @@ Recurrent Options:
 
 ###
 Learning:
-  shared_storage_size: 3
-  replay_window_size: 10000
+  shared_storage_size: 2
+  replay_window_size: 1500
   batch_extraction: local
   value_loss: SE
   policy_loss: CEL
@@ -85,8 +83,8 @@ Learning:
   learning_method: samples
 
   Samples:
-    batch_size: 256
-    num_samples: 32
+    batch_size: 128
+    num_samples: 16
     with_replacement: True
     late_heavy: True
 

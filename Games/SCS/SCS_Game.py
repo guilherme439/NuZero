@@ -22,7 +22,7 @@ from Games.Game import Game
 
 
 '''
-From the hexagly source code, this is how the board is converted
+From the hexagly source code: This is how the board is converted
 from hexagonal to ortogonal representation:
 
 

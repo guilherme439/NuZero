@@ -1,0 +1,47 @@
+###
+Simulation:
+  mcts_simulations: 300   # OPTIONS: Any integer larget than 0
+  # The number of MCTS simulations that will be performed on each move,
+  # which is (almost always) equal to the number of leaf nodes that will be expanded.
+
+  keep_subtree: True # OPTIONS: True | False
+  # Whether or not to to optimize search (as described in the AlphaZero paper)
+  # by keeping the subtree from the the previously chosen action
+
+
+###
+UCT:  # Constants for the UCT formula
+  pb_c_base: 10000  # "Normalization" value for the exploration bias
+  pb_c_init: 1.15   # "Initial" value for the exploration bias
+  
+
+###
+Exploration:
+  number_of_softmax_moves: 0    # OPTIONS: integer >= 0
+  # Number of initial moves that are selected using softmax instead of max
+  # To make it clear: If this is set to 4, the first 4 moves will use softmax.
+
+  epsilon_softmax_exploration: 0.04   # OPTIONS: 0 <= float <= 1
+  # Chance to trigger a softmax move instead of max, at any time during the game
+
+  epsilon_random_exploration: 0.001   # OPTIONS: 0 <= float <= 1
+  # Chance to trigger a random move instead of max, at any time during the game
+
+  value_factor: 1   # OPTIONS: float >= 0
+  # Factor that multiplies by the value in the UCT formula.
+  # This is not from the original paper,
+  # but can be used to force a stronger importance to the value component.
+  # Note: Using any value != 1 may not garantie the same
+  # mathematical properties as the original UCT formula.
+
+  root_exploration_distribution: gamma      # OPTIONS: gamma
+  # The distribution to be used for exploration noise.
+  # Currently, only "gamma" is available,
+  # which the one used in AlphaZero.
+
+  root_exploration_fraction: 0.20     # OPTIONS: 0 <= float <= 1
+  # Fraction of policy that will be replaced with noise
+
+  root_dist_alpha: 0.15   # OPTIONS: float >= 0
+  root_dist_beta: 1       # OPTIONS: float >= 0
+  # alpha and beta values for the noise distribution.

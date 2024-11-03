@@ -18,41 +18,31 @@ import matplotlib.pyplot as plt
 from ray.runtime_env import RuntimeEnv
 from scipy.special import softmax
 
-from Neural_Networks.Torch_NN import Torch_NN
-from Neural_Networks.MLP_Network import MLP_Network as MLP_Net
+from Neural_Networks.Network_Manager import Network_Manager
 
-from Neural_Networks.ConvNet import ConvNet
-from Neural_Networks.ResNet import ResNet
-from Neural_Networks.RecurrentNet import RecurrentNet
+from Neural_Networks.Architectures.MLP_Network import MLP_Network as MLP_Net
+from Neural_Networks.Architectures.ConvNet import ConvNet
+from Neural_Networks.Architectures.ResNet import ResNet
+from Neural_Networks.Architectures.RecurrentNet import RecurrentNet
 
 from Games.SCS.SCS_Game import SCS_Game
 from Games.SCS.SCS_Renderer import SCS_Renderer
 from Games.Tic_Tac_Toe.tic_tac_toe import tic_tac_toe
 
-from AlphaZero import AlphaZero
-from Tester import Tester
-from RemoteTester import RemoteTester
+from Training.AlphaZero import AlphaZero
 
-from Gamer import Gamer
-from ReplayBuffer import ReplayBuffer
-from RemoteStorage import RemoteStorage
-
-from Agents.Generic.MctsAgent import MctsAgent
-from Agents.Generic.PolicyAgent import PolicyAgent
-from Agents.Generic.RandomAgent import RandomAgent
-from Agents.SCS.GoalRushAgent import GoalRushAgent
-
-from TestManager import TestManager
+from Testing.TestManager import TestManager
 
 from progress.bar import ChargingBar
 from Utils.Progress_Bars.PrintBar import PrintBar
 
-from Utils.general_utils import *
+from Utils.Functions.general_utils import *
+from Utils.Functions.loading_utlis import *
+from Utils.Functions.ray_utils import *
+from Utils.Functions.stats_utils import *
+from Utils.Functions.yaml_utils import *
 
-from Utils.Caches.KeylessCache import KeylessCache
-from Utils.Caches.DictCache import DictCache
-
-import Interactive
+from Interactive import Interactive
 
 def main():
     pid = os.getpid()
@@ -90,6 +80,7 @@ def main():
     if args.log_driver:
         log_to_driver = True
 
+
     if args.training_preset is not None:
         
         ##############################################################################################################
@@ -121,17 +112,18 @@ def main():
             case 1: # SCS_Example
                 
                 game_class = SCS_Game
-                game_args_list = [["Games/SCS/Game_configs/r_unbalanced_config_5.yml"]]
+                game_args_list = [["Games/SCS/Game_configs/randomized_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                train_config_path="Configs/Config_Files/Training/small_test_training_config.yaml"
-                search_config_path="Configs/Config_Files/Search/test_search_config.yaml"
+                train_config_path="Configs/Training/small_dummy_training_config.yaml"
+                search_config_path="Configs/Search/dummy_search_config.yaml"
 
-                state_set = create_r_unbalanced_state_set(game)
+                state_set = None
+                #state_set = create_r_unbalanced_state_set(game)
 
                 in_channels = game.get_state_shape()[0]
                 policy_channels = game.get_action_space_shape()[0]
-                model = RecurrentNet(in_channels, policy_channels, 256, 2, recall=True, policy_head="conv", value_head="reduce", value_activation="tanh", hex=True)
+                model = ResNet(in_channels, policy_channels, 32, 6, policy_head="conv", value_head="reduce", hex=True)
 
                 print("\n")
                 context = start_ray_local(log_to_driver)
@@ -169,8 +161,8 @@ def main():
                 game_args_list = [["Games/SCS/Game_configs/randomized_config_5.yml"]]
                 game = game_class(*game_args_list[0])
 
-                train_config_path="Configs/Training/random_map_training_config.yaml"
-                search_config_path="Configs/Search/random_map_search_config.yaml"
+                train_config_path="Configs/Training/random_local_training_config.yaml"
+                search_config_path="Configs/Search/random_local_search_config.yaml"
 
                 state_set = None
                 #state_set = create_r_unbalanced_state_set(game)
@@ -240,9 +232,7 @@ def main():
             case _:
                 raise Exception("Unknown testing preset.")
 
-        
-        
-            
+               
     elif args.debug is not None:
         match args.debug:
             
@@ -268,7 +258,7 @@ def main():
                         torch.nn.init.xavier_uniform_(param, gain=0.75)
                     
                 #'''
-                nn = Torch_NN(model)
+                nn = Network_Manager(model)
 
                 
                 play_actions = 9
@@ -300,8 +290,6 @@ def main():
                     all_weights = torch.cat((all_weights, param.clone().detach().flatten().cpu()), 0) 
 
                 print(all_weights)
-
-                
                 
 
             case 1:
@@ -330,20 +318,22 @@ def main():
                 print(loaded_data)
                 os.remove(file_name)
 
+            case 2:
+                remove_from_all_configs("Plotting", "value_split", dir_path="Configs/Training")
+                remove_from_all_configs("Plotting", "policy_split", dir_path="Configs/Training")
+                remove_from_all_configs("Plotting", "combined_split", dir_path="Configs/Training")
+                insert_in_all_configs("Plotting", "recent_steps_loss", value=200, dir_path="Configs/Training")
+                pass
 
 
     elif args.interactive:
-        Interactive.start_interative()
+        Interactive().start()
 
 
     
     return
 
-def initialize_parameters(model):
-    for name, param in model.named_parameters():
-        if ".weight" not in name:
-            #torch.nn.init.uniform_(param, a=-0.04, b=0.04)
-            torch.nn.init.xavier_uniform_(param)
+
 
 ##########################################################################
 # ----------------------------               --------------------------- #
@@ -504,48 +494,6 @@ def create_solo_state_set(game):
 
     game.reset_env()
     return state_set
-
-##########################################################################
-# ----------------------------               --------------------------- #
-# ---------------------------       RAY       -------------------------- #
-# ----------------------------               --------------------------- #
-##########################################################################
-
-def start_ray_local(log_to_driver=False):
-    print("\n\n--------------------------------\n\n")
-
-    context = ray.init(log_to_driver=log_to_driver)
-    return context
-
-def start_ray_local_cluster(log_to_driver=False):
-    print("\n\n--------------------------------\n\n")
-
-    runtime_env=RuntimeEnv \
-					(
-					working_dir="https://github.com/guilherme439/NuZero/archive/refs/heads/main.zip",
-					pip="./requirements.txt"
-					)
-		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
-    return context
-
-def start_ray_rnl(log_to_driver=False):
-    print("\n\n--------------------------------\n\n")
-
-    '''
-    env_vars={"CUDA_VISIBLE_DEVICES": "-1",
-            "LD_LIBRARY_PATH": "$NIX_LD_LIBRARY_PATH"
-            }
-    '''
-
-    runtime_env=RuntimeEnv \
-					(
-					working_dir="/mnt/cirrus/users/5/2/ist189452/TESE/NuZero",
-					pip="./requirements.txt",
-					)
-		
-    context = ray.init(address='auto', runtime_env=runtime_env, log_to_driver=log_to_driver)
-    return context
 
 
 # ------------------------

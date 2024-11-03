@@ -1,0 +1,99 @@
+###
+Test:
+  test_type: data # OPTIONS: visual | data
+
+  # "visual" tests allow you to visualize a game.
+  # You can choose to see it as it is being played or
+  # analyse it when it finishes using the action/state history.
+
+  # "data" tests will do several runs with multiple games in each,
+  # while varying different parameters in order to collect data,
+  # that can later be plotted and analysed.
+
+
+  Data: # "data" test type configuration options
+    Variable:
+      changing_agent: 1 # OPTIONS: 0 | 1 | 2
+      # Options 1 and 2 select agents 1 and 2 respectively, as the variable agents;
+      # While option 0 disables this feature, and both agents will not change during the test.
+
+      changing_parameter:
+        name: iterations # OPTIONS: checkpoints | iterations
+        # Select which parameter the changing agent will vary:
+        # "checkpoints" will go through different network checkpoints,
+        # while "iterations" will vary the ammount of recurrent iterations.
+
+        Range:     
+          first: 4  # This is the range for the changing parameter.
+          last: 12  # It includes both "first" and "last".
+          step: 1
+
+    # You might want to do several runs of the same test.
+    # The options here are very self-descriptive      
+    Runs:
+      num_runs: 1
+      num_games_per_run: 100
+
+    Testers:
+      new_testers: True 
+      # Whether or not to create a new process pool for the test
+      # When running isolated test you always want to set this to True.
+      # Should only be set to False in very specific use cases.
+
+      num_testers: 4 # The number of testers/processes/actors that will run the test.
+
+  Visual: # "visual" test type configuration options
+    slow: False 
+    # Wheter or not, to slow down the game while its being played.
+    # Usefull when using render = "live", otherwise the game runs too fast.
+
+    print: True
+    # Wheter or not, to print representations of the game states to the terminal.
+
+    render: "analysis" # OPTIONS: live | analysis
+    # "live": See the game live as it is being played
+    # "analysis": Wait for the game to finish and then
+    #             analyse it base on action/state history
+
+
+###
+Agents:
+  p1_agent: # Configuration for player one's agent.
+
+    agent_type: policy # OPTIONS: mcts | policy | goal_rush | random
+
+    # This parameter is only required by the Mcts agent and is ignored by all others.
+    search_config_path: Configs/Search/test_search_config.yaml
+    
+    # Can be used by both "mcts" and "policy" agents
+    # However, policy agents take little advantage from it, in most situations.
+    Cache:
+      cache_choice: keyless # OPTIONS: keyless | dict | disabled
+      max_size: 2000 # Maximum cache size (number of entries).
+
+      keep_updated: False 
+      # If testers should keep their caches updated.
+      # If set to true, testers will update their caches with entries
+      # provided by the other testers, when they finish each game.
+
+    # Required by both "policy" and "mcts" agents.
+    Network:
+      recurrent_iterations: 6 # required by recurrent networks.
+
+      load_checkpoint: True
+      # If this is False, a model needs to be provided
+      # to the TestManager's function that reads this configuration
+
+      Checkpoint:
+        cp_network_name: test_net_load
+        # Name of the trained network inside the respective game's folder
+        
+        cp_number: 1000 # OPTIONS: "auto" | [integer]
+        # The "auto" option will try to find and use the latest network checkpoint.
+
+  p2_agent: # Configuration for player two's agent.
+    agent_type: random
+
+
+
+
