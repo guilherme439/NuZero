@@ -6,6 +6,8 @@ import yaml
 import io
 import os
 
+from gymnasium import spaces
+
 from copy import copy, deepcopy
 
 from enum import Enum
@@ -18,7 +20,7 @@ from Games.SCS.Terrain import Terrain
 
 from Games.SCS.SCS_Renderer import SCS_Renderer
 
-from Games.Game import Game
+from pettingzoo import AECEnv
 
 
 '''
@@ -62,7 +64,7 @@ but I believe it makes more sense this way.
 
 '''
 
-class SCS_Game(Game):
+class SCS_Game(AECEnv):
 
     PHASES = 2              # Check 'update_game_env()' 
     SUB_PHASES = 4
@@ -73,7 +75,7 @@ class SCS_Game(Game):
     N_UNIT_STATUSES = 3     # Available, Moved, Attacked
     N_UNIT_STATS = 3        # Attack , Defense, Movement
 
-    def __init__(self, game_config_path=""):
+    def __init__(self, game_config_path="", seed=None):
         
         # ------------------------------------------------------------ #
         # --------------------- INITIALIZATION  ---------------------- #
@@ -85,7 +87,7 @@ class SCS_Game(Game):
         self.columns = 0
         self.board = []
 
-        self.current_player = 1
+        self.agent_selection = 0
         self.current_phase = 0
         self.current_sub_phase = 0
         self.current_stage = -2   
@@ -112,10 +114,11 @@ class SCS_Game(Game):
         self.terminal_value = 0
         self.terminal = False
 
+
         self.renderer = SCS_Renderer()
-        
+
         if game_config_path != "":
-            self.load_game_from_config(game_config_path)
+            self.load_game_from_config(game_config_path, seed)
 
 
         # ------------------------------------------------------ #
@@ -166,16 +169,25 @@ class SCS_Game(Game):
         self.no_fight_limit = self.no_move_limit + self.no_fight_planes
         # Each of these limits represents the first index of the next section
 
+        self._action_space = spaces.Discrete(self.total_action_planes * self.rows * self.columns)
+
 
         ## STATE REPRESENTATION
         
-        # Terrain
+        # TERRAIN
         self.n_terrain_channels = 3 # atack, defense, movement
-        # Victory points
+        # Each position can contain any positive R value representing terrain modifiers
+
+        # VICTORY POINTS
         self.n_vp_channels = self.N_PLAYERS
-        # Units
+        # Binary planes where victory point locations are marked with a 1
+
+        # UNITS
         self.n_unit_representation_channels = self.N_UNIT_STATS * self.stacking_limit * self.N_UNIT_STATUSES * self.N_PLAYERS
-        # Reinforcements
+        # Each position can contain any positive integer value, representing units stats
+
+
+        # REINFORCEMENTS
         self.n_reinforcements = 3  # Number of reinforcements that are represented per player
         self.n_reinforcement_channels = self.n_reinforcements * self.N_UNIT_STATS
         # For each unit there will be 2 sets of planes:
@@ -183,15 +195,26 @@ class SCS_Game(Game):
         # the second representing how many turns until that unit arrives
         self.n_duration_channels = self.n_reinforcement_channels
         self.n_total_reinforcement_channels = (self.n_reinforcement_channels + self.n_duration_channels) * self.N_PLAYERS
+        # For the reinforcement_channels each position can contain any positive integer value, representing units stats
+        # For the duration_channels each position can contain any integer value between 0 and self.turns
 
-        # Attack
+        # ATTACK
         self.n_target_tile_channels = 1
         self.n_attacker_channels = self.stacking_limit
         self.n_attack_channels = self.n_target_tile_channels + self.n_attacker_channels
-        # Features
+        # These are binary planes marking the tiles being attacked and the positions of each attacker
+
+
+        # FEATURES
         self.n_sub_phase_channels = self.SUB_PHASES
+        # Activation channels that get entierly filled with 1's during the respective sub_phase, and filled with 0's otherwise
+
         self.n_turn_channels = 1
+        # a plane filled with a value between 0 and 1, representing the current turn
+
         self.n_player_channels = 1
+        # a plane filled with either 1's our -1's representing the current player
+
         self.n_feature_channels = self.n_sub_phase_channels + self.n_turn_channels + self.n_player_channels
 
         self.total_dims = \
@@ -203,6 +226,52 @@ class SCS_Game(Game):
         self.n_attack_channels
 
         self.game_state_shape = (self.total_dims, self.rows, self.columns)
+
+        self._observation_space = spaces.Box(
+        low=-1,                           # Minimum value (-1 for player channels)
+        high=np.inf,                      # Maximum value (infinity for unit stats and terrain)
+        shape=self.game_state_shape,      # (total_dims, rows, columns)
+        dtype=np.float32                  # Using float32 to handle continuous values
+        )
+        # In reality the observation space isn't this large,
+        # but it is implemented like this so that it works well
+        # within the PettingZoo ecosystem.
+
+
+        
+        ## PettingZoo
+    
+        self.agents = [ p for p in range(self.N_PLAYERS) ]
+        self.possible_agents = [ p for p in range(self.N_PLAYERS) ]
+
+        self.rewards = {}
+        self._cumulative_rewards = {}
+        self.infos = {}
+        self.truncations = {}
+        self.terminations = {}
+
+        # The action and observation spaces are the same for both players
+        # Action masking is used to determine invalid actions at any moment
+        self.observation_spaces = {}
+        self.action_spaces = {}
+        for p in range(self.N_PLAYERS):
+            self.observation_spaces[p] = self._observation_space
+            self.action_spaces[p] = self._action_space
+            self.rewards[p] = 0
+            self._cumulative_rewards[p] = 0
+            self.infos[p] = {"action_mask": None}
+            self.truncations[p] = False
+            self.terminations[p] = False
+
+        # Simulation mode simplifies the game
+        # to only use absolutelly necessary properties
+        # in order to speed up games,
+        # when running thousands of simulations
+        self.simulation_mode = False
+
+
+        # ------------------ #
+        self.update_game_env()
 
         return
     
@@ -225,7 +294,7 @@ class SCS_Game(Game):
         return self.rows    
 
     def get_current_player(self):
-        return self.current_player
+        return self.agent_selection
     
     def get_terminal_value(self):
         return self.terminal_value
@@ -248,6 +317,20 @@ class SCS_Game(Game):
     def get_tile(self, position):
         return self.board[position[0]][position[1]]
 
+    def observation_space(self, agent):
+        '''
+        Because the game currently is fully observable
+        the observation space will return the same for both agents
+        '''
+        return self.observation_spaces[agent]
+
+    def action_space(self, agent):
+        '''
+        Currently this function returns
+        the entire action space for both agents
+        '''
+        return self.action_spaces[agent]
+
     def store_state(self, state):
         self.state_history.append(state)
         return
@@ -265,29 +348,29 @@ class SCS_Game(Game):
 # ----------------------------              ---------------------------- #
 ##########################################################################
 
-    def step_function(self, action_coords):
+    def step(self, action_coords) -> None:
         self.store_action(action_coords)
         self.play_action(action_coords)
         self.length += 1
-        done = self.update_game_env()
-        return done
+        self.update_game_env()
+        return
 
     # ----------------- ACTIONS ----------------- #
 
     def possible_actions(self):
-        player = self.current_player
+        player = self.agent_selection
         
         # PLANE DEFINITIONS
-        placement_planes = np.zeros((self.placement_planes, self.rows, self.columns), dtype=np.int32)
+        placement_planes = np.zeros((self.placement_planes, self.rows, self.columns), dtype=np.int8)
 
-        movement_planes = np.zeros((self.movement_planes, self.rows, self.columns), dtype=np.int32)
+        movement_planes = np.zeros((self.movement_planes, self.rows, self.columns), dtype=np.int8)
 
-        choose_target_planes = np.zeros((self.choose_target_planes, self.rows, self.columns), dtype=np.int32)
-        choose_attackers_planes = np.zeros((self.choose_attackers_planes, self.rows, self.columns), dtype=np.int32)
-        confirm_attack_planes = np.zeros((self.confirm_attack_planes, self.rows, self.columns), dtype=np.int32)
+        choose_target_planes = np.zeros((self.choose_target_planes, self.rows, self.columns), dtype=np.int8)
+        choose_attackers_planes = np.zeros((self.choose_attackers_planes, self.rows, self.columns), dtype=np.int8)
+        confirm_attack_planes = np.zeros((self.confirm_attack_planes, self.rows, self.columns), dtype=np.int8)
 
-        no_move_planes = np.zeros((self.no_move_planes, self.rows, self.columns), dtype=np.int32)
-        no_fight_planes = np.zeros((self.no_fight_planes, self.rows, self.columns), dtype=np.int32)
+        no_move_planes = np.zeros((self.no_move_planes, self.rows, self.columns), dtype=np.int8)
+        no_fight_planes = np.zeros((self.no_fight_planes, self.rows, self.columns), dtype=np.int8)
         
         
         # PLACING REINFORCEMENTS
@@ -306,7 +389,7 @@ class SCS_Game(Game):
         elif self.current_sub_phase == 1:
             # In this sub_phase the player can either choose a unit to move or end it's movement
 
-            for unit in self.available_units[player-1]:
+            for unit in self.available_units[player]:
                 (x, y) = unit.position
                 tile = self.board[x][y]
 
@@ -327,7 +410,7 @@ class SCS_Game(Game):
         elif self.current_sub_phase == 2:
             # In this sub_phase the player can either choose a target or select a unit as done attacking
             
-            for unit in self.moved_units[player-1]:
+            for unit in self.moved_units[player]:
                 (x, y) = unit.position
                 tile = self.board[x][y]
 
@@ -345,7 +428,7 @@ class SCS_Game(Game):
 
             selectable_units = self.check_adjacent_units(self.target_tile.position, player)
             for unit in selectable_units.copy():
-                if (unit in self.attackers) or (unit in self.attacked_units[player-1]):
+                if (unit in self.attackers) or (unit in self.attacked_units[player]):
                     selectable_units.remove(unit)
 
             for unit in selectable_units:
@@ -453,11 +536,11 @@ class SCS_Game(Game):
         (act, start, stacking_lvl, dest) = self.parse_action(action_coords)
 
         if (act == 0): # Placement
-            player = self.current_player
+            player = self.agent_selection
             turn = self.current_turn
-            new_unit = self.current_reinforcements[player-1][turn].pop(0)
+            new_unit = self.current_reinforcements[player][turn].pop(0)
             new_unit.move_to(start, 0)
-            self.available_units[player-1].append(new_unit)
+            self.available_units[player].append(new_unit)
 
             tile = self.get_tile(start)
             tile.place_unit(new_unit)
@@ -517,8 +600,10 @@ class SCS_Game(Game):
 
     # --------------- ENVIRONMENT --------------- #
 
-    def reset_env(self):
-        self.current_player = 1  
+
+    def reset(self, seed=None, options=None):
+
+        self.agent_selection = 0
         self.current_phase = 0   
         self.current_sub_phase = 0
         self.current_stage = -2 
@@ -531,10 +616,15 @@ class SCS_Game(Game):
         self.terminal_value = 0
         self.terminal = False
 
-        for p in [0,1]:
+        for p in range(self.N_PLAYERS):
             self.available_units[p].clear()
             self.moved_units[p].clear()
             self.attacked_units[p].clear()
+            self.rewards[p] = 0
+            self._cumulative_rewards[p] = 0
+            self.truncations[p] = False
+            self.terminations[p] = False
+
 
         self.current_reinforcements = deepcopy(self.all_reinforcements)
         
@@ -550,7 +640,15 @@ class SCS_Game(Game):
         self.action_history.clear()
 
         self.update_game_env()
-        return
+
+        observation = None
+        if not self.simulation_mode:
+            observation = self.observe(self.agent_selection)
+
+        for p in range(self.N_PLAYERS):
+            self.infos[p]["action_mask"] = self.possible_actions().flatten()
+
+        return observation, self.infos[self.agent_selection]
 
     def update_game_env(self):
         # Two players: P1 and P2
@@ -569,7 +667,7 @@ class SCS_Game(Game):
         # 8 stages in other turns (4 for each player)
 
         done = False
-        previous_player = self.current_player
+        previous_player = self.agent_selection
         previous_stage = self.current_stage
         stage = previous_stage
 
@@ -646,23 +744,23 @@ class SCS_Game(Game):
                         stage = 6
                         continue
             break
-            
-            
-        if(done):
-            self.terminal = True
-            self.terminal_value = self.check_terminal()
-    
-        # ------------------------------------    
+
 
         p1_stages = (-2,0,1,2,3)
         p2_stages = (-1,4,5,6,7)
 
         if stage in p1_stages:
-            self.current_player = 1
+            self.agent_selection = 0
         elif stage in p2_stages:
-            self.current_player = 2
+            self.agent_selection = 1
         else:
-            raise Exception("Error in function: \'update_game_env()\'.")
+            raise Exception("Error in function: \'update_game_env()\'.") 
+            
+        if(done):
+            self.terminal = True
+            self.check_termination()
+    
+        # ------------------------------------    
 
 
         reinforcement_stages = self.reinforcement_stages()
@@ -691,7 +789,10 @@ class SCS_Game(Game):
 
         self.current_stage = stage
 
-        return done
+        for p in range(self.N_PLAYERS):
+            self.infos[p]["action_mask"] = self.possible_actions().flatten()
+
+        return
     
     def reinforcement_stages(self):
         return (-2,-1,0,4)
@@ -717,7 +818,8 @@ class SCS_Game(Game):
 
         return  
 
-    def check_terminal(self):
+    def check_termination(self):
+        ''' Updates terminal values and rewards '''
         p1_captured_points = 0
         p2_captured_points = 0
         victory_p1 = self.victory_points[0]
@@ -736,12 +838,24 @@ class SCS_Game(Game):
 
         if p1_percentage_captured > p2_percentage_captured:
             final_value = 1     # p1 victory
+            p1_reward = 1
+            p2_reward = -1
         elif p1_percentage_captured < p2_percentage_captured:
             final_value = -1    # p2 victory
+            p1_reward = -1
+            p2_reward = 1
         else:
             final_value = 0     # draw
+            p1_reward = 0
+            p2_reward = 0
         
-        return final_value
+        self.terminal_value = final_value
+        self.terminations[self.agent_selection] = 1
+
+        # Rewards are 0 for the entire game, until the final step
+        # So _cumulative_rewards will follow the same pattern
+        self.rewards = {0:p1_reward, 1:p2_reward}
+        self._cumulative_rewards = {0:p1_reward, 1:p2_reward}
 
     def get_winner(self):
         terminal_value = self.get_terminal_value()
@@ -843,7 +957,7 @@ class SCS_Game(Game):
         return
 
     def resolve_combat(self):
-        attacking_player = self.current_player
+        attacking_player = self.agent_selection
         defending_player = self.opponent(attacking_player)
         
         # DEFENSE
@@ -982,8 +1096,7 @@ class SCS_Game(Game):
         return self.terminal
 
     def opponent(self, player):
-        ''' 1 -> 2    |    2 -> 1 '''
-        return (not(player-1)) + 1 
+        return not(player)
 
     def define_board_sides(self):
         '''Calculates the indexes for each of the board's sides'''
@@ -1177,7 +1290,7 @@ class SCS_Game(Game):
         return action_i, action_coords
     
     def get_next_reinforcement(self):
-        return self.current_reinforcements[self.current_player-1][self.current_turn][0]
+        return self.current_reinforcements[self.agent_selection][self.current_turn][0]
 
     def get_action_coords(self, action_i):
         action_coords = np.unravel_index(action_i, self.get_action_space_shape())
@@ -1193,7 +1306,8 @@ class SCS_Game(Game):
 # -------------------------                   -------------------------- #
 ##########################################################################
 
-    def generate_state_image(self):
+    def generate_state(self):
+        ''' Generates a pytorch tensor representing the game state '''
         data_type = torch.float32
 
         # Terrain Channels #
@@ -1332,7 +1446,7 @@ class SCS_Game(Game):
 
         # Player Channel #
         player_plane = torch.ones((self.rows,self.columns), dtype=data_type)
-        if self.current_player == 2:
+        if self.agent_selection == 1:
             player_plane = torch.full((self.rows,self.columns), fill_value=-1, dtype=data_type)
 
         player_plane = torch.unsqueeze(player_plane, 0)
@@ -1346,13 +1460,21 @@ class SCS_Game(Game):
         core_list = [p1_victory, p2_victory, p1_reinforcements, p2_reinforcements, p1_units, p2_units,
                      target_tile_plane, attackers, sub_phase_planes, turn_plane, player_plane]
         stack_list.extend(core_list)
-        new_state = torch.concat(stack_list, dim=0)
 
-        state_image = torch.unsqueeze(new_state, 0) # add batch size to the dimensions
-
-        #print(state_image)
-        return state_image
+        game_state = torch.concat(stack_list, dim=0)
+        #print(game_image)
+        return game_state 
     
+    def generate_network_input(self):
+        '''
+        Generates a pytorch tensor representing the state
+        including a batch dimension, so that it can be used
+        as input for neural network inference 
+        '''
+        game_state = self.generate_state()
+        state_image = torch.unsqueeze(game_state, 0) # add batch size to the dimensions
+        return state_image
+
     def store_search_statistics(self, node):
         sum_visits = sum(child.visit_count for child in node.children.values())
         self.child_policy.append(
@@ -1406,10 +1528,13 @@ class SCS_Game(Game):
 # -------------------------                    ------------------------- #
 ##########################################################################
 
-    def load_game_from_config(self, filename):
+    def load_game_from_config(self, filename, seed):
         # Load config into dictionary
         with open(filename, 'r') as stream:
             data_loaded = yaml.safe_load(stream)
+        
+        if seed:
+            np.random.seed(seed)
 
         self.units_by_id = {}
         self.terrain_by_id = {}
@@ -1519,7 +1644,7 @@ class SCS_Game(Game):
 
                         for i in range(self.rows):
                             self.board.append([])
-                            for j in range(self.columns): 
+                            for j in range(self.columns):
                                 terrain = np.random.choice(self.terrain_types, p=distribution)
                                 self.board[i].append(Tile((i,j), terrain))
 
@@ -1609,7 +1734,6 @@ class SCS_Game(Game):
                         self.board[point[0]][point[1]].victory = 2
                         self.n_vp[1] += 1
 
-        self.update_game_env()
 
     def clone(self):
         return deepcopy(self)
@@ -1867,3 +1991,23 @@ class SCS_Game(Game):
         string += "==\n"
 
         return string
+    
+
+
+##########################################################################
+# -------------------------     PettingZoo     ------------------------- #
+##########################################################################
+    
+    def state(self):
+        ''' PettingZoo expects the state to be a numpy array '''
+        return self.generate_state().numpy()
+
+    def observe(self, agent):
+        '''
+        Since the game is fully observable,
+        observe() and state() always return the same
+        '''
+        return self.state()
+    
+    def close(self):
+        return

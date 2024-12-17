@@ -15,3 +15,5 @@ bitstring
 more_itertools
 ruamel.yaml
 pytest
+gymnasium
+pettingzoo

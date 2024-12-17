@@ -325,6 +325,42 @@ def main():
                 insert_in_all_configs("Plotting", "recent_steps_loss", value=200, dir_path="Configs/Training")
                 pass
 
+            case 3:
+                from pettingzoo.utils import wrappers
+
+                class ActionWrapper(wrappers.BaseWrapper):
+                    def action(self, act):
+                        # Convert flat action index to coordinates
+                        action_coords = self.env.get_action_coords(act)
+                        return action_coords
+
+                    def step(self, action):
+                        # Transform action before passing to environment
+                        transformed_action = self.action(action)
+                        return self.env.step(transformed_action)
+                    
+                from pettingzoo.test import api_test
+                env = SCS_Game("Games/SCS/Game_configs/randomized_config_5.yml")
+                env = ActionWrapper(env)
+                api_test(env, num_cycles=2)
+
+            case 4:
+                game_class = SCS_Game
+                game_args = ["Games/SCS/Game_configs/randomized_config_5.yml"]
+
+                test_config = "Configs/Testing/Examples/render_config.yaml"
+                test_manager = TestManager(game_class, game_args)
+                results = test_manager.test_from_config(test_config_path=test_config)
+
+            case 5:
+                env = SCS_Game("Games/SCS/Game_configs/randomized_config_5.yml")
+                act_space = env.action_space(0)
+                action = act_space.sample()
+                print(f"\n{action}\n\n")
+                print(act_space)
+
+
+
 
     elif args.interactive:
         Interactive().start()

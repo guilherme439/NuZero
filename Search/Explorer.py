@@ -54,7 +54,7 @@ class Explorer():
             while node.expanded():
                 action_i, node = self.select_child(node)
                 action_coords = scratch_game.get_action_coords(action_i)
-                scratch_game.step_function(action_coords)
+                scratch_game.step(action_coords)
                 search_path.append(node)
 
             value = self.evaluate(node, scratch_game, cache)

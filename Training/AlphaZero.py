@@ -934,7 +934,7 @@ class AlphaZero():
             print(predicted_values)
             print("\n\n")
             print(predicted_policies)
-            raise Exception("Nan value found when calculatin loss.")
+            raise Exception("Nan value found when calculating loss.")
 
         return value_loss, policy_loss, combined_loss
 
