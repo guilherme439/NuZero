@@ -13,7 +13,7 @@ def load_network_checkpoint(game_name, network_name, checkpoint_number):
     game_folder = "Games/" + game_name + "/"
     cp_network_folder = game_folder + "models/" + network_name + "/"
     if not os.path.exists(cp_network_folder):
-        raise Exception("\nCould not find a network with that name.\n")
+        raise Exception("Could not find a network with that name.")
     
     buffer_path = cp_network_folder + "replay_buffer.cp"
     plot_path = cp_network_folder + "plot_data.pkl"

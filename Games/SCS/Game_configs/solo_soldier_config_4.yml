@@ -22,7 +22,7 @@ Units:
     attack: 1
     defense: 1
     movement: 2
-    image_path: "SCS/Images/soldier.png"
+    #image_path: "SCS/Images/soldier.png"
 
 
 ###
@@ -43,7 +43,7 @@ Terrain:
     attack_modifier: 1
     defense_modifier: 1
     cost: 1
-    image_path: SCS/Images/plains.jpg
+    image_path: Games/SCS/Images/plains.jpg
 
 
 ###

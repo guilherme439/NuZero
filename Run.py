@@ -342,7 +342,7 @@ def main():
                 from pettingzoo.test import api_test
                 env = SCS_Game("Games/SCS/Game_configs/randomized_config_5.yml")
                 env = ActionWrapper(env)
-                api_test(env, num_cycles=2)
+                api_test(env, num_cycles=200)
 
             case 4:
                 game_class = SCS_Game
@@ -358,6 +358,31 @@ def main():
                 action = act_space.sample()
                 print(f"\n{action}\n\n")
                 print(act_space)
+
+            case 6:
+                from pettingzoo.utils import wrappers
+
+                class ActionWrapper(wrappers.BaseWrapper):
+                    def action(self, act):
+                        # Convert flat action index to coordinates
+                        action_coords = self.env.get_action_coords(act)
+                        return action_coords
+
+                    def step(self, action):
+                        # Transform action before passing to environment
+                        transformed_action = self.action(action)
+                        return self.env.step(transformed_action)
+                    
+                from pettingzoo.test import api_test
+                env = SCS_Game("Games/SCS/Game_configs/randomized_config_5.yml")
+                env = ActionWrapper(env)
+
+                game_class = SCS_Game
+                game_args = ["Games/SCS/Game_configs/unbalanced_config_5.yml"]
+
+                test_config = "Configs/Testing/random_visual.yaml"
+                test_manager = TestManager(game_class, game_args)
+                results = test_manager.test_from_config(test_config_path=test_config)
 
 
 

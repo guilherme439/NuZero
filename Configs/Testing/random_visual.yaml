@@ -1,0 +1,17 @@
+###
+Test:
+  test_type: visual # visual | data
+
+  Visual:
+    slow: False
+    print: True
+    render: "analysis" 
+
+
+###
+Agents:
+  p1_agent:
+    agent_type: random
+
+  p2_agent:
+    agent_type: random

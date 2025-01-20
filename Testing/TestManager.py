@@ -60,7 +60,6 @@ class TestManager():
     def create_tester_pool(self, num_actors):
         ''' creates tester pool meant to run multiple tests in parallel '''
         self.num_actors = num_actors
-
         actor_list = [RemoteTester.remote() for a in range(self.num_actors)]
         self.actor_pool = ray.util.ActorPool(actor_list)
 
@@ -218,7 +217,7 @@ class TestManager():
             range_start = changing_parameter["Range"]["first"]
             range_end = changing_parameter["Range"]["last"] + 1
             range_step = changing_parameter["Range"]["step"]
-            parameter_range = range(range_start, range_end, range_step)
+            
 
             num_runs = data_config["Runs"]["num_runs"]
             num_games_per_run = data_config["Runs"]["num_games_per_run"]
@@ -237,26 +236,43 @@ class TestManager():
                     cp_network_name = parameter_config["Checkpoints"]["cp_network_name"]
 
             all_data = []
-            for value in parameter_range:
+            if changing_agent != 0:
+                parameter_range = range(range_start, range_end, range_step)
+                for value in parameter_range:
+                    p1_avg = 0
+                    p2_avg = 0
+                    draw_avg = 0
+                    if changing_agent != 0:
+                        if parameter_name == "checkpoints":
+                            nn, _, _, _ = load_network_checkpoint(cp_network_name, value)
+                            agent_to_change.set_network(nn)
+                            print("-------------------\n\nCheckpoint: " + str(value))
+                        elif parameter_name == "iterations":
+                            agent_to_change.set_recurrent_iterations(value)
+                            print("-------------------\n\nIteration: " + str(value))
+                    
+                    for run in range(num_runs):
+                        print("\nRun " + str(run))
+                        (p1_wr, p2_wr, draws) = self.run_test_batch(num_games_per_run, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info)
+                        p1_avg += p1_wr/num_runs
+                        p2_avg += p2_wr/num_runs
+                        draw_avg += draws/num_runs
+                    
+                    wr_data = (p1_avg, p2_avg, draw_avg)
+                    data_point = (value, wr_data)
+                    all_data.append(data_point)
+
+            else:
                 p1_avg = 0
                 p2_avg = 0
                 draw_avg = 0
-                if changing_agent != 0:
-                    if parameter_name == "checkpoints":
-                        nn, _, _, _ = load_network_checkpoint(cp_network_name, value)
-                        agent_to_change.set_network(nn)
-                        print("-------------------\n\nCheckpoint: " + str(value))
-                    elif parameter_name == "iterations":
-                        agent_to_change.set_recurrent_iterations(value)
-                        print("-------------------\n\nIteration: " + str(value))
-                
                 for run in range(num_runs):
                     print("\nRun " + str(run))
                     (p1_wr, p2_wr, draws) = self.run_test_batch(num_games_per_run, p1_agent, p2_agent, p1_keep_updated, p2_keep_updated, show_info)
                     p1_avg += p1_wr/num_runs
                     p2_avg += p2_wr/num_runs
                     draw_avg += draws/num_runs
-                
+                    
                 wr_data = (p1_avg, p2_avg, draw_avg)
                 data_point = (value, wr_data)
                 all_data.append(data_point)

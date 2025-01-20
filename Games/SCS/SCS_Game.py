@@ -240,7 +240,10 @@ class SCS_Game(AECEnv):
 
         
         ## PettingZoo
-    
+
+
+        self.player_strings = [ f"player_{p}" for p in range(self.N_PLAYERS)]
+
         self.agents = [ p for p in range(self.N_PLAYERS) ]
         self.possible_agents = [ p for p in range(self.N_PLAYERS) ]
 
@@ -341,7 +344,15 @@ class SCS_Game(AECEnv):
     
     def store_action(self, action_coords):
         self.action_history.append(action_coords)
-          
+
+    def get_player_index(self, player_string: str) -> int:
+        prefix_len = 7 # "player_" has 7 letters
+        return int(player_string[prefix_len:])
+    
+    def get_player_string(self, player_index: int) -> str:
+        return self.player_strings[player_index]
+
+
 ##########################################################################
 # ----------------------------              ---------------------------- #
 # ---------------------------   GAME LOGIC   --------------------------- #
@@ -349,9 +360,18 @@ class SCS_Game(AECEnv):
 ##########################################################################
 
     def step(self, action_coords) -> None:
+        if not self.simulation_mode:
+            action_mask = self.possible_actions().flatten()
+            index = self.get_action_index(action_coords)
+            if not action_mask[index]:
+                raise Exception("Tried to play an illegal action!")
+            
         self.store_action(action_coords)
         self.play_action(action_coords)
         self.length += 1
+        
+        # Updating the game env must be
+        # the last thing that is done
         self.update_game_env()
         return
 
@@ -371,7 +391,6 @@ class SCS_Game(AECEnv):
 
         no_move_planes = np.zeros((self.no_move_planes, self.rows, self.columns), dtype=np.int8)
         no_fight_planes = np.zeros((self.no_fight_planes, self.rows, self.columns), dtype=np.int8)
-        
         
         # PLACING REINFORCEMENTS
         if self.current_sub_phase == 0:
@@ -678,7 +697,7 @@ class SCS_Game(AECEnv):
                     if self.current_turn != 0:
                         raise Exception("Sanity check went wrong. Something wrong with game environment.")
                     
-                    if self.player_ended_reinforcements(1, self.current_turn):
+                    if self.player_ended_reinforcements(0, self.current_turn):
                         stage+=1
                         continue
 
@@ -686,47 +705,47 @@ class SCS_Game(AECEnv):
                     if self.current_turn != 0:
                         raise Exception("Sanity check went wrong. Something wrong with game environment.")
                     
-                    if self.player_ended_reinforcements(2, self.current_turn):
+                    if self.player_ended_reinforcements(1, self.current_turn):
                         self.current_turn+=1
                         stage+=1
                         continue
                 
                 case 0: # P1 reinforcements
-                    if self.player_ended_reinforcements(1, self.current_turn):
+                    if self.player_ended_reinforcements(0, self.current_turn):
                         stage+=1
                         continue
                 
                 case 1: # P1 movement
-                    if self.player_ended_movement(1):
+                    if self.player_ended_movement(0):
                         stage+=1
                         continue
                     
                 case 2: # P1 choosing target
-                    if self.player_done_attacking(1):
+                    if self.player_done_attacking(0):
                         stage = 4
                         continue
                         
-                    elif self.player_chose_target(1):
+                    elif self.player_chose_target(0):
                         stage+=1
                         continue
 
                 case 3: # P1 selecting attackers
-                    if self.player_confirmed_attack(1):
+                    if self.player_confirmed_attack(0):
                         stage = 2
                         continue
                     
                 case 4: # P2 reinforcements
-                    if self.player_ended_reinforcements(2, self.current_turn):
+                    if self.player_ended_reinforcements(1, self.current_turn):
                         stage+=1
                         continue
                     
                 case 5: # P2 movement
-                    if self.player_ended_movement(2):
+                    if self.player_ended_movement(1):
                         stage+=1
                         continue                                                      
 
                 case 6: # P2 choosing target
-                    if self.player_done_attacking(2):
+                    if self.player_done_attacking(1):
                         if self.current_turn+1 > self.turns:
                             done = True
                             break
@@ -735,12 +754,12 @@ class SCS_Game(AECEnv):
                         self.new_turn()
                         continue
             
-                    elif self.player_chose_target(2):
+                    elif self.player_chose_target(1):
                         stage+=1
                         continue         
                     
                 case 7: # P2 selecting attackers
-                    if self.player_confirmed_attack(2):
+                    if self.player_confirmed_attack(1):
                         stage = 6
                         continue
             break
@@ -789,8 +808,10 @@ class SCS_Game(AECEnv):
 
         self.current_stage = stage
 
-        for p in range(self.N_PLAYERS):
-            self.infos[p]["action_mask"] = self.possible_actions().flatten()
+        if not self.simulation_mode:
+            possible = self.possible_actions().flatten()
+            for p in range(self.N_PLAYERS):
+                self.infos[p]["action_mask"] = possible
 
         return
     
@@ -826,11 +847,11 @@ class SCS_Game(AECEnv):
         victory_p2 = self.victory_points[1]
         for point in victory_p1:
             vic_p1 = self.board[point[0]][point[1]]
-            if vic_p1.player == 2:
+            if vic_p1.player == 1:
                 p2_captured_points +=1
         for point in victory_p2:
             vic_p2 = self.board[point[0]][point[1]]
-            if vic_p2.player == 1:
+            if vic_p2.player == 0:
                 p1_captured_points +=1
 
         p1_percentage_captured = p1_captured_points / self.n_vp[1]
@@ -870,16 +891,16 @@ class SCS_Game(AECEnv):
         return winner
 
     def player_ended_reinforcements(self, player, turn):
-        player_index = player-1
+        player_index = player
         turn_index = turn
         return self.current_reinforcements[player_index][turn_index] == []
     
     def player_ended_movement(self, player):
-        player_index = player-1
+        player_index = player
         return self.available_units[player_index] == []
         
     def player_done_attacking(self, player):
-        player_index = player-1
+        player_index = player
         return self.moved_units[player_index] == []        
 
     def player_chose_target(self, player):
@@ -891,8 +912,9 @@ class SCS_Game(AECEnv):
     def end_movement(self, unit):
         # End movement
         unit.set_status(1)
-        self.moved_units[unit.player-1].append(unit)
-        self.available_units[unit.player-1].remove(unit)
+        player_idx = unit.player
+        self.moved_units[player_idx].append(unit)
+        self.available_units[player_idx].remove(unit)
 
         # Since enemies can not move during my turn we can
         # mark isolated units as done fighting to reduce
@@ -904,8 +926,9 @@ class SCS_Game(AECEnv):
 
     def end_fighting(self, unit):
         unit.set_status(2)
-        self.attacked_units[unit.player-1].append(unit)
-        self.moved_units[unit.player-1].remove(unit)
+        player_idx = unit.player
+        self.attacked_units[player_idx].append(unit)
+        self.moved_units[player_idx].remove(unit)
 
     def set_simple_game_state(self, turn, unit_ids_list, unit_position_list, player_list):
         self.lenght = 0 # artificial game states don't have previous actions
@@ -917,8 +940,8 @@ class SCS_Game(AECEnv):
         for i in range(len(unit_ids_list)):
             unit_id = unit_ids_list[i]
             position = unit_position_list[i]
-            player = player_list[i]
-            player_index = player-1
+            player = player_list[i] - 1
+            player_index = player
 
             unit_details = self.units_by_id[unit_id]
             new_unit = self.create_unit(unit_details, player)
@@ -944,7 +967,7 @@ class SCS_Game(AECEnv):
     def destroy_unit(self, unit):
         (x, y) = unit.position
         self.board[x][y].remove_unit(unit)
-        player_index = unit.player-1
+        player_index = unit.player
         
         # Global reference list to each status caused problems, so I use a local list instead
         all_statuses = [self.available_units, self.moved_units, self.attacked_units]
@@ -1096,7 +1119,8 @@ class SCS_Game(AECEnv):
         return self.terminal
 
     def opponent(self, player):
-        return not(player)
+        # just flips the bit
+        return player ^ 1
 
     def define_board_sides(self):
         '''Calculates the indexes for each of the board's sides'''
@@ -1589,8 +1613,8 @@ class SCS_Game(AECEnv):
                                   "Reinforcement schedule should have \'turns + 1\' entries.\n" +
                                   "In order to account for initial troop placement (turn 0).")
     
-                        player = int(p[-1])
-                        player_index = player - 1
+                        player = int(p[-1]) - 1
+                        player_index = player
                         self.all_reinforcements[player_index] = []
                         self.current_reinforcements[player_index] = []
                         for turn_idx in range(num_turns):
@@ -1734,7 +1758,6 @@ class SCS_Game(AECEnv):
                         self.board[point[0]][point[1]].victory = 2
                         self.n_vp[1] += 1
 
-
     def clone(self):
         return deepcopy(self)
     
@@ -1766,10 +1789,10 @@ class SCS_Game(AECEnv):
                 print("Image locaton: " + image_path + "\n\n")
 
                 stats=(attack, defense, mov_allowance)
-                if player == 1:
+                if player == 0:
                     color_str = "dark_green"
                     border_color = "green"
-                elif player == 2:
+                elif player == 1:
                     color_str = "dark_red"
                     border_color = "red"
                 else:

@@ -24,7 +24,7 @@ class tic_tac_toe(Game):
                       [0,0,0],
                       [0,0,0]]
         
-        self.current_player = 1  # Two players: 1 and 2
+        self.agent_selection = 1  # Two players: 1 and 2
         
         self.total_action_planes = 1
         self.action_space_shape = (self.total_action_planes , self.HEIGHT , self.WIDTH)
@@ -41,7 +41,7 @@ class tic_tac_toe(Game):
         self.player_history = []
         self.action_history = []
 
-        self.reset_env()
+        self.reset()
         
         return
 
@@ -61,7 +61,7 @@ class tic_tac_toe(Game):
         return self.length
     
     def get_current_player(self):
-        return self.current_player
+        return self.agent_selection
 
     def get_action_space_shape(self):
         return self.action_space_shape  
@@ -101,12 +101,12 @@ class tic_tac_toe(Game):
 # ----------------------------              ---------------------------- #
 ##########################################################################
 
-    def reset_env(self):
+    def reset(self):
         self.board = [[0,0,0],
                       [0,0,0],
                       [0,0,0]]
 
-        self.current_player = 1  # Two players: 1 and 2
+        self.agent_selection = 1  # Two players: 1 and 2
 
         # MCTS support atributes
         self.terminal = False
@@ -129,7 +129,7 @@ class tic_tac_toe(Game):
         return mask
 
     def play_action(self, action_coords):
-        self.board[action_coords[1]][action_coords[2]] = self.current_player
+        self.board[action_coords[1]][action_coords[2]] = self.agent_selection
         return
 
     def generate_state_image(self):
@@ -138,7 +138,7 @@ class tic_tac_toe(Game):
 
         #'''
         player_plane = np.ones((3,3))
-        if self.current_player == 2:
+        if self.agent_selection == 2:
             player_plane.fill(-1)
         #'''
         for i in range(self.HEIGHT):
@@ -158,11 +158,11 @@ class tic_tac_toe(Game):
         state_image = torch.unsqueeze(new_state, 0) # add batch size to the dimensions
         return state_image
 
-    def step_function(self, action_coords):
+    def step(self, action_coords):
         self.play_action(action_coords)
         self.length += 1
         _, done = self.check_terminal()
-        self.current_player = (self.length%2) + 1
+        self.agent_selection = (self.length%2) + 1
 
         return done
 
@@ -267,7 +267,7 @@ class tic_tac_toe(Game):
     def shallow_clone(self):
         game_clone = tic_tac_toe()
         game_clone.board = copy.deepcopy(self.board)
-        game_clone.current_player = copy.deepcopy(self.current_player)
+        game_clone.agent_selection = copy.deepcopy(self.agent_selection)
         game_clone.length = copy.deepcopy(self.length)
 
         return game_clone
@@ -308,7 +308,7 @@ class tic_tac_toe(Game):
             self.print_board()
             x = input("choose coordenates: ")
             action_coords = eval(x)
-            self.step_function(action_coords)
+            self.step(action_coords)
 
         self.print_board()
 

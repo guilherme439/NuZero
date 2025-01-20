@@ -12,7 +12,7 @@ class Tile(object):
         self.terrain = terrain      # Terrain present on the tile
         self.units = []             # List of units in the tile
         self.position = position    # Integer pair representing tile position
-        self.player = 0             # Integer identifing the player who currently owns the tile
+        self.player = -1            # Integer identifing the player who currently owns the tile
 
     def get_terrain(self):
         return self.terrain
@@ -36,12 +36,12 @@ class Tile(object):
 
     def remove_unit(self, unit):
         if self.stacking_number() == 1:
-            self.player = 0
+            self.player = -1
         self.units.remove(unit)
 
     def reset(self):
         self.units.clear()
-        self.player = 0
+        self.player = -1
     
     def __eq__(self, other): 
         if not isinstance(other, Tile):

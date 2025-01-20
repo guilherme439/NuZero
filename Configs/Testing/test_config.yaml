@@ -42,8 +42,8 @@ Agents:
       load_checkpoint: True
 
       Checkpoint:
-        cp_network_name: test_net_load
-        cp_number: 1000
+        cp_network_name: random_local_small
+        cp_number: 160
 
   p2_agent:
     agent_type: random

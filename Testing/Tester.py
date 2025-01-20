@@ -62,11 +62,15 @@ class Tester():
 
         # --- Main test loop --- #
         while True:
-            
-            valid_actions_mask = game.possible_actions().flatten()
 
-            player = game.current_player
+            # Get the current player
+            player = game.agent_selection
+
+            # Get the valid actions
+            valid_actions_mask = game.infos[player]["action_mask"]
+            #valid_actions_mask = game.possible_actions().flatten()
             
+
             if (player == 1):
                 current_agent = p1_agent
                 opponent_agent = p2_agent
@@ -74,7 +78,7 @@ class Tester():
                 current_agent = p2_agent
                 opponent_agent = p1_agent
 
-            
+            # The current agent will select its action, based on the game state 
             action_coords = current_agent.choose_action(game)
             
             action_i = game.get_action_index(action_coords)
@@ -89,6 +93,8 @@ class Tester():
                 if opponent_agent.keep_subtree:
                     _ = opponent_agent.update_subtree(game, action_i)
                 
+            print("\n-----------------------")
+
             if self.print:
                 print(game.string_representation())
 
@@ -96,15 +102,15 @@ class Tester():
                 time.sleep(self.slow_duration)
             
             if keep_state_history:
-                state = game.generate_state_image()
+                state = game.generate_network_input()
                 game.store_state(state)
 
-            done = game.step_function(action_coords)
+            game.step(action_coords)
 
             if self.passive_render:
                 ray.get(self.remote_storage.store.remote(game))
 
-            if (done):
+            if (game.terminations[game.agent_selection] or game.truncations[game.agent_selection]):
                 if self.print:
                     print(game.string_representation())
                 winner = game.get_winner()
@@ -121,9 +127,8 @@ class Tester():
         print("\n")
         while True:
 
-            player = game.current_player
-            valid_actions_mask = game.possible_actions()
-            valid_actions_mask = valid_actions_mask.flatten()
+            player = game.agent_selection
+            valid_actions_mask = game.infos[player]["action_mask"]
             n_valids = np.sum(valid_actions_mask)
 
             if (n_valids == 0):
@@ -134,10 +139,12 @@ class Tester():
             else:
                 x = input("choose coordenates: ")
                 coords = eval(x)
+                # Safest two lines in coding history
+
                 action_coords = (0, coords[0], coords[1])
 
             print(game.string_representation())
-            done = game.step_function(action_coords)
+            done = game.step(action_coords)
             
 
             if (done):
@@ -165,7 +172,8 @@ class Tester():
 
             while not game.is_terminal():
 
-                valid_actions_mask = game.possible_actions().flatten()
+                player = game.agent_selection
+                valid_actions_mask = game.infos[player]["action_mask"]
                 n_valids = np.sum(valid_actions_mask)
 
                 probs = valid_actions_mask/n_valids
@@ -173,7 +181,7 @@ class Tester():
 
                 action_coords = np.unravel_index(action_i, game.action_space_shape)
     
-                done = game.step_function(action_coords)
+                done = game.step(action_coords)
 
                 print(game.string_representation())
 

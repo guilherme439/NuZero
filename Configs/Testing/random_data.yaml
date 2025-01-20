@@ -1,0 +1,31 @@
+###
+Test:
+  test_type: data # visual | data
+
+  Visual:
+    Variable:
+      changing_agent: 0
+      changing_parameter:
+        name: none # checkpoints | iterations | none
+        Range:
+          first: 0
+          last: 0
+          step: 0
+    Runs:
+      num_runs: 5
+      num_games_per_run: 100
+
+    Testers:
+      new_testers: True
+      num_testers: 1
+
+
+
+###
+Agents:
+  p1_agent:
+    agent_type: random
+
+  p2_agent:
+    agent_type: random
+
