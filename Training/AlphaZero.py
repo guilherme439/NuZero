@@ -63,7 +63,7 @@ class AlphaZero():
         self.game_args_list = game_args_list  # list of args for the game's __init__()
         self.game_class = game_class
         self.example_game = self.game_class(*self.game_args_list[0])
-        self.game_name = self.example_game.get_name()
+        self.game_name = self.example_game.get_dirname()
 
         self.yaml_parser = initialize_yaml_parser()
         self.search_config = load_yaml_config(self.yaml_parser, search_config_path)
@@ -160,7 +160,7 @@ class AlphaZero():
 
         self.network_name = self.train_config["Initialization"]["network_name"]
 
-        self.game_folder_name = "Games/" + self.game_class().get_name()
+        self.game_folder_name = "Games/" + self.game_class().get_dirname()
         self.network_folder_path = self.game_folder_name + "/models/" + self.network_name + "/"
         if not os.path.exists(self.network_folder_path):
             os.mkdir(self.network_folder_path)
@@ -278,7 +278,7 @@ class AlphaZero():
         
         # dummy forward pass to initialize the weights
         game = self.game_class(*self.game_args_list[0])
-        self.latest_network.inference(game.generate_state_image(), False, 1)        
+        self.latest_network.inference(game.generate_network_input(), False, 1)        
 
         # ------------------------------------------------------ #
         # ------------- STORAGE AND BUFFERS SETUP -------------- #

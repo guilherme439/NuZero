@@ -384,6 +384,28 @@ def main():
                 test_manager = TestManager(game_class, game_args)
                 results = test_manager.test_from_config(test_config_path=test_config)
 
+            case 7:
+
+                game_class = SCS_Game
+                game_args_list = [["Games/SCS/Game_configs/randomized_config_5.yml"]]
+                game = game_class(*game_args_list[0])
+
+                train_config_path="Configs/Training/System_Tests/short_training_config.yaml"
+                search_config_path="Configs/Search/System_Tests/short_search_config.yaml"
+
+                state_set = None
+                #state_set = create_r_unbalanced_state_set(game)
+
+                in_channels = game.get_state_shape()[0]
+                policy_channels = game.get_action_space_shape()[0]
+                model = ResNet(in_channels, policy_channels, 32, 6, policy_head="conv", value_head="reduce", hex=True)
+
+                print("\n")
+                context = start_ray_local(log_to_driver)
+                alpha_zero = AlphaZero(game_class, game_args_list, train_config_path, search_config_path, model=model, state_set=state_set)
+                alpha_zero.run()
+
+
 
 
 

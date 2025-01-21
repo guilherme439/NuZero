@@ -80,6 +80,9 @@ class SCS_Game(AECEnv):
         # ------------------------------------------------------------ #
         # --------------------- INITIALIZATION  ---------------------- #
         # ------------------------------------------------------------ #
+
+        self.title = "Default_Game"
+
         self.turns = 0
         self.stacking_limit = 0
 
@@ -117,10 +120,6 @@ class SCS_Game(AECEnv):
 
         self.renderer = SCS_Renderer()
 
-        if game_config_path != "":
-            self.load_game_from_config(game_config_path, seed)
-
-
         # ------------------------------------------------------ #
         # --------------- MCTS RELATED ATRIBUTES --------------- #
         # ------------------------------------------------------ #
@@ -130,9 +129,20 @@ class SCS_Game(AECEnv):
         self.player_history = []
         self.action_history = []
 
-        # ------------------------------------------------------------ #
-        # ------------- SPACE AND ACTION REPRESENTATION -------------- #
-        # ------------------------------------------------------------ #
+        # ------------------------------------------------------ #
+        # --------------- GAME ENVIORNMENT --------------- #
+        # ------------------------------------------------------ #
+
+        # If a config is not provided we can not initialize any further
+        if game_config_path == "":
+            return
+        
+        self.load_game_from_config(game_config_path, seed)
+
+
+        # ------------------------------------------------------- #
+        # ---------- STATE AND ACTION REPRESENTATIONS ----------- #
+        # ------------------------------------------------------- #
 
         ## ACTION REPRESENTATION
 
@@ -168,6 +178,7 @@ class SCS_Game(AECEnv):
         self.no_move_limit = self.confirm_limit + self.no_move_planes
         self.no_fight_limit = self.no_move_limit + self.no_fight_planes
         # Each of these limits represents the first index of the next section
+
 
         self._action_space = spaces.Discrete(self.total_action_planes * self.rows * self.columns)
 
@@ -241,7 +252,6 @@ class SCS_Game(AECEnv):
         
         ## PettingZoo
 
-
         self.player_strings = [ f"player_{p}" for p in range(self.N_PLAYERS)]
 
         self.agents = [ p for p in range(self.N_PLAYERS) ]
@@ -284,8 +294,11 @@ class SCS_Game(AECEnv):
 # -------------------------                    ------------------------- #
 ##########################################################################
 
-    def get_name(self):
+    def get_dirname(self):
         return "SCS"
+    
+    def get_title(self):
+        return self.title
 
     def get_board(self):
         return self.board
@@ -361,6 +374,8 @@ class SCS_Game(AECEnv):
 
     def step(self, action_coords) -> None:
         if not self.simulation_mode:
+            if action_coords is None:
+                return
             action_mask = self.possible_actions().flatten()
             index = self.get_action_index(action_coords)
             if not action_mask[index]:
@@ -1566,6 +1581,9 @@ class SCS_Game(AECEnv):
         # Parse the dictionary information
         for section_name, values in data_loaded.items():
             match section_name:
+                case "Name":
+                    self.title = values
+                    
                 case "Board_dimensions":
                     self.rows = values["rows"]
                     self.columns = values["columns"]

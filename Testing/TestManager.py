@@ -41,7 +41,7 @@ class TestManager():
     def __init__(self, game_class, game_args, num_actors=1, slow=False, print=False, render_choice="disabled"):
         self.game_class = game_class
         self.game_args = game_args
-        self.game_name = game_class(*game_args).get_name()
+        self.game_name = game_class(*game_args).get_dirname()
 
         self.yaml_parser = YAML()
         self.yaml_parser.default_flow_style = False  

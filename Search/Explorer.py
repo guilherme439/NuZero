@@ -142,7 +142,7 @@ class Explorer():
             return node.terminal_value
         
         else:
-            state = game.generate_state_image()
+            state = game.generate_network_input()
             if cache is not None:
                 result = cache.get(state)
                 if result is not None:

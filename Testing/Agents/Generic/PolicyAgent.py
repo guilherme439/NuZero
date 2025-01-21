@@ -18,7 +18,7 @@ class PolicyAgent(Agent):
 
     def choose_action(self, game):
         
-        state = game.generate_state_image()
+        state = game.generate_network_input()
         if self.cache is not None:
             result = self.cache.get(state)
             if result is not None:

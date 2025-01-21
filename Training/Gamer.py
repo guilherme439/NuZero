@@ -62,7 +62,7 @@ class Gamer():
         network_copy.check_devices() # Switch to gpu if available
 
         while not game.is_terminal():
-            state = game.generate_state_image()
+            state = game.generate_network_input()
             game.store_state(state)
             #game.store_player(game.get_current_player())
     
@@ -72,7 +72,7 @@ class Gamer():
             node_children = root_node.num_children()
 
             action_coords = game.get_action_coords(action_i)
-            game.step_function(action_coords)
+            game.step(action_coords)
 
             game.store_search_statistics(root_node)
             if keep_subtree:
