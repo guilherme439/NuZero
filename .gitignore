@@ -1,3 +1,6 @@
+# vscode
+.vscode/
+
 
 *.pyc
 __pychache__/
@@ -36,4 +39,4 @@ venv/
 *.insyncdl
 *.log
 
-#!Tic_Tac_Toe/models/best_ttt_config/
+
