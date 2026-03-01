@@ -3,13 +3,27 @@
 
 AlphaZero + DeepThinking + WarGames
 
+---
+
+This repository has been deprecated, in favour of 3 independent packages/repos for each of the core responsabilities included here. 
+
+| Repository | Purpose |
+| --- | --- |
+| [RL-SCS](https://github.com/guilherme439/RL-SCS) | Game generation and environment. |
+| [alphazoo](https://github.com/guilherme439/alphazoo) | Training algorithm and metrics. |
+| [l2l-lab](https://github.com/guilherme439/l2l-lab) | Training infrastructure, plotting, profiling, etc. |  
+
+<br>
+
+---
+
 This system was developed as an attempt to tackle the enormous complexity of Wargames, more specifically Standard Combat Series (SCS) games, by combining the AlphaZero learning capabilities with the Deepthinking extrapolation capacity. The general idea was to train recurrent networks on small/simple maps using AlphaZero and then use the techniques described in the Deepthinking papers to extrapolate the learned strategies to the very large maps of SCS games. The system ended up developing into a wider project to accommodate a larger set of games, network architectures and configurations. More information about the system and its conceptualization can be found in my [Master Thesis](https://fenix.tecnico.ulisboa.pt/cursos/meic-a/dissertacao/1128253548923881)
 
 Most important papers for this project:
 * [Hexagdly](https://www.semanticscholar.org/paper/HexagDLy-Processing-hexagonally-sampled-data-with-Steppa-Holch/817d9ae8f6843d56ce984fa2eccb95ce97de4720?sort=is-influential)
 * [AlphaZero](https://www.semanticscholar.org/paper/A-general-reinforcement-learning-algorithm-that-and-Silver-Hubert/f9717d29840f4d8f1cc19d1b1e80c5d12ec40608)
-* [DT1](https://www.semanticscholar.org/paper/Can-You-Learn-an-Algorithm-Generalizing-from-Easy-Schwarzschild-Borgnia/941612bd6750efa76e1a75bdc64b6e3d7ed66457)
-* [DT2](https://www.semanticscholar.org/paper/End-to-end-Algorithm-Synthesis-with-Recurrent-Bansal-Schwarzschild/c9143b978f91ee35429f1644a2266e5b036dad3a)
+* [DeepThinking1](https://www.semanticscholar.org/paper/Can-You-Learn-an-Algorithm-Generalizing-from-Easy-Schwarzschild-Borgnia/941612bd6750efa76e1a75bdc64b6e3d7ed66457)
+* [DeepThinking2](https://www.semanticscholar.org/paper/End-to-end-Algorithm-Synthesis-with-Recurrent-Bansal-Schwarzschild/c9143b978f91ee35429f1644a2266e5b036dad3a)
 
 
 ## Features
